@@ -50,10 +50,7 @@ export interface TestRoadmapActionInput {
 // 헬퍼 — V2 인터뷰 → TestRoadmapInput (서비스 계층 snake_case) 어댑터
 // =============================================================================
 
-async function fetchConsultantProfile(
-  supabase: SupabaseServerClient,
-  userId: string,
-) {
+async function fetchConsultantProfile(supabase: SupabaseServerClient, userId: string) {
   const { data } = await supabase
     .from('consultant_profiles')
     .select('*')
@@ -70,7 +67,7 @@ async function fetchConsultantProfile(
  */
 function toLegacyTestInput(
   interview: RoadmapInterviewStrict,
-  meta: { companyName: string; industry: string; companySize: string },
+  meta: { companyName: string; industry: string; companySize: string }
 ): TestRoadmapInput {
   // Ⅰ-2 첫 차수에서 날짜/시간/방법 추출 (legacy 헤더 매핑용)
   const first = interview.performanceActivities[0];
@@ -115,9 +112,13 @@ function toLegacyTestInput(
       job: t.domain,
       task_name: t.task,
       as_is: t.asIs,
-      problems: t.problem,
-      data_availability: t.dataTiming,
-      ai_necessity: t.aiScore,
+      // 양식 v2 — problem·dataTiming·aiScore 3필드가 improvement(개선점 및 AI 적용
+      // 가능성) 1필드로 통합됐다. 레거시 프롬프트 빌더(TestRoadmapInput snake_case)는
+      // 아직 개별 3필드를 받으므로, 통합 텍스트를 대표 서술 슬롯(problems)에 싣고
+      // 나머지 두 필드는 중립값으로 둔다.
+      problems: t.improvement,
+      data_availability: '',
+      ai_necessity: 3,
     })),
     training_targets: [
       {
@@ -128,34 +129,20 @@ function toLegacyTestInput(
         to_be: interview.targetTask.expectedToBe,
       },
     ],
+    // 양식 v2 — "분석내용"(taskAnalysisNote) 표가 삭제되어 분석 메모 텍스트는 비운다.
     analysis_notes: {
-      text: interview.taskAnalysisNote,
+      text: '',
       attachment_files: [],
     },
-    competency_models: interview.competencies.map((c, i) => ({
-      id: `test-c-${i}`,
-      competency_name: c.name,
-      competency_definition: c.definition,
-      knowledge: c.knowledge,
-      skill: c.skill,
-      attitude: c.attitude,
-    })),
-    ncs_usage: interview.ncsUsed
-      ? {
-          uses_ncs: true,
-          ncs_usage_method: interview.ncsMethodology ?? '',
-        }
-      : {
-          uses_ncs: false,
-          competency_derivation_method: interview.ncsDerivationMethod ?? '',
-        },
+    // 양식 v2 — 역량 모델링(competency_models)·NCS(ncs_usage) 는 인터뷰·LLM 입력에서
+    // 모두 삭제됐다 (Ⅲ장이 훈련과정 명세서 하나로 축소).
     notes: '',
   };
 }
 
-function parseInterview(input: TestRoadmapActionInput):
-  | { ok: true; data: RoadmapInterviewStrict }
-  | { ok: false; error: string } {
+function parseInterview(
+  input: TestRoadmapActionInput
+): { ok: true; data: RoadmapInterviewStrict } | { ok: false; error: string } {
   if (!input.companyName || input.companyName.trim().length < 2) {
     return { ok: false, error: '회사명을 2자 이상 입력하세요.' };
   }
@@ -179,7 +166,7 @@ function parseInterview(input: TestRoadmapActionInput):
 // =============================================================================
 
 export async function createTestRoadmap(
-  input: TestRoadmapActionInput,
+  input: TestRoadmapActionInput
 ): Promise<ActionResult<{ result: RoadmapResult; validation: ValidationResult }>> {
   const auth = await requireAuthWithRole(ALLOWED_ROLES);
   if ('error' in auth) return { success: false, error: auth.error };
@@ -202,7 +189,7 @@ export async function createTestRoadmap(
       auth.user.id,
       consultantProfile,
       undefined,
-      abortController.signal,
+      abortController.signal
     );
 
     after(async () => {
@@ -242,7 +229,7 @@ export async function createTestRoadmap(
 export async function reviseTestRoadmap(
   input: TestRoadmapActionInput,
   previousResult: RoadmapResult,
-  revisionPrompt: string,
+  revisionPrompt: string
 ): Promise<ActionResult<{ result: RoadmapResult; validation: ValidationResult }>> {
   const auth = await requireAuthWithRole(ALLOWED_ROLES);
   if ('error' in auth) return { success: false, error: auth.error };
@@ -270,7 +257,7 @@ export async function reviseTestRoadmap(
       revisionPrompt,
       auth.user.id,
       consultantProfile,
-      abortController.signal,
+      abortController.signal
     );
 
     after(async () => {
@@ -332,9 +319,7 @@ export async function exportTestRoadmapHwpx(input: {
   result: RoadmapResult;
   interview: RoadmapInterviewStrict;
   companyName: string;
-}): Promise<
-  ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>
-> {
+}): Promise<ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>> {
   const auth = await requireAuthWithRole(ALLOWED_ROLES);
   if ('error' in auth) return { success: false, error: auth.error };
   const { user } = auth;

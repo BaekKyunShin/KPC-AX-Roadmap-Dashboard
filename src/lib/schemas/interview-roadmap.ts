@@ -131,15 +131,15 @@ export const companyRequirementsSchema = z.object({
   expected_outcomes: z.string().min(1, '기대 성과를 입력하세요.'),
 });
 
-// Ⅱ-3. 과업·워크플로우 분석표 항목
+// Ⅱ-3. 과업·워크플로우 분석표 항목 (양식 v2: 6열 → 4열)
+// v1 의 problems·data_availability·ai_necessity 3필드가 roadmap_improvement 1필드로
+// 통합됐다. roadmap_improvement = "개선점 및 AI 적용 가능성 (데이터 발생 여부 또는 보유현황)"
 export const taskWorkflowItemSchema = z.object({
   id: z.string(),
   job: z.string().min(1, '직무를 입력하세요.'),
   task_name: z.string().min(1, '과업명을 입력하세요.'),
   as_is: z.string().min(1, '현행 방식을 입력하세요.'),
-  problems: z.string().min(1, '문제점을 입력하세요.'),
-  data_availability: z.string().min(1, '데이터 보유 현황을 입력하세요.'),
-  ai_necessity: z.number().int().min(1).max(5),
+  roadmap_improvement: z.string().min(1, '개선점 및 AI 적용 가능성을 입력하세요.'),
 });
 
 // Ⅱ-4. 훈련대상 과업 선정
@@ -160,38 +160,8 @@ export const analysisNotesSchema = z.object({
   attachment_files: z.array(hrdReportAttachmentSchema).default([]),
 });
 
-// Ⅲ-1. 역량 모델링 (ISSUE-04, 2026-04-21 담당자 확정)
-// 산인공 양식 1번 Ⅲ-1 표 기준으로 역량 1건은 역량명·정의·지식(K)·기술(S)·태도(A) 를
-// 각각 자유 서술 블록으로 받는다. LLM 은 이 요약 텍스트를 받아 학습 설계용 배열
-// (knowledge[]·skills[]·attitudes[]) 로 확장한다.
-export const competencyModelSchema = z.object({
-  id: z.string(),
-  competency_name: z.string().min(1, '역량명을 입력하세요.'),
-  competency_definition: z.string().min(1, '역량 정의(수행준거)를 입력하세요.'),
-  knowledge: z.string().min(1, '필요 지식을 입력하세요.'),
-  skill: z.string().min(1, '필요 기술을 입력하세요.'),
-  attitude: z.string().min(1, '필요 태도를 입력하세요.'),
-});
-
-// Ⅲ-1. NCS 활용 블록 (루트 1건)
-// uses_ncs=true → NCS 능력단위를 어떻게 참고·수정했는지 서술 (ncs_usage_method)
-// uses_ncs=false → NCS 없이 어떻게 도출했는지 서술 (competency_derivation_method)
-export const ncsUsageSchema = z
-  .object({
-    uses_ncs: z.boolean(),
-    ncs_usage_method: z.string().optional(),
-    competency_derivation_method: z.string().optional(),
-  })
-  .refine(
-    (d) =>
-      d.uses_ncs
-        ? (d.ncs_usage_method?.trim() ?? '') !== ''
-        : (d.competency_derivation_method?.trim() ?? '') !== '',
-    {
-      message: 'NCS 활용 여부에 맞는 내용을 입력하세요.',
-      path: ['ncs_usage_method'],
-    }
-  );
+// 양식 v2 (2026-07-13 개정): Ⅲ-1 역량 모델링·NCS 스텝이 양식에서 통째로 삭제되어
+// competencyModelSchema·ncsUsageSchema 는 제거됐다 (Ⅲ장이 훈련과정 명세서 하나로 축소).
 
 // 참석자 (interview.ts와 호환 유지)
 export const roadmapParticipantSchema = z.object({
@@ -215,8 +185,6 @@ export const roadmapInterviewSchema = z.object({
   task_workflow_items: z.array(taskWorkflowItemSchema).min(1, '최소 1개의 과업을 분석하세요.'),
   analysis_notes: analysisNotesSchema.default({ text: '', attachment_files: [] }),
   training_targets: z.array(trainingTargetSchema).min(1, '최소 1개의 훈련대상 과업을 선정하세요.'),
-  competency_models: z.array(competencyModelSchema).min(1, '최소 1개의 역량 모델을 입력하세요.'),
-  ncs_usage: ncsUsageSchema,
   notes: z.string().default(''),
   stt_insights: sttInsightsSchema.optional(),
 });
@@ -261,9 +229,7 @@ export const roadmapInterviewAutoSaveSchema = z.object({
         job: z.string(),
         task_name: z.string(),
         as_is: z.string(),
-        problems: z.string(),
-        data_availability: z.string(),
-        ai_necessity: z.number().int().min(1).max(5),
+        roadmap_improvement: z.string(),
       })
     )
     .optional(),
@@ -284,27 +250,6 @@ export const roadmapInterviewAutoSaveSchema = z.object({
       })
     )
     .optional(),
-  // 자동저장 중간 상태 허용: 역량 필드 일부가 비어 있어도 통과
-  competency_models: z
-    .array(
-      z.object({
-        id: z.string(),
-        competency_name: z.string().optional(),
-        competency_definition: z.string().optional(),
-        knowledge: z.string().optional(),
-        skill: z.string().optional(),
-        attitude: z.string().optional(),
-      })
-    )
-    .optional(),
-  // 자동저장 중간 상태 허용: refine 없이 느슨하게
-  ncs_usage: z
-    .object({
-      uses_ncs: z.boolean(),
-      ncs_usage_method: z.string().optional(),
-      competency_derivation_method: z.string().optional(),
-    })
-    .optional(),
   notes: z.string().optional(),
   stt_insights: sttInsightsSchema.optional(),
 });
@@ -317,8 +262,6 @@ export type Overview = z.infer<typeof overviewSchema>;
 export type TaskWorkflowItem = z.infer<typeof taskWorkflowItemSchema>;
 export type TrainingTarget = z.infer<typeof trainingTargetSchema>;
 export type RoadmapParticipant = z.infer<typeof roadmapParticipantSchema>;
-export type CompetencyModel = z.infer<typeof competencyModelSchema>;
-export type NcsUsage = z.infer<typeof ncsUsageSchema>;
 export type RoadmapInterview = z.infer<typeof roadmapInterviewSchema>;
 export type RoadmapInterviewInput = z.input<typeof roadmapInterviewSchema>;
 export type RoadmapInterviewAutoSaveInput = z.input<typeof roadmapInterviewAutoSaveSchema>;
@@ -342,9 +285,7 @@ export function createEmptyTaskWorkflowItem(): TaskWorkflowItem {
     job: '',
     task_name: '',
     as_is: '',
-    problems: '',
-    data_availability: '',
-    ai_necessity: 3,
+    roadmap_improvement: '',
   };
 }
 
@@ -355,24 +296,6 @@ export function createEmptyTrainingTarget(): TrainingTarget {
     selection_reason: '',
     as_is: '',
     to_be: '',
-  };
-}
-
-export function createEmptyCompetencyModel(): CompetencyModel {
-  return {
-    id: crypto.randomUUID(),
-    competency_name: '',
-    competency_definition: '',
-    knowledge: '',
-    skill: '',
-    attitude: '',
-  };
-}
-
-export function createEmptyNcsUsage(): NcsUsage {
-  return {
-    uses_ncs: false,
-    competency_derivation_method: '',
   };
 }
 
@@ -425,20 +348,8 @@ interface LegacyCompanyDetails {
       parse_error?: string;
     } | null;
   } | null;
-  // Ⅲ-1 역량 모델링 + NCS 활용 (ISSUE-04 신규, 2026-04-21)
-  roadmap_competency_models?: Array<{
-    id?: string;
-    competency_name?: string;
-    competency_definition?: string;
-    knowledge?: string;
-    skill?: string;
-    attitude?: string;
-  }> | null;
-  roadmap_ncs_usage?: {
-    uses_ncs?: boolean;
-    ncs_usage_method?: string;
-    competency_derivation_method?: string;
-  } | null;
+  // 양식 v2: Ⅲ-1 역량 모델링(roadmap_competency_models)·NCS(roadmap_ncs_usage) 는
+  // 삭제됐다. 레거시 row 에 값이 남아 있어도 더 이상 읽지 않는다.
   // ISSUE-10 Step C-2: 시작/종료 시간 정식 저장 (JSONB).
   //   `interview_time` 단일 컬럼은 시작 시간만 legacy 호환용으로 함께 저장.
   roadmap_interview_time?: {
@@ -452,6 +363,9 @@ interface LegacyJobTask {
   task_name?: string;
   task_description?: string;
   roadmap_job?: string;
+  // v2 신규 통합 필드 (개선점 및 AI 적용 가능성)
+  roadmap_improvement?: string;
+  // v1 하위호환 — roadmap_improvement 가 없을 때 아래 3필드를 라벨과 함께 승격
   roadmap_problems?: string;
   roadmap_data_availability?: string;
   roadmap_ai_necessity?: number | string;
@@ -482,11 +396,27 @@ interface LegacyInterviewRow {
   stt_insights?: unknown;
 }
 
-function clampAiNecessity(value: number | string | undefined): number {
-  const n = typeof value === 'string' ? Number(value) : value;
-  if (!Number.isFinite(n as number)) return 3;
-  const int = Math.trunc(n as number);
-  return int < 1 || int > 5 ? 3 : int;
+/**
+ * v1 과업 3필드(문제점·데이터발생시점·AI필요도) → v2 roadmap_improvement 1필드 승격.
+ *
+ * 운영 DB 에 v1 데이터가 실재하므로, roadmap_improvement 가 없으면 구 3필드를 라벨과
+ * 함께 합성한다. 빈 값은 건너뛴다. (converters.ts 의 promoteLegacyTaskImprovement 와
+ * 동일한 합성 규칙 — 두 경로가 동일 문자열을 LLM/요약에 전달하도록 통일)
+ */
+function promoteLegacyTaskImprovement(t: LegacyJobTask): string {
+  if (typeof t.roadmap_improvement === 'string' && t.roadmap_improvement.trim() !== '') {
+    return t.roadmap_improvement;
+  }
+  const parts: string[] = [];
+  if (t.roadmap_problems?.trim()) parts.push(`문제점: ${t.roadmap_problems.trim()}`);
+  if (t.roadmap_data_availability?.trim()) {
+    parts.push(`데이터 발생 시점/보유현황: ${t.roadmap_data_availability.trim()}`);
+  }
+  const score = t.roadmap_ai_necessity;
+  if (score !== undefined && score !== null && `${score}`.trim() !== '') {
+    parts.push(`AI 도입·활용 필요도: ${score}`);
+  }
+  return parts.join('\n');
 }
 
 export function mapInterviewRowToRoadmapInterview(
@@ -557,7 +487,9 @@ export function mapInterviewRowToRoadmapInterview(
         parse_error: f.parse_error,
       }));
     partial.analysis_notes = {
-      text: savedAn.text ?? '',
+      // v2: "분석내용"(text) 표가 양식에서 삭제되어 레거시 text 는 더 이상 승격하지 않는다.
+      // 추가 첨부(attachment_files) 는 LLM 설계 참고용으로 유지한다.
+      text: '',
       attachment_files: attachmentFiles,
     };
   }
@@ -617,9 +549,8 @@ export function mapInterviewRowToRoadmapInterview(
       job: t.roadmap_job ?? '',
       task_name: t.task_name ?? '',
       as_is: t.task_description ?? '',
-      problems: t.roadmap_problems ?? '',
-      data_availability: t.roadmap_data_availability ?? '',
-      ai_necessity: clampAiNecessity(t.roadmap_ai_necessity),
+      // v2: improvement 우선, 없으면 v1 3필드 승격 (운영 DB 호환)
+      roadmap_improvement: promoteLegacyTaskImprovement(t),
     }));
   }
 
@@ -633,28 +564,8 @@ export function mapInterviewRowToRoadmapInterview(
     }));
   }
 
-  // Ⅲ-1 역량 모델링 + NCS 활용 복원 (ISSUE-04 신규)
-  const savedCompetencies = row.company_details?.roadmap_competency_models;
-  if (Array.isArray(savedCompetencies) && savedCompetencies.length > 0) {
-    partial.competency_models = savedCompetencies.map((c) => ({
-      id: c.id ?? crypto.randomUUID(),
-      competency_name: c.competency_name ?? '',
-      competency_definition: c.competency_definition ?? '',
-      knowledge: c.knowledge ?? '',
-      skill: c.skill ?? '',
-      attitude: c.attitude ?? '',
-    }));
-  }
-
-  const savedNcs = row.company_details?.roadmap_ncs_usage;
-  if (savedNcs && typeof savedNcs.uses_ncs === 'boolean') {
-    partial.ncs_usage = savedNcs.uses_ncs
-      ? { uses_ncs: true, ncs_usage_method: savedNcs.ncs_usage_method ?? '' }
-      : {
-          uses_ncs: false,
-          competency_derivation_method: savedNcs.competency_derivation_method ?? '',
-        };
-  }
+  // 양식 v2: Ⅲ-1 역량 모델링(competency_models)·NCS(ncs_usage) 복원 로직은 삭제됐다
+  // (양식에서 표가 통째로 사라짐). 레거시 row 에 값이 남아 있어도 반환하지 않는다.
 
   if (typeof row.notes === 'string') partial.notes = row.notes;
 
@@ -694,7 +605,7 @@ export const RoadmapOverviewSchema = z.object({
   establishmentNecessity: z.string().min(1, '수립 필요성을 입력하세요 (5줄 내외).'),
   performanceActivities: z
     .array(RoadmapPerformanceActivitySchema)
-    .max(5, '주요 활동은 최대 5차까지 입력할 수 있습니다.'),
+    .max(15, '주요 활동은 최대 15차까지 입력할 수 있습니다.'),
   aiLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
   selectedTask: z.string().min(1, '선정 과업을 입력하세요.'),
 });
@@ -740,18 +651,14 @@ export const RoadmapCompanyRequirementsSchema = z.object({
 });
 export type RoadmapCompanyRequirements = z.infer<typeof RoadmapCompanyRequirementsSchema>;
 
-// -- Ⅱ-3 과업·워크플로우 분석표 ----------------------------------------------
+// -- Ⅱ-3 과업·워크플로우 분석표 (양식 v2: 6열 → 4열) ------------------------
+// v1 의 problem·dataTiming·aiScore 3열이 improvement 1열로 통합됐다.
+//   improvement = "개선점 및 AI 적용 가능성 (데이터 발생 여부 또는 보유현황)"
 export const RoadmapTaskAnalysisItemSchema = z.object({
   domain: z.string().min(1, '직무를 입력하세요.'),
   task: z.string().min(1, '과업을 입력하세요.'),
   asIs: z.string().min(1, '현행 방식(As-Is)을 입력하세요.'),
-  problem: z.string().min(1, '문제점을 입력하세요.'),
-  dataTiming: z.string().min(1, '데이터 발생 시점/보유 현황을 입력하세요.'),
-  aiScore: z
-    .number({ message: 'AI 도입·활용 필요도는 숫자여야 합니다.' })
-    .int({ message: 'AI 도입·활용 필요도는 정수여야 합니다 (소수 불가).' })
-    .min(1, { message: 'AI 도입·활용 필요도는 1 이상이어야 합니다.' })
-    .max(5, { message: 'AI 도입·활용 필요도는 5 이하여야 합니다.' }),
+  improvement: z.string().min(1, '개선점 및 AI 적용 가능성을 입력하세요.'),
 });
 export type RoadmapTaskAnalysisItem = z.infer<typeof RoadmapTaskAnalysisItemSchema>;
 
@@ -786,46 +693,17 @@ export const RoadmapRequirementsSchema = z.object({
   hrdReportPdf: RoadmapHrdReportPdfSchema.nullish(),
   companyRequirements: RoadmapCompanyRequirementsSchema,
   taskAnalysis: z.array(RoadmapTaskAnalysisItemSchema).min(1, '최소 1개 이상의 과업을 분석하세요.'),
-  taskAnalysisNote: z.string().min(1, '분석내용을 입력하세요.'),
+  // v2: "분석내용"(taskAnalysisNote) 표는 양식에서 삭제됨. 추가 업로드 자료 첨부는 유지.
   taskAnalysisAttachment: RoadmapTaskAnalysisAttachmentSchema.nullable().optional(),
   targetTask: RoadmapTargetTaskSchema,
 });
 
-// -- Ⅲ-1 역량 모델링 표 -----------------------------------------------------
-export const RoadmapCompetencySchema = z.object({
-  name: z.string().min(1, '역량명을 입력하세요.'),
-  definition: z.string().min(1, '역량 정의(수행준거)를 입력하세요.'),
-  knowledge: z.string().min(1, '필요 지식을 입력하세요.'),
-  skill: z.string().min(1, '필요 기술을 입력하세요.'),
-  attitude: z.string().min(1, '필요 태도를 입력하세요.'),
-});
-export type RoadmapCompetency = z.infer<typeof RoadmapCompetencySchema>;
-
-// -- Ⅲ-1 역량 모델링 전체 (ZodObject) ---------------------------------------
-// NCS XOR 검증은 통합본 `RoadmapInterviewStrictSchema` 의 `.superRefine()` 에
-// 단일화되어 있다. 본 스키마는 ZodObject 형태를 유지해 `.partial()`·`.merge()`
-// 파생이 가능하도록 하고, refine 은 부착하지 않는다.
-export const RoadmapTrainingInterviewSchema = z.object({
-  competencies: z.array(RoadmapCompetencySchema).min(1, '최소 1개 이상의 역량을 입력하세요.'),
-  ncsUsed: z.boolean(),
-  ncsMethodology: z.string().optional(),
-  ncsDerivationMethod: z.string().optional(),
-});
-
-// -- 통합 스키마: Ⅰ + Ⅱ + Ⅲ-1 ------------------------------------------------
+// -- 통합 스키마: Ⅰ + Ⅱ ------------------------------------------------------
+// v2 에서 Ⅲ-1 역량 모델링·NCS 스텝이 양식에서 삭제되어 인터뷰에서도 제거됐다.
 // RoadmapInterviewSchema 는 plain `z.object()` (ZodObject) 형태로 유지해
 // 최종 제출 / 자동 저장 양쪽에서 재사용할 수 있게 한다.
-// - Strict (최종 제출):  `RoadmapInterviewStrictSchema.safeParse`  → superRefine
-//   으로 NCS XOR 검증이 수행된다.
-// - Loose  (자동 저장):  `RoadmapInterviewSchema.partial()`        → refine 이
-//   부착되지 않으므로 빈 객체 {} 를 포함한 부분 입력이 모두 통과한다.
-//
-// zod v3 에서 `.refine()`·`.superRefine()` 결과는 ZodEffects 로 감싸져
-// `.partial()`·`.merge()` 를 제공하지 않는다. 따라서 XOR 검증은 본 ZodObject
-// 위에 별도 export 로 부착하고, 본체는 ZodObject 를 유지한다.
 export const RoadmapInterviewSchema = RoadmapOverviewSchema.merge(RoadmapRequirementsSchema)
-  .merge(RoadmapTrainingInterviewSchema)
-  // STT 인사이트(선택) — 9번째 Step "인터뷰 녹취 STT 첨부" 추출 결과.
+  // STT 인사이트(선택) — 마지막 Step "인터뷰 녹취 STT 첨부" 추출 결과.
   // optional 이라 strict 제출에 영향 없음. 자동저장은 부분 입력 그대로 보존.
   .extend({ sttInsights: sttInsightsSchema.optional() });
 export type RoadmapInterviewStrict = z.infer<typeof RoadmapInterviewSchema>;
@@ -867,9 +745,7 @@ const RoadmapTaskAnalysisItemAutoSaveSchema = z.object({
   domain: z.string().optional(),
   task: z.string().optional(),
   asIs: z.string().optional(),
-  problem: z.string().optional(),
-  dataTiming: z.string().optional(),
-  aiScore: z.number().int().min(1).max(5).optional(),
+  improvement: z.string().optional(),
 });
 
 const RoadmapTargetTaskAutoSaveSchema = z.object({
@@ -877,14 +753,6 @@ const RoadmapTargetTaskAutoSaveSchema = z.object({
   reason: z.string().optional(),
   expectedAsIs: z.string().optional(),
   expectedToBe: z.string().optional(),
-});
-
-const RoadmapCompetencyAutoSaveSchema = z.object({
-  name: z.string().optional(),
-  definition: z.string().optional(),
-  knowledge: z.string().optional(),
-  skill: z.string().optional(),
-  attitude: z.string().optional(),
 });
 
 export const RoadmapInterviewAutoSaveSchema = z.object({
@@ -897,37 +765,13 @@ export const RoadmapInterviewAutoSaveSchema = z.object({
   hrdReportPdf: RoadmapHrdReportPdfSchema.partial().nullable().optional(),
   companyRequirements: RoadmapCompanyRequirementsAutoSaveSchema.optional(),
   taskAnalysis: z.array(RoadmapTaskAnalysisItemAutoSaveSchema).optional(),
-  taskAnalysisNote: z.string().optional(),
   taskAnalysisAttachment: RoadmapTaskAnalysisAttachmentSchema.partial().nullable().optional(),
   targetTask: RoadmapTargetTaskAutoSaveSchema.optional(),
-  // Ⅲ-1 훈련체계
-  competencies: z.array(RoadmapCompetencyAutoSaveSchema).optional(),
-  ncsUsed: z.boolean().optional(),
-  ncsMethodology: z.string().optional(),
-  ncsDerivationMethod: z.string().optional(),
-  // STT 인사이트(선택) — 9번째 Step. 자동저장 경로에서 sttInsights JSON 보존.
+  // STT 인사이트(선택) — 마지막 Step. 자동저장 경로에서 sttInsights JSON 보존.
   sttInsights: sttInsightsSchema.optional(),
 });
 
-// NCS XOR 검증까지 포함한 엄격 스키마 (최종 제출 경계에서 사용).
-// ncsUsed=true  → ncsMethodology 필수
-// ncsUsed=false → ncsDerivationMethod 필수
-export const RoadmapInterviewStrictSchema = RoadmapInterviewSchema.superRefine((d, ctx) => {
-  if (d.ncsUsed) {
-    if ((d.ncsMethodology?.trim() ?? '') === '') {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'NCS 활용 방법을 입력하세요.',
-        path: ['ncsMethodology'],
-      });
-    }
-  } else {
-    if ((d.ncsDerivationMethod?.trim() ?? '') === '') {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: '역량별 도출 방법을 입력하세요.',
-        path: ['ncsDerivationMethod'],
-      });
-    }
-  }
-});
+// 엄격 스키마 (최종 제출 경계에서 사용).
+// v2 에서 NCS XOR 검증이 삭제되어 통합 스키마와 동일하지만, 호출부 호환을 위해
+// 별도 export 를 유지한다 (향후 제출 전용 refine 이 필요하면 여기에 부착).
+export const RoadmapInterviewStrictSchema = RoadmapInterviewSchema;

@@ -54,7 +54,7 @@ const aiToolUsagePlanSchema = z
   .array(aiToolUsagePlanItemSchema)
   .min(
     PBL_MIN_AI_TOOL_USAGE_STAGES,
-    `AI 도구 활용 계획은 최소 ${PBL_MIN_AI_TOOL_USAGE_STAGES}단계 이상이어야 합니다.`,
+    `AI 도구 활용 계획은 최소 ${PBL_MIN_AI_TOOL_USAGE_STAGES}단계 이상이어야 합니다.`
   );
 
 // ----------------------------------------------------------------------------
@@ -110,19 +110,21 @@ const trainingContentSchema = z
   .refine(
     (item) =>
       Math.abs(
-        item.instructor_hours.external + item.instructor_hours.internal - item.training_hours,
+        item.instructor_hours.external + item.instructor_hours.internal - item.training_hours
       ) < 1e-6,
     {
       message: '강사 투입시간 외부+내부 합이 훈련시간과 같아야 합니다 (양식 가이드 #9).',
       path: ['instructor_hours'],
-    },
+    }
   );
 
 const subjectProfileSchema = z
   .object({
     course_name: trimmedText('교과목 과정명'),
     total_hours: z.number().positive('전체 훈련시간은 1 이상이어야 합니다.'),
-    training_goals: z.array(trimmedText('훈련목표 bullet')).min(1, '훈련목표를 최소 1개 입력하세요.'),
+    training_goals: z
+      .array(trimmedText('훈련목표 bullet'))
+      .min(1, '훈련목표를 최소 1개 입력하세요.'),
     ai_tools: z.array(trimmedText('AI 도구 항목')).min(1, 'AI 도구를 최소 1개 입력하세요.'),
     utilized_data: trimmedText('활용 데이터'),
     analysis_method: trimmedText('분석 방법'),
@@ -130,7 +132,7 @@ const subjectProfileSchema = z
       .array(trainingContentSchema)
       .min(
         PBL_MIN_TRAINING_CONTENT_ROWS,
-        `훈련 교과목은 최소 ${PBL_MIN_TRAINING_CONTENT_ROWS}개 이상이어야 합니다.`,
+        `훈련 교과목은 최소 ${PBL_MIN_TRAINING_CONTENT_ROWS}개 이상이어야 합니다.`
       ),
     total_sum_hours: z.number().nonnegative(),
   })
@@ -142,7 +144,7 @@ const subjectProfileSchema = z
     {
       message: '전체시간(total_sum_hours)은 훈련시간 합과 일치해야 합니다.',
       path: ['total_sum_hours'],
-    },
+    }
   );
 
 // ----------------------------------------------------------------------------
@@ -217,9 +219,7 @@ const surveyScaleSchema = z.union([
 ]);
 
 const fixedLengthSurvey = (length: number, label: string) =>
-  z
-    .array(surveyScaleSchema)
-    .length(length, `${label} 설문은 ${length}문항이어야 합니다.`);
+  z.array(surveyScaleSchema).length(length, `${label} 설문은 ${length}문항이어야 합니다.`);
 
 const resultEvaluationSchema = z.object({
   satisfaction_survey: fixedLengthSurvey(PBL_SATISFACTION_SURVEY_LENGTH, '만족도'),
@@ -227,17 +227,17 @@ const resultEvaluationSchema = z.object({
   external_expert_survey: fixedLengthSurvey(PBL_EXTERNAL_EXPERT_SURVEY_LENGTH, '외부전문가 만족도'),
   practical_application_survey: fixedLengthSurvey(
     PBL_PRACTICAL_APPLICATION_SURVEY_LENGTH,
-    '현업적용도',
+    '현업적용도'
   ),
   respondent_name: z.string().optional(),
   evaluation_date: z.string().optional(),
 });
 
 // ============================================================================
-// Ⅴ. 성과분석 및 확산 전략 스키마
+// Ⅳ-2. 성과분석 측정 지표 스키마 (v1 Ⅴ장에서 이동)
+//   ⚠️ 성과 확산 전략(구 Ⅴ-2)은 v2 양식에서 출력처 소멸 → 삭제
 // ============================================================================
 
-// Ⅴ-1. 성과분석 측정 지표
 // z.enum은 readonly tuple을 직접 받을 수 없으므로 spread 사용
 const trainingGoalCategoryEnum = z.enum([...TRAINING_GOAL_CATEGORIES] as [
   (typeof TRAINING_GOAL_CATEGORIES)[number],
@@ -252,18 +252,6 @@ const outcomeMetricsSchema = z.object({
   qualitative: trimmedText('정성 지표'),
 });
 
-// Ⅴ-2. 성과 확산 전략
-const diffusionStrategySchema = z.object({
-  internalization: trimmedText('내재화 방안'),
-  company_wide_diffusion: trimmedText('전사 확산 방안'),
-});
-
-// Ⅴ. 통합
-const outcomeAnalysisSchema = z.object({
-  outcome_metrics: outcomeMetricsSchema,
-  diffusion_strategy: diffusionStrategySchema,
-});
-
 // ----------------------------------------------------------------------------
 // 최상위 스키마
 // ----------------------------------------------------------------------------
@@ -271,6 +259,7 @@ const outcomeAnalysisSchema = z.object({
 export const pblContentSchema = z.object({
   operation_plan: z.object({
     training_goal: trainingGoalSchema,
+    outcome_metrics: outcomeMetricsSchema,
     ai_tool_usage_plan: aiToolUsagePlanSchema,
     training_plan: z.object({
       overview: courseOverviewSchema,
@@ -284,7 +273,6 @@ export const pblContentSchema = z.object({
       result_evaluation: resultEvaluationSchema,
     }),
   }),
-  outcome_analysis: outcomeAnalysisSchema,
 });
 
 /** LLM 출력 1차 Zod 파싱 (엄격) */
@@ -314,7 +302,7 @@ export function validatePBLContent(content: PBLContent): PBLValidationResult {
     const sum = row.instructor_hours.external + row.instructor_hours.internal;
     if (Math.abs(sum - row.training_hours) > 1e-6) {
       errors.push(
-        `교과목 ${idx + 1}행 "${row.unit_name}": 강사 투입시간 외부(${row.instructor_hours.external})+내부(${row.instructor_hours.internal})=${sum}이 훈련시간(${row.training_hours})과 다릅니다.`,
+        `교과목 ${idx + 1}행 "${row.unit_name}": 강사 투입시간 외부(${row.instructor_hours.external})+내부(${row.instructor_hours.internal})=${sum}이 훈련시간(${row.training_hours})과 다릅니다.`
       );
     }
   });

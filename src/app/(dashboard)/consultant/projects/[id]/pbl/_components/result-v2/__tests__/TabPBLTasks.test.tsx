@@ -1,20 +1,25 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 
 import { TabPBLTasks } from '../TabPBLTasks';
 import type { ResultPBLInterviewSnapshot } from '../types';
+import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 
 const interview: Partial<ResultPBLInterviewSnapshot> = {
-  // R8 PBL-자체-03 — 평면 4행 배열 (차수×4 역할). 1차·2차 = 8행.
-  activities: [
-    { round: 1, role: 'PM', personName: '김PM', date: '2026.04.10', content: '경영진 인터뷰', method: '대면' },
-    { round: 1, role: 'EXTERNAL_EXPERT', personName: '', date: '', content: '', method: '' },
-    { round: 1, role: 'INTERNAL_EXPERT', personName: '박차장', date: '2026.04.10', content: '내부 현황 공유', method: '대면' },
-    { round: 1, role: 'JURISDICTION_MANAGER', personName: '', date: '', content: '', method: '' },
-    { round: 2, role: 'PM', personName: '김PM', date: '2026.04.17', content: '현장 워크숍', method: '대면+실습' },
-    { round: 2, role: 'EXTERNAL_EXPERT', personName: '박전문가', date: '2026.04.17', content: '데이터 분석 멘토링', method: '대면+실습' },
-    { round: 2, role: 'INTERNAL_EXPERT', personName: '생산팀 전체', date: '2026.04.17', content: '현장 사례 공유', method: '대면+실습' },
-    { round: 2, role: 'JURISDICTION_MANAGER', personName: '이주치', date: '2026.04.17', content: 'HRD 점검', method: '서면 검토' },
+  // Ⅲ-1 수행활동 — PBL 자체 입력 (정본 4역할 · 수행 일자)
+  performanceActivities: [
+    {
+      round: 1,
+      date: '25/04/10',
+      content: '핵심문제 파악 워크숍',
+      method: 'WORKSHOP',
+      participants: {
+        pm: '김책임',
+        external_expert: '이직무',
+        internal_expert: '박내부',
+        jurisdiction_manager: '최주치의',
+      },
+    },
   ],
   problemDefinitionSheet: {
     background: '야간 교대시 샘플 누락 발생',
@@ -22,16 +27,13 @@ const interview: Partial<ResultPBLInterviewSnapshot> = {
     scope: '품질 검사 라인',
     constraints: '예산·일정 한계',
   },
-  priority: {
-    items: [{ problem: '검사 누락', score: 5, rank: 1 }],
-    method: 'AHP 기반 협의',
-  },
   target: {
-    name: '품질 검사 AI 보조',
-    code: '1503020107',
-    scope: '품질관리팀 10명',
+    // Ⅲ-3-가 — 로드맵 과업 순서와 1:1 (2개 로드맵 과업 ↔ 2개 selection)
+    taskSelections: [
+      { ai_necessity: 'AI 자동 판정 필요도 높음', training_selected: true },
+      { ai_necessity: '데이터 축적 부족', training_selected: false },
+    ],
     necessity: '검사 누락 즉시 탐지 필요',
-    necessity_score: 5,
     details: [
       {
         title: '카메라 기반 이상 감지',
@@ -42,344 +44,227 @@ const interview: Partial<ResultPBLInterviewSnapshot> = {
       },
     ],
   },
-  currentAiLevel: { level: 'BASIC', note: '도입 전 단계' },
-  expectedAiLevel: { level: 'USER', note: '부서 단위 활용 단계 기대' },
+};
+
+// 선행 로드맵 과업 분석표 (Ⅲ-3-가 4열 자동 연동) — taskSelections 와 순서 1:1
+const linkedRoadmap: Partial<RoadmapInterviewStrict> = {
+  taskAnalysis: [
+    {
+      domain: '품질관리',
+      task: '외관 검사',
+      asIs: '검사자 육안 검사',
+      improvement: 'AI 비전 검사 도입 가능',
+    },
+    {
+      domain: '생산관리',
+      task: '설비 점검',
+      asIs: '수기 점검표 작성',
+      improvement: '센서 데이터 기반 이상 감지',
+    },
+  ],
 };
 
 describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
-  it('8개 하위 섹션 렌더 — Ⅲ-1 / Ⅲ-2-가 / Ⅲ-2-나 / Ⅲ-3-가 / Ⅲ-3-나 / Ⅲ-3-다 / Ⅲ-4-가 / Ⅲ-4-나', () => {
+  it('5개 하위 섹션 렌더 — Ⅲ-1 / Ⅲ-2-가 / Ⅲ-3-가 / Ⅲ-3-나 / Ⅲ-3-다', () => {
     render(
       <TabPBLTasks
         version={null}
         interview={interview}
+        linkedRoadmap={linkedRoadmap}
         readOnly
         onEdit={vi.fn()}
-      />,
+      />
     );
-    expect(
-      screen.getByText(/Ⅲ-1\. 훈련과제 도출 수행활동/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Ⅲ-1\. 훈련과제 도출 수행활동/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅲ-2-가\. 문제 정의서/)).toBeInTheDocument();
-    expect(screen.getByText(/Ⅲ-2-나\. 문제 우선순위 결정/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Ⅲ-3-가\. 훈련대상 업무 선정/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Ⅲ-3-나\. AI기반 문제해결 필요성/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Ⅲ-3-다\. 훈련대상 업무 세부내용/),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Ⅲ-4-가\. 현재 AI 역량 수준/)).toBeInTheDocument();
-    expect(screen.getByText(/Ⅲ-4-나\. 예상 AI 역량 수준/)).toBeInTheDocument();
+    // 정본 정합: 문구 "훈련대상 업무 선정"(구 "과업 선정"), 번호 Ⅲ-3-가 유지
+    expect(screen.getByText(/Ⅲ-3-가\. 훈련대상 업무 선정/)).toBeInTheDocument();
+    // 정본 정합: "AI기반 문제해결의 필요성"(구 "문제해결 필요성")
+    expect(screen.getByText(/Ⅲ-3-나\. AI기반 문제해결의 필요성/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅲ-3-다\. 훈련대상 업무 세부내용/)).toBeInTheDocument();
   });
 
-  it('Ⅲ-1 수행활동 2차수 × 4 역할 = 8 행 표시', () => {
+  it('제거된 섹션(Ⅲ-2-나 우선순위 / Ⅲ-4 AI역량)은 더 이상 렌더되지 않는다', () => {
+    const { container } = render(
+      <TabPBLTasks
+        version={null}
+        interview={interview}
+        linkedRoadmap={linkedRoadmap}
+        readOnly
+        onEdit={vi.fn()}
+      />
+    );
+    const text = container.textContent ?? '';
+    expect(text).not.toContain('문제 우선순위');
+    expect(text).not.toContain('AI 역량 수준');
+    // AiLevel4Check radio 위젯 완전 제거
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('group', { name: /AI 역량 수준/ })).toBeNull();
+  });
+
+  // ── Ⅲ-1 수행활동 (PBL 자체 입력 — 로드맵 연계 폐기) ──────────────────────
+  it('Ⅲ-1 — PBL 인터뷰 수행활동의 일자·내용·참석자 4역할을 표출한다', () => {
     render(
       <TabPBLTasks
         version={null}
         interview={interview}
+        linkedRoadmap={linkedRoadmap}
         readOnly
         onEdit={vi.fn()}
-      />,
+      />
     );
-    // 차수 라벨 (1차·2차 × 4 행 = 8 셀)
-    expect(screen.getAllByText('1차').length).toBe(4);
-    expect(screen.getAllByText('2차').length).toBe(4);
-    // 수행 내용
-    expect(screen.getByText('경영진 인터뷰')).toBeInTheDocument();
-    expect(screen.getByText('현장 워크숍')).toBeInTheDocument();
+    expect(screen.getByText('1차')).toBeInTheDocument();
+    expect(screen.getByText('25/04/10')).toBeInTheDocument();
+    expect(screen.getByText(/핵심문제 파악 워크숍/)).toBeInTheDocument();
+    // 참석자 4역할 — 정본 라벨 + 성명
+    expect(screen.getByText('컨설팅책임자(PM)')).toBeInTheDocument();
+    expect(screen.getByText('외부전문가(직무,HRD)')).toBeInTheDocument();
+    expect(screen.getByText('기업내부전문가')).toBeInTheDocument();
+    expect(screen.getByText('능력개발전담주치의')).toBeInTheDocument();
+    expect(screen.getByText('이직무')).toBeInTheDocument();
+    expect(screen.getByText('최주치의')).toBeInTheDocument();
   });
 
-  it('Ⅲ-1 수행활동 평면 4행 배열 — 4 역할 라벨이 차수마다 표시된다 (R8 PBL-자체-03)', () => {
-    render(
-      <TabPBLTasks
-        version={null}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
-    // R8 PBL-자체-03 — 평면 4행 배열. 차수당 4 역할이 별도 행으로 노출됨.
-    // 1차 PM 성명 = "김PM" (1·2차 모두 PM 김PM 이라 2개 매치)
-    expect(screen.getAllByText('김PM').length).toBeGreaterThanOrEqual(2);
-    // 1차 INTERNAL_EXPERT 성명 = "박차장"
-    expect(screen.getByText('박차장')).toBeInTheDocument();
-    // 2차 EXTERNAL_EXPERT 성명 = "박전문가"
-    expect(screen.getByText('박전문가')).toBeInTheDocument();
-    // 2차 JURISDICTION_MANAGER 성명 = "이주치"
-    expect(screen.getByText('이주치')).toBeInTheDocument();
-    // 4 역할 라벨도 노출
-    expect(screen.getAllByText('PM').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('외부전문가').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('기업내부전문가').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('능력개발전담주치의').length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('Ⅲ-1 수행활동 — 빈 row(성명 없음) 는 "-" 로 fallback', () => {
-    const emptyInterview = {
-      ...interview,
-      activities: [
-        { round: 1, role: 'PM' as const, personName: '', date: '', content: '', method: '' },
-        { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '', date: '', content: '', method: '' },
-        { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '', date: '', content: '', method: '' },
-        { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '', content: '', method: '' },
+  it('Ⅲ-1 — 로드맵 연계가 아니라 PBL 인터뷰 값을 쓴다 (linkedRoadmap 활동은 무시)', () => {
+    const linkedWithActivities: Partial<RoadmapInterviewStrict> = {
+      ...linkedRoadmap,
+      performanceActivities: [
+        {
+          round: 1,
+          date: '26.01.02',
+          timeRange: '10:00~12:00',
+          content: '로드맵 인터뷰 (PBL 과 무관)',
+          method: 'ONSITE',
+          pmName: '로드맵PM',
+          expertName: '로드맵전문가',
+        },
       ],
     };
-    render(
-      <TabPBLTasks
-        version={null}
-        interview={emptyInterview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
-    // 빈 → "-" fallback
-    const dashes = screen.getAllByText('-');
-    expect(dashes.length).toBeGreaterThan(0);
-  });
-
-  it('AiLevel4Check 현재/예상 2 인스턴스가 각각 readOnly 로 렌더', () => {
-    render(
+    const { container } = render(
       <TabPBLTasks
         version={null}
         interview={interview}
+        linkedRoadmap={linkedWithActivities}
         readOnly
         onEdit={vi.fn()}
-      />,
+      />
     );
-    // 2 radio 그룹 (현재/예상)
-    const groups = screen.getAllByRole('group', {
-      name: /AI 역량 수준/,
-    });
-    expect(groups.length).toBe(2);
-    // radio 입력들은 전부 disabled 여야 한다.
-    const radios = screen.getAllByRole('radio');
-    expect(radios.length).toBeGreaterThan(0);
-    radios.forEach((r) => {
-      expect(r).toBeDisabled();
-    });
+    const text = container.textContent ?? '';
+    expect(text).toContain('25/04/10');
+    expect(text).not.toContain('26.01.02');
+    expect(text).not.toContain('로드맵 인터뷰 (PBL 과 무관)');
   });
 
-  it('priority.method 박스 값 표시', () => {
-    render(
-      <TabPBLTasks
-        version={null}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('AHP 기반 협의')).toBeInTheDocument();
-  });
-
-  it('target.details 행 — 제목·설명 노출', () => {
-    render(
-      <TabPBLTasks
-        version={null}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
-    expect(screen.getByText(/카메라 기반 이상 감지/)).toBeInTheDocument();
-    expect(screen.getByText(/실시간 탐지 모델/)).toBeInTheDocument();
-  });
-
-  it('빈 인터뷰 snapshot 이어도 placeholder 표출하며 crash 안 함', () => {
-    render(
-      <TabPBLTasks version={null} interview={{}} readOnly onEdit={vi.fn()} />,
-    );
+  it('Ⅲ-1 — 수행활동 미입력 시 안내 문구 표출', () => {
+    render(<TabPBLTasks version={null} interview={{}} readOnly onEdit={vi.fn()} />);
     expect(screen.getByText(/등록된 수행활동이 없습니다/)).toBeInTheDocument();
-    // R8 PBL-자체-04 — problemDefinitionSheet 는 양식상 단일 세트 (행 추가/삭제 불가)
-    // 라 빈 상태에서도 4 라벨 (배경/핵심/범위/제약) 이 항상 노출됨.
-    expect(screen.getByText('문제 배경')).toBeInTheDocument();
-    expect(screen.getByText('핵심 문제')).toBeInTheDocument();
-    expect(screen.getByText('문제 범위')).toBeInTheDocument();
-    expect(screen.getByText('제약 조건')).toBeInTheDocument();
   });
 
-  // R8 PBL-자체-04 — 4 정형 항목 결과 페이지 표출
   it('Ⅲ-2-가 문제 정의서 — 4 정형 라벨 + 입력값이 표 형태로 노출된다', () => {
     render(
       <TabPBLTasks
         version={null}
         interview={interview}
+        linkedRoadmap={linkedRoadmap}
         readOnly
         onEdit={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByText('문제 배경')).toBeInTheDocument();
     expect(screen.getByText('핵심 문제')).toBeInTheDocument();
     expect(screen.getByText('문제 범위')).toBeInTheDocument();
     expect(screen.getByText('제약 조건')).toBeInTheDocument();
     expect(screen.getByText(/야간 교대시 샘플 누락 발생/)).toBeInTheDocument();
-    // "검사 누락" 은 problemDefinitionSheet.core + priority.items 둘 다 있어 multiple
-    expect(screen.getAllByText(/검사 누락/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/품질 검사 라인/)).toBeInTheDocument();
   });
 
-  // R8 PBL-자체-04 — InlineEditField onSave → patchProblemDefinition 4 분기 호출
-  describe('Ⅲ-2-가 InlineEditField onSave — 4 정형 항목 patch 분기', () => {
-    it.each([
-      ['배경', 'background', '신규 배경 텍스트'],
-      ['핵심 문제', 'core', '신규 핵심 문제'],
-      ['범위', 'scope', '신규 범위'],
-      ['제약', 'constraints', '신규 제약'],
-    ] as const)(
-      '%s 항목 onSave 시 onEdit 가 problemDefinitionSheet.%s 만 patch 한다',
-      async (_label, key, value) => {
-        const onEdit = vi.fn().mockResolvedValue(undefined);
-        const draftInterview = { ...interview };
-        render(
-          <TabPBLTasks
-            version={null}
-            interview={draftInterview}
-            readOnly={false}
-            onEdit={onEdit}
-          />,
-        );
-        // InlineEditField 진입 → input 변경 → blur 로 onSave 트리거
-        const allTextboxes = screen.queryAllByRole('textbox');
-        // InlineEditField 의 readOnly=false 상태는 click 으로 편집 모드 진입.
-        // 단순히 onEdit 호출만 검증하기 위해 fireEvent.change 로 textbox 1개 선택.
-        // 본 테스트는 patchProblemDefinition('key', value) 의 4 분기 호출 자체를 cover 하는 게 목적.
-        if (allTextboxes.length > 0) {
-          fireEvent.change(allTextboxes[0], { target: { value } });
-          fireEvent.blur(allTextboxes[0]);
-        }
-        // 분기 cover — onEdit 가 호출되거나, InlineEditField 내부 동작이 다르다면 적어도 컴포넌트 crash 안 함.
-        expect(true).toBe(true);
-        // key/value 사용 (TypeScript unused-var 회피)
-        void key;
-        void value;
-      },
+  it('Ⅲ-3-가 — 로드맵 과업 4열 + taskSelections 2열(AI 필요도·훈련 선정)을 zip 하여 표출', () => {
+    render(
+      <TabPBLTasks
+        version={null}
+        interview={interview}
+        linkedRoadmap={linkedRoadmap}
+        readOnly
+        onEdit={vi.fn()}
+      />
     );
-
-    it('InlineEditField click → 편집 모드 진입 → enter 로 onSave 호출 (단일 분기 검증)', () => {
-      const onEdit = vi.fn().mockResolvedValue(undefined);
-      render(
-        <TabPBLTasks
-          version={null}
-          interview={interview}
-          readOnly={false}
-          onEdit={onEdit}
-        />,
-      );
-      // 편집 가능한 영역에 button 이 노출됨 (InlineEditField 의 placeholder/값 click 영역)
-      const buttons = screen.getAllByRole('button');
-      expect(buttons.length).toBeGreaterThan(0);
-    });
+    // 정본 정합 컬럼 헤더: "현행 방식"(구 "현행 방식 (As-Is)"), "AI도입·활용 필요도"(구 공백 포함)
+    expect(screen.getByText('현행 방식')).toBeInTheDocument();
+    expect(screen.getByText('AI도입·활용 필요도')).toBeInTheDocument();
+    // 로드맵 과업 4열 (직무·과업·현행·개선점)
+    expect(screen.getByText('품질관리')).toBeInTheDocument();
+    expect(screen.getByText('외관 검사')).toBeInTheDocument();
+    expect(screen.getByText(/검사자 육안 검사/)).toBeInTheDocument();
+    expect(screen.getByText(/AI 비전 검사 도입 가능/)).toBeInTheDocument();
+    expect(screen.getByText('설비 점검')).toBeInTheDocument();
+    // PBL 2열 — AI 도입·활용 필요도 (taskSelections[i].ai_necessity)
+    expect(screen.getByText(/AI 자동 판정 필요도 높음/)).toBeInTheDocument();
+    expect(screen.getByText(/데이터 축적 부족/)).toBeInTheDocument();
+    // 훈련 선정 badge (training_selected → 선정 / 미선정)
+    expect(screen.getByText('선정')).toBeInTheDocument();
+    expect(screen.getByText('미선정')).toBeInTheDocument();
   });
 
-  // R8 분기 cover — 각 InlineEditField onSave 콜백 직접 trigger (Ⅲ-2 / Ⅲ-3 / Ⅲ-3-나)
-  describe('InlineEditField onSave 분기 직접 호출 (R8 분기 cover)', () => {
-    async function clickAndType(
-      label: string | RegExp,
-      value: string,
-      multiline = false,
-    ): Promise<void> {
-      // InlineEditField 의 view 모드 button 영역 click → 편집 모드 진입
-      // 그 후 input/textarea 에 change → enter 로 saveEdit 호출
-      const buttons = screen.getAllByRole('button');
-      // role=button 중 첫 번째를 클릭 (단순화 — 실제 view button 식별은 어려움)
-      // 따라서 본 테스트는 textbox 가 노출되는지만 확인하는 light 검증.
-      void buttons;
-      void label;
-      void value;
-      void multiline;
-    }
-    void clickAndType;
+  it('Ⅲ-3-가 — 선행 로드맵 미연계(linkedRoadmap 없음) 시 안내 문구 표출', () => {
+    render(<TabPBLTasks version={null} interview={interview} readOnly onEdit={vi.fn()} />);
+    expect(screen.getByText(/선행 로드맵 과업이 연결되지 않았습니다/)).toBeInTheDocument();
+  });
 
-    it('readOnly=false 시 priority.method InlineEditField 의 onSave 가 onEdit 으로 위임', async () => {
-      const onEdit = vi.fn().mockResolvedValue(undefined);
-      const draft = { ...interview };
-      render(
-        <TabPBLTasks
-          version={null}
-          interview={draft}
-          readOnly={false}
-          onEdit={onEdit}
-        />,
-      );
-      // 편집 가능한 영역의 textbox 가 readOnly=false 모드에서 노출됨 — 함수 호출 cover.
-      // textbox 가 0개 이상이면 분기 OK (실제 onSave trigger 는 InlineEditField 통합 테스트에서)
-      expect(screen.getAllByRole('button').length).toBeGreaterThan(0);
-    });
+  it('Ⅲ-3-나 선정 사유(necessity) 값 표시', () => {
+    render(
+      <TabPBLTasks
+        version={null}
+        interview={interview}
+        linkedRoadmap={linkedRoadmap}
+        readOnly
+        onEdit={vi.fn()}
+      />
+    );
+    expect(screen.getByText(/검사 누락 즉시 탐지 필요/)).toBeInTheDocument();
+  });
 
-    it('Ⅲ-3-가 / Ⅲ-3-나 / Ⅲ-3-다 / 우선순위 method 모두 readOnly=false 에서 노출', () => {
-      const onEdit = vi.fn().mockResolvedValue(undefined);
-      const targetWithDetails = {
-        ...interview,
-        target: {
-          name: '품질 검사',
-          code: 'NCS-01',
-          scope: '품질팀',
-          necessity: 'AI 자동 판정 필요',
-          necessity_score: 4,
-          details: [
-            {
-              title: '카메라 검사',
-              as_is: '육안',
-              to_be: 'AI 자동',
-              required_knowledge: '검사 기준',
-              required_skill: 'CV',
-            },
-          ],
-        },
-      };
-      render(
-        <TabPBLTasks
-          version={null}
-          interview={targetWithDetails}
-          readOnly={false}
-          onEdit={onEdit}
-        />,
-      );
-      expect(screen.getByText(/Ⅲ-3-가/)).toBeInTheDocument();
-      expect(screen.getByText(/Ⅲ-3-나/)).toBeInTheDocument();
-      expect(screen.getByText(/Ⅲ-3-다/)).toBeInTheDocument();
-    });
+  it('Ⅲ-3-다 target.details 행 — 제목·설명 노출', () => {
+    render(
+      <TabPBLTasks
+        version={null}
+        interview={interview}
+        linkedRoadmap={linkedRoadmap}
+        readOnly
+        onEdit={vi.fn()}
+      />
+    );
+    expect(screen.getByText(/카메라 기반 이상 감지/)).toBeInTheDocument();
+    expect(screen.getByText(/실시간 탐지 모델/)).toBeInTheDocument();
+  });
 
-    it('Ⅲ-2 priority.items 가 빈 배열일 때 안내 문구 표시 (분기 cover)', () => {
-      const onEdit = vi.fn().mockResolvedValue(undefined);
-      const noPriority = {
-        ...interview,
-        priority: { items: [], method: '' },
-      };
-      render(
-        <TabPBLTasks
-          version={null}
-          interview={noPriority}
-          readOnly
-          onEdit={onEdit}
-        />,
-      );
-      expect(screen.getByText(/등록된 우선순위 항목이 없습니다/)).toBeInTheDocument();
-    });
+  it('빈 인터뷰 snapshot 이어도 placeholder 표출하며 crash 안 함', () => {
+    render(<TabPBLTasks version={null} interview={{}} readOnly onEdit={vi.fn()} />);
+    // 문제 정의서 4 라벨은 빈 상태에서도 항상 노출
+    expect(screen.getByText('문제 배경')).toBeInTheDocument();
+    expect(screen.getByText('핵심 문제')).toBeInTheDocument();
+    expect(screen.getByText('문제 범위')).toBeInTheDocument();
+    expect(screen.getByText('제약 조건')).toBeInTheDocument();
+    // 로드맵 미연계 → Ⅲ-3-가 안내
+    expect(screen.getByText(/선행 로드맵 과업이 연결되지 않았습니다/)).toBeInTheDocument();
+    // details 빈 → 안내
+    expect(screen.getByText(/등록된 세부내용이 없습니다/)).toBeInTheDocument();
+  });
 
-    it('Ⅲ-3-다 target.details 빈 배열 시 안내 문구 (분기 cover)', () => {
-      const onEdit = vi.fn().mockResolvedValue(undefined);
-      const noDetails = {
-        ...interview,
-        target: {
-          name: '',
-          scope: '',
-          necessity: '',
-          necessity_score: 3,
-          details: [],
-        },
-      };
-      render(
-        <TabPBLTasks
-          version={null}
-          interview={noDetails}
-          readOnly
-          onEdit={onEdit}
-        />,
-      );
-      // details 빈 배열 → "등록된" 또는 "없습니다" 류 fallback
-      expect(screen.getByText(/Ⅲ-3-다/)).toBeInTheDocument();
-    });
+  it('readOnly=false 일 때 편집 가능한 InlineEditField(button) 가 노출된다', () => {
+    const onEdit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <TabPBLTasks
+        version={null}
+        interview={interview}
+        linkedRoadmap={linkedRoadmap}
+        readOnly={false}
+        onEdit={onEdit}
+      />
+    );
+    // 문제 정의서 / 필요성 / 세부내용 의 InlineEditField 편집 영역(button) 노출
+    expect(screen.getAllByRole('button').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Ⅲ-2-가/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅲ-3-나/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅲ-3-다/)).toBeInTheDocument();
   });
 });

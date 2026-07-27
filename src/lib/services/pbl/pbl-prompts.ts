@@ -1,6 +1,6 @@
 import type { ConsultantProfile } from '@/types/database';
 import { PBL_EVALUATION_SCALE_DESCRIPTION } from './pbl-types';
-import type { PBLHrdReportPdf } from '@/lib/schemas/interview-pbl';
+import type { PBLHrdReportPdf, PBLPerformanceActivity } from '@/lib/schemas/interview-pbl';
 // STT 인사이트 포맷터 — 두 키(stt_insights/sttInsights) 모두 인식하도록 일반화됨.
 // 로드맵·PBL 양쪽에서 재사용.
 import { buildSttInsightsSection } from '../roadmap/roadmap-stt-formatter';
@@ -8,14 +8,10 @@ import { buildSttInsightsSection } from '../roadmap/roadmap-stt-formatter';
 // ISSUE-14 PBL 확장: Ⅱ-3-가 기업HRD이음컨설팅 결과 보고서 첨부를 프롬프트에 주입.
 // V2 (PBLInterviewStrict) 의 `hrdReportPdf` 모양 — { fileName, url, size,
 // extractedText?, parseError? } — 을 받는다.
-function buildPBLHrdAttachmentSection(
-  hrdReportPdf: PBLHrdReportPdf | null | undefined,
-): string {
+function buildPBLHrdAttachmentSection(hrdReportPdf: PBLHrdReportPdf | null | undefined): string {
   if (!hrdReportPdf) return '';
 
-  const sizeLabel = hrdReportPdf.size
-    ? `${Math.round(hrdReportPdf.size / 1024)} KB`
-    : '-';
+  const sizeLabel = hrdReportPdf.size ? `${Math.round(hrdReportPdf.size / 1024)} KB` : '-';
   const body = hrdReportPdf.extractedText
     ? `\n[추출된 본문]\n${hrdReportPdf.extractedText}`
     : hrdReportPdf.parseError
@@ -27,8 +23,37 @@ function buildPBLHrdAttachmentSection(
 - 크기: ${sizeLabel}${body}`;
 }
 
+/**
+ * Ⅲ-1 훈련과제 도출 수행활동 — PBL 인터뷰 자체 입력(정본 4역할·수행 일자).
+ *
+ * "본 과정이 어떤 활동을 통해 개발되었는지" 를 LLM 에 제공해 Ⅳ 운영계획의 근거로 삼게 한다.
+ * 선행 로드맵 Ⅰ-2 활동과는 별개 데이터다(참석자·일정이 다름).
+ */
+function buildPBLPerformanceActivitiesSection(
+  activities: PBLPerformanceActivity[] | undefined
+): string {
+  if (!activities?.length) return '';
+  const rows = activities.map((a) => {
+    const p = a.participants;
+    const attendees = [
+      p?.pm && `PM ${p.pm}`,
+      p?.external_expert && `외부전문가 ${p.external_expert}`,
+      p?.internal_expert && `기업내부전문가 ${p.internal_expert}`,
+      p?.jurisdiction_manager && `능력개발전담주치의 ${p.jurisdiction_manager}`,
+    ]
+      .filter(Boolean)
+      .join(', ');
+    return `- ${a.round}차 (${a.date || '일자 미입력'}, ${a.method || '방법 미입력'}): ${
+      a.content || '내용 미입력'
+    }${attendees ? ` / 참석: ${attendees}` : ''}`;
+  });
+  return `\n### Ⅲ-1. 훈련과제 도출 수행활동\n${rows.join('\n')}`;
+}
+
 // ============================================================================
-// 프롬프트 빌더 — 산인공 PBL 양식 2번 Ⅳ장(운영계획) + Ⅴ장(성과분석·확산 전략) 기반
+// 프롬프트 빌더 — 산인공 PBL 양식 2번 Ⅳ장(운영계획) 기반
+//   ⚠️ v2: 성과분석 측정 지표(outcome_metrics)는 operation_plan 하위(training_goal 다음)로 이동,
+//         성과 확산 전략(구 Ⅴ-2 diffusion_strategy)은 출력처 소멸 → 삭제
 // ============================================================================
 
 /**
@@ -37,7 +62,7 @@ function buildPBLHrdAttachmentSection(
 export function buildPBLSystemPrompt(): string {
   const evaluationScale = PBL_EVALUATION_SCALE_DESCRIPTION;
 
-  return `당신은 산업인력공단 PBL(Problem-Based Learning) 과정개발 보고서 설계 전문가입니다. 기업 PBL 인터뷰 결과를 분석하여 산인공 공식 양식 2번 Ⅳ장(운영계획)과 Ⅴ장(성과분석·확산 전략)에 맞는 보고서를 작성합니다.
+  return `당신은 산업인력공단 PBL(Problem-Based Learning) 과정개발 보고서 설계 전문가입니다. 기업 PBL 인터뷰 결과를 분석하여 산인공 공식 양식 2번 Ⅳ장(운영계획)에 맞는 보고서를 작성합니다.
 
 ## 섹션 설계 원칙
 
@@ -48,6 +73,21 @@ export function buildPBLSystemPrompt(): string {
 **Ⅳ-1 few-shot 예시**
 \`\`\`
 "AI 비전검사 시스템을 활용하여 품질검사 업무의 자동화 기반을 구축하고, 불량 감지 정확도를 현재 대비 20% 이상 향상시킨다. 훈련 완료 후 AI활용형(중급) 수준에 도달하여 노코드 AI 도구로 현장 데이터를 자율적으로 분석·활용할 수 있게 한다."
+\`\`\`
+
+### 성과분석 측정 지표 (operation_plan.outcome_metrics)
+> operation_plan 하위(training_goal 다음)에 위치하는 성과 측정 지표이다.
+- selected_goals: 인터뷰의 courseNecessity, problemDefinitionSheet.core, priority.items 를 종합해 가장 적합한 카테고리를 1~3개 선택하라. 허용값: "기술문제 해결" | "공정 최적화" | "불량률 감소" | "기술 매뉴얼 개발" | "기타"
+- quantitative: 정량 지표를 구체적 수치(%, 건수, 시간)로 작성하라. 최소 2개 지표.
+- qualitative: 정성 지표를 협업·역량·조직문화 관점에서 작성하라. 최소 2개 항목.
+
+**성과분석 측정 지표 few-shot 예시**
+\`\`\`json
+{
+  "selected_goals": ["불량률 감소", "공정 최적화"],
+  "quantitative": "1. 훈련 이후 불량발생률 15% 감소 (월별 측정)\n2. AI 비전검사 자동화로 품질검사 소요시간 40% 단축\n3. 데이터 라벨링 오류율 10% 이하 달성",
+  "qualitative": "1. 문제해결 역량 — AI 도구를 활용한 현장 데이터 분석 및 자율적 문제 해결 능력 향상\n2. 협업 및 소통 — 팀 프로젝트 수행 과정에서 부서 간 데이터 공유 및 협업 역량 발전\n3. 조직문화 — AI 도구 도입에 대한 구성원의 수용성 향상 및 데이터 기반 의사결정 문화 조성"
+}
 \`\`\`
 
 ### Ⅳ-2. AI 도구 활용 계획 (ai_tool_usage_plan) — 최소 3단계 이상
@@ -110,6 +150,7 @@ PBL 보고서에서 가장 중요한 섹션. **각 단원(unit_name)별로 핵�
 - 각 단원의 detail 은 **3~5개 항목**(커리큘럼 구성)으로 작성하라. 너무 적으면 빈약, 너무 많으면 산만하다.
 - **항목 사이는 \`\\n\` (실제 줄바꿈) 으로만 분리**하라. ▪ ● - 등의 머리기호는 **절대 붙이지 마라** (양식 셀이 paragraph 별로 자동 머리기호를 부여하므로 중복 표시됨).
 - 각 항목은 30~80자 정도로 구체적인 활동·실습·산출물을 짧고 명확하게 기술하라.
+- **각 항목은 명사 형태로 끝맺어라**(양식 작성 가이드 준수, 예: "~ 데이터 수집", "~ 모델 분석", "~ 산출물 작성"). "~한다/~있다" 같은 서술형 종결은 쓰지 마라.
 - 활동 + 실습 + 결과물의 흐름이 자연스럽게 드러나도록 배치하라 (예: 이론 학습 → 실습 → 산출물).
 
 \`\`\`
@@ -177,32 +218,6 @@ Label Studio 로 자사 이미지 200장 결함 유형별 라벨링 실습
   - practical_application_survey: 길이 **4** (현업적용도)
 - 길이가 다르면 검증 오류가 발생한다.
 
-### Ⅴ-1. 성과분석 측정 지표 (outcome_analysis.outcome_metrics)
-- selected_goals: 인터뷰의 courseNecessity, problemDefinitionSheet.core, priority.items 를 종합해 가장 적합한 카테고리를 1~3개 선택하라. 허용값: "기술문제 해결" | "공정 최적화" | "불량률 감소" | "기술 매뉴얼 개발" | "기타"
-- quantitative: 정량 지표를 구체적 수치(%, 건수, 시간)로 작성하라. 최소 2개 지표.
-- qualitative: 정성 지표를 협업·역량·조직문화 관점에서 작성하라. 최소 2개 항목.
-
-**Ⅴ-1 few-shot 예시**
-\`\`\`json
-{
-  "selected_goals": ["불량률 감소", "공정 최적화"],
-  "quantitative": "1. 훈련 이후 불량발생률 15% 감소 (월별 측정)\n2. AI 비전검사 자동화로 품질검사 소요시간 40% 단축\n3. 데이터 라벨링 오류율 10% 이하 달성",
-  "qualitative": "1. 문제해결 역량 — AI 도구를 활용한 현장 데이터 분석 및 자율적 문제 해결 능력 향상\n2. 협업 및 소통 — 팀 프로젝트 수행 과정에서 부서 간 데이터 공유 및 협업 역량 발전\n3. 조직문화 — AI 도구 도입에 대한 구성원의 수용성 향상 및 데이터 기반 의사결정 문화 조성"
-}
-\`\`\`
-
-### Ⅴ-2. 성과 확산 전략 (outcome_analysis.diffusion_strategy)
-- internalization: 매뉴얼 제작·멘토-멘티 제도·재훈련 계획 등 내재화 방안을 3가지 이상 구체적으로 기술하라.
-- company_wide_diffusion: 성과 발표회·타 부서 확대·경영진 보고 등 전사 확산 방안을 3가지 이상 기술하라.
-
-**Ⅴ-2 few-shot 예시**
-\`\`\`json
-{
-  "internalization": "1. 매뉴얼 및 가이드 제작 — 훈련 과정에서 도출된 AI 비전검사 활용 방법을 표준 업무 매뉴얼로 문서화하여 신규 입사자 OJT에 활용\n2. 멘토-멘티 제도 운영 — 훈련 이수자(품질팀 3명)를 내부 멘토로 지정하여 동료 직원 현장 지도 수행\n3. 주기적 재훈련 체계 마련 — AI 기술 발전에 따른 분기별 업데이트 교육 계획 수립",
-  "company_wide_diffusion": "1. 성과 발표회 개최 — 훈련 완료 후 전 임직원 대상 성과 공유 및 우수 프로젝트 시상식 운영\n2. 타 부서 확대 적용 — 품질팀 파일럿 성공 경험을 생산팀·물류팀으로 단계적 확산 (다음 분기)\n3. 경영진 보고 및 투자 확보 — KPI 달성 데이터를 바탕으로 최고경영진에 AI 훈련 효과 보고, 후속 투자 확보"
-}
-\`\`\`
-
 ## 공통 정책
 - 모든 도구는 무료 범위 내에서 활용 가능해야 한다.
 - 한국어로 출력하라.
@@ -216,6 +231,11 @@ Label Studio 로 자사 이미지 200장 결함 유형별 라벨링 실습
 {
   "operation_plan": {
     "training_goal": "string (1~2문장, To-Be 명시)",
+    "outcome_metrics": {
+      "selected_goals": ["기술문제 해결 | 공정 최적화 | 불량률 감소 | 기술 매뉴얼 개발 | 기타"],
+      "quantitative": "string (정량 지표, 최소 2개 항목)",
+      "qualitative": "string (정성 지표, 최소 2개 항목)"
+    },
     "ai_tool_usage_plan": [
       {
         "stage": "string (예: 1단계)",
@@ -290,17 +310,6 @@ Label Studio 로 자사 이미지 200장 결함 유형별 라벨링 실습
         "practical_application_survey": [null, null, null, null]
       }
     }
-  },
-  "outcome_analysis": {
-    "outcome_metrics": {
-      "selected_goals": ["기술문제 해결 | 공정 최적화 | 불량률 감소 | 기술 매뉴얼 개발 | 기타"],
-      "quantitative": "string (정량 지표, 최소 2개 항목)",
-      "qualitative": "string (정성 지표, 최소 2개 항목)"
-    },
-    "diffusion_strategy": {
-      "internalization": "string (내재화 방안, 최소 3가지)",
-      "company_wide_diffusion": "string (전사 확산 방안, 최소 3가지)"
-    }
   }
 }
 \`\`\``;
@@ -323,7 +332,7 @@ export function buildPBLUserPrompt(
   consultantProfile: ConsultantProfile | null,
   diagnosisSummary: string,
   revisionPrompt?: string,
-  selfAssessment?: { scores?: unknown } | null,
+  selfAssessment?: { scores?: unknown } | null
 ): string {
   // V2 (PBLInterviewStrict) 모양에 직접 접근. 자동저장 partial 케이스 대비해
   // 각 키는 ?? 폴백으로 보호한다.
@@ -352,8 +361,8 @@ export function buildPBLUserPrompt(
     // Ⅱ-3 HRD 필요성
     hrdReportPdf: PBLHrdReportPdf | null;
     courseNecessity: string;
-    // Ⅲ-1 수행활동
-    activities: unknown[];
+    // Ⅲ-1 수행활동 (PBL 자체 입력 — 정본 4역할·수행 일자)
+    performanceActivities: PBLPerformanceActivity[];
     // Ⅲ-2-가 문제 정의서
     problemDefinitionSheet: {
       background?: string;
@@ -361,29 +370,17 @@ export function buildPBLUserPrompt(
       scope?: string;
       constraints?: string;
     };
-    // Ⅲ-2-나 우선순위
-    priority: { method?: string; items?: unknown[] };
-    // Ⅲ-3 훈련대상 업무
+    // Ⅲ-3 훈련대상 업무 (선정 사유 + 세부내용). 과업 목록·AI역량은 로드맵 연계.
     target: {
-      name?: string;
-      code?: string;
-      scope?: string;
       necessity?: string;
-      necessity_score?: number;
       details?: unknown[];
     };
-    // Ⅲ-4 AI 수준
-    currentAiLevel: { level?: string; note?: string };
-    expectedAiLevel: { level?: string; note?: string };
   }>;
 
   const trainingEnv = i.trainingEnv ?? {};
   const organization = i.organization ?? {};
   const problemDef = i.problemDefinitionSheet ?? {};
-  const priority = i.priority ?? {};
   const target = i.target ?? {};
-  const currentAiLevel = i.currentAiLevel ?? {};
-  const expectedAiLevel = i.expectedAiLevel ?? {};
 
   const subIndustries = Array.isArray(project.sub_industries) ? project.sub_industries : [];
 
@@ -432,34 +429,23 @@ ${
 
 - AI훈련과정 개발 필요성: ${i.courseNecessity ?? '미입력'}
 ${buildPBLHrdAttachmentSection(i.hrdReportPdf)}
-## Ⅲ-1. 훈련과제 도출 수행활동 (차수 × 4역할 평면 배열)
+## Ⅲ. 훈련과제 도출
 
-${JSON.stringify(i.activities ?? [], null, 2)}
+(Ⅲ-3-가 훈련대상 과업 목록·AI역량 수준은 선행 로드맵 보고서에서 자동 연계된다.
+Ⅲ-1 수행활동은 PBL 인터뷰 자체 입력이며 아래에 제시한다.)
+${buildPBLPerformanceActivitiesSection(i.performanceActivities)}
 
-## Ⅲ-2. 문제 정의·우선순위
+### Ⅲ-2. 문제 정의서
 
 - 문제 배경: ${problemDef.background ?? '미입력'}
 - 핵심 문제: ${problemDef.core ?? '미입력'}
 - 문제 범위: ${problemDef.scope ?? '미입력'}
 - 제약 조건: ${problemDef.constraints ?? '미입력'}
-- 우선순위 결정 방법: ${priority.method ?? '미입력'}
-- 문제 우선순위 항목: ${JSON.stringify(priority.items ?? [], null, 2)}
 
-## Ⅲ-3. 훈련대상 업무 선정
+### Ⅲ-3. 훈련대상 업무
 
-- 업무명: ${target.name ?? '미입력'}
-- NCS 분류: ${target.code ?? '미입력'}
-- 업무 범위(부서·인원): ${target.scope ?? '미입력'}
 - AI기반 문제해결 필요성(선정 사유): ${target.necessity ?? '미입력'}
-- 필요성 점수(1~5): ${target.necessity_score ?? '-'}
 - 업무 세부내용(AS-IS / TO-BE / 요구지식 / 기술): ${JSON.stringify(target.details ?? [], null, 2)}
-
-## Ⅲ-4. AI 역량 수준
-
-- 현재 AI 수준: ${currentAiLevel.level ?? '미입력'}
-- 현재 수준 상세: ${currentAiLevel.note ?? '미입력'}
-- 향후 목표 AI 수준: ${expectedAiLevel.level ?? '미입력'}
-- 목표 수준 상세 · 향상 사유: ${expectedAiLevel.note ?? '미입력'}
 ${buildSttInsightsSection(interview)}`;
 
   if (consultantProfile) {
@@ -493,7 +479,7 @@ ${revisionPrompt}
 
   prompt += `
 
-위 정보를 바탕으로 산인공 PBL 양식 2번 Ⅳ장(운영계획)과 Ⅴ장(성과분석·확산 전략)에 맞는 보고서를 생성해주세요.
+위 정보를 바탕으로 산인공 PBL 양식 2번 Ⅳ장(운영계획)에 맞는 보고서를 생성해주세요.
 반드시 JSON 형식으로만 응답하세요.`;
 
   return prompt;

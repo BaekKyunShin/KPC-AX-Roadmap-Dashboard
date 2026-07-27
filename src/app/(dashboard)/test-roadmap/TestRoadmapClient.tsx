@@ -31,22 +31,18 @@ import { isOpsManager } from '@/lib/constants/status';
 import type { UserRole } from '@/types/database';
 
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
-import { StepNecessity } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepNecessity';
+import { StepNecessity } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepNecessity';
 import {
   StepMainResult,
   type StepMainResultValue,
-} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepMainResult';
-import { StepCompanyRequirements } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompanyRequirements';
+} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepMainResult';
+import { StepCompanyRequirements } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepCompanyRequirements';
 import {
   StepTaskAnalysis,
   type StepTaskAnalysisValue,
-} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTaskAnalysis';
-import { StepTargetTask } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTargetTask';
-import { StepPerformanceActivities } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepPerformanceActivities';
-import {
-  StepCompetencyModeling,
-  type StepCompetencyModelingValue,
-} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompetencyModeling';
+} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepTaskAnalysis';
+import { StepTargetTask } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepTargetTask';
+import { StepPerformanceActivities } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepPerformanceActivities';
 
 import {
   RoadmapInterviewStrictSchema,
@@ -69,7 +65,10 @@ import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
 import { isCancelledError } from '@/lib/services/llm';
 import { useHwpxDownload } from '@/hooks/useHwpxDownload';
 
-// ─── 8 스텝 정의 (V2 인터뷰 Client 와 동일 구성) ─────────────────────────────
+// ─── 스텝 정의 (V2 인터뷰 Client 와 동일 구성) ───────────────────────────────
+//
+// 양식 v2 (2026-07-13 개정) — Ⅲ-1 역량 모델링 스텝은 역량·NCS 표가 통째로 삭제되어
+// 인터뷰에서도 제거됐다. 테스트 모드는 HRD PDF 업로드 불가 → Ⅱ-1 스텝 제외 (총 6스텝).
 
 type StepId =
   | 'necessity'
@@ -78,10 +77,8 @@ type StepId =
   | 'hrdReport'
   | 'companyReq'
   | 'taskAnalysis'
-  | 'targetTask'
-  | 'competencyModeling';
+  | 'targetTask';
 
-// 테스트 모드는 HRD PDF 업로드 불가 → Ⅱ-1 스텝 자체를 제외 (총 7스텝)
 const STEPS: ReadonlyArray<{
   id: number;
   stepId: Exclude<StepId, 'hrdReport'>;
@@ -93,8 +90,7 @@ const STEPS: ReadonlyArray<{
   { id: 3, stepId: 'mainResult', shortName: 'Ⅰ-3', name: '수립 주요 결과' },
   { id: 4, stepId: 'companyReq', shortName: 'Ⅱ-2', name: '기업 요구분석' },
   { id: 5, stepId: 'taskAnalysis', shortName: 'Ⅱ-3', name: '과업·워크플로우 분석' },
-  { id: 6, stepId: 'targetTask', shortName: 'Ⅱ-4', name: '훈련대상 과업' },
-  { id: 7, stepId: 'competencyModeling', shortName: 'Ⅲ-1', name: '역량 모델링' },
+  { id: 6, stepId: 'targetTask', shortName: 'Ⅱ-4', name: 'AI 적용 대상 과업' },
 ];
 
 function isAdminRole(role: string): boolean {
@@ -124,11 +120,8 @@ function emptyInitial(): Partial<RoadmapInterviewStrict> {
     hrdReportPdf: null,
     companyRequirements: emptyCompanyRequirements(),
     taskAnalysis: [],
-    taskAnalysisNote: '',
     taskAnalysisAttachment: null,
     targetTask: emptyTargetTask(),
-    competencies: [],
-    ncsUsed: false,
   };
 }
 
@@ -142,13 +135,6 @@ function toRoadmapVersionUI(result: RoadmapResult): RoadmapVersionUI {
     diagnosis_summary: result.diagnosis_summary,
     setup_necessity: result.setup_necessity ?? '',
     outcome_summary: result.outcome_summary,
-    competencies: result.competencies,
-    ncs_used: result.ncs_used ?? false,
-    ncs_methodology: result.ncs_methodology ?? '',
-    ncs_derivation_method: result.ncs_derivation_method ?? '',
-    training_structure: result.training_structure,
-    training_structure_method: result.training_structure_method ?? '',
-    annual_plan: result.annual_plan,
     course_specs: result.course_specs,
     revision_prompt: null,
     is_shared: false,
@@ -163,8 +149,8 @@ function toRoadmapVersionUI(result: RoadmapResult): RoadmapVersionUI {
  * 테스트 로드맵 결과(in-memory) → PDF/Excel 다운로드용 RoadmapExportData 변환.
  *
  * 실제 로드맵은 `prepareExportData(roadmapId)` 가 DB row → ExportData 매핑을
- * 수행하지만, 테스트 모드는 DB 저장이 없으므로 4섹션 RoadmapResult 를 그대로
- * camelCase 로 옮긴다.
+ * 수행하지만, 테스트 모드는 DB 저장이 없으므로 RoadmapResult 를 그대로
+ * camelCase 로 옮긴다 (양식 v2 — 표지 + 훈련과정 명세서).
  */
 export function buildTestRoadmapExportData(
   result: RoadmapResult,
@@ -176,13 +162,6 @@ export function buildTestRoadmapExportData(
     versionNumber: 1,
     status: 'DRAFT',
     diagnosisSummary: result.diagnosis_summary ?? '',
-    competencies: result.competencies ?? [],
-    ncsUsed: result.ncs_used ?? false,
-    ncsMethodology: result.ncs_methodology ?? '',
-    ncsDerivationMethod: result.ncs_derivation_method ?? '',
-    trainingStructure: result.training_structure ?? [],
-    trainingStructureMethod: result.training_structure_method ?? '',
-    annualPlan: result.annual_plan ?? { items: [], usage_plan: '' },
     courseSpecs: result.course_specs ?? [],
     createdAt: new Date().toISOString(),
     finalizedAt: null,
@@ -291,7 +270,7 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
       (data.selectedTask ?? '').trim() !== '' ||
       (data.companyRequirements?.status ?? '').trim() !== '' ||
       (data.taskAnalysis ?? []).length > 0 ||
-      (data.competencies ?? []).length > 0;
+      (data.targetTask?.name ?? '').trim() !== '';
     if (hasInput) {
       setSampleConfirmOpen(true);
     } else {
@@ -540,7 +519,6 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
       case 'taskAnalysis': {
         const value: StepTaskAnalysisValue = {
           taskAnalysis: data.taskAnalysis ?? [],
-          taskAnalysisNote: data.taskAnalysisNote ?? '',
           taskAnalysisAttachment: data.taskAnalysisAttachment ?? null,
         };
         return (
@@ -550,7 +528,6 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
             onChange={(next) =>
               update({
                 taskAnalysis: next.taskAnalysis,
-                taskAnalysisNote: next.taskAnalysisNote,
                 taskAnalysisAttachment: next.taskAnalysisAttachment,
               })
             }
@@ -564,27 +541,6 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
             onChange={(next) => update({ targetTask: next })}
           />
         );
-      case 'competencyModeling': {
-        const value: StepCompetencyModelingValue = {
-          competencies: data.competencies ?? [],
-          ncsUsed: data.ncsUsed ?? false,
-          ncsMethodology: data.ncsMethodology,
-          ncsDerivationMethod: data.ncsDerivationMethod,
-        };
-        return (
-          <StepCompetencyModeling
-            value={value}
-            onChange={(next) =>
-              update({
-                competencies: next.competencies,
-                ncsUsed: next.ncsUsed,
-                ncsMethodology: next.ncsMethodology,
-                ncsDerivationMethod: next.ncsDerivationMethod,
-              })
-            }
-          />
-        );
-      }
       default:
         return null;
     }

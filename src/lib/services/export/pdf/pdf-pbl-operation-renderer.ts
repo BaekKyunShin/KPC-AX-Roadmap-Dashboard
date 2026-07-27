@@ -17,6 +17,7 @@ import type {
   PBLOperationPlan,
   PBLResultEvaluation,
 } from '../../pbl/pbl-types';
+import { bulletizeDetails } from '@/lib/utils/list-format';
 import { LAYOUT } from './pdf-constants';
 import {
   type DocContext,
@@ -38,7 +39,7 @@ export function drawPBLOperationSection(
   ctx: DocContext,
   operationPlan: PBLOperationPlan,
   autoTable: AutoTable,
-  tableBase: AutoTableStyles,
+  tableBase: AutoTableStyles
 ): void {
   drawSectionTitle(ctx, 'Ⅳ. AI 기반 운영계획 수립');
 
@@ -61,7 +62,7 @@ export function drawPBLOperationSection(
     '훈련기간',
     tp.overview.training_period.start || tp.overview.training_period.end
       ? `${tp.overview.training_period.start || '-'} ~ ${tp.overview.training_period.end || '-'}`
-      : '-',
+      : '-'
   );
   ctx.y += 2;
 
@@ -71,24 +72,24 @@ export function drawPBLOperationSection(
   drawLearningGroupTraineesTable(ctx, tp.learning_group.trainees, autoTable, tableBase);
 
   drawTableTitle(ctx, '다. 훈련 교과목 프로파일');
-  drawLabelValue(ctx, '교과목 과정명', tp.subject_profile.course_name || '-');
-  drawLabelValue(ctx, '전체 훈련시간', `${tp.subject_profile.total_hours}시간`);
-  drawLabelValue(ctx, '분석 방법', tp.subject_profile.analysis_method || '-');
+  drawLabelValue(ctx, '과정명', tp.subject_profile.course_name || '-');
+  drawLabelValue(ctx, '총 훈련시간(h)', `${tp.subject_profile.total_hours}시간`);
+  drawLabelValue(ctx, '분석방법', tp.subject_profile.analysis_method || '-');
   drawLabelValue(ctx, '활용 데이터', tp.subject_profile.utilized_data || '-');
   ctx.y += 2;
   if (tp.subject_profile.training_goals.length > 0) {
     setRegular(ctx, 9);
-    drawLabelValue(ctx, '훈련 목표', '');
+    drawLabelValue(ctx, '훈련목표', '');
     for (const goal of tp.subject_profile.training_goals) {
       drawBulletItem(ctx, goal, 8);
     }
   }
   if (tp.subject_profile.ai_tools.length > 0) {
-    drawLabelValue(ctx, '활용 AI 도구', tp.subject_profile.ai_tools.join(', '));
+    drawLabelValue(ctx, '활용 AI도구', tp.subject_profile.ai_tools.join(', '));
   }
   ctx.y += 2;
   drawSubjectProfileTable(ctx, tp.subject_profile.training_contents, autoTable, tableBase);
-  drawLabelValue(ctx, '전체시간 합계', `${tp.subject_profile.total_sum_hours}시간`);
+  drawLabelValue(ctx, '전체시간', `${tp.subject_profile.total_sum_hours}시간`);
   ctx.y += 2;
 
   drawTableTitle(ctx, '라. 시설·장비');
@@ -107,7 +108,7 @@ function drawAIToolUsageTable(
   ctx: DocContext,
   items: PBLOperationPlan['ai_tool_usage_plan'],
   autoTable: AutoTable,
-  tableBase: AutoTableStyles,
+  tableBase: AutoTableStyles
 ): void {
   const head = [['단계', '주요 활동', 'AI 도구', '활용 데이터', '활용 목적', '구체적 활용 방법']];
   const body = items.map((item) => [
@@ -137,10 +138,16 @@ function drawLearningGroupInstructorsTable(
   ctx: DocContext,
   instructors: PBLOperationPlan['training_plan']['learning_group']['instructors'],
   autoTable: AutoTable,
-  tableBase: AutoTableStyles,
+  tableBase: AutoTableStyles
 ): void {
-  const head = [['구분', '역할', '소속', '직위', '성명']];
-  const body = instructors.map((ins) => [ins.type, ins.role, ins.affiliation, ins.position, ins.name]);
+  const head = [['구분', '역할', '소속(부서)', '직위', '성명']];
+  const body = instructors.map((ins) => [
+    ins.type,
+    ins.role,
+    ins.affiliation,
+    ins.position,
+    ins.name,
+  ]);
   if (body.length === 0) body.push(['-', '-', '-', '-', '-']);
   autoTable(ctx.doc, {
     startY: ctx.y,
@@ -156,9 +163,9 @@ function drawLearningGroupTraineesTable(
   ctx: DocContext,
   trainees: PBLOperationPlan['training_plan']['learning_group']['trainees'],
   autoTable: AutoTable,
-  tableBase: AutoTableStyles,
+  tableBase: AutoTableStyles
 ): void {
-  const head = [['역할', '소속', '직위', '성명']];
+  const head = [['역할', '소속(부서)', '직위', '성명']];
   const body = trainees.map((tr) => [tr.role, tr.affiliation, tr.position, tr.name]);
   if (body.length === 0) body.push(['-', '-', '-', '-']);
   autoTable(ctx.doc, {
@@ -175,12 +182,13 @@ function drawSubjectProfileTable(
   ctx: DocContext,
   rows: PBLOperationPlan['training_plan']['subject_profile']['training_contents'],
   autoTable: AutoTable,
-  tableBase: AutoTableStyles,
+  tableBase: AutoTableStyles
 ): void {
-  const head = [['업무(단원)명', '세부 내용', '훈련시간(H)', '외부 투입', '내부 투입']];
+  const head = [['업무(단원)명', '세부 내용', '훈련 시간(H)', '외부 강사 (H)', '내부 강사 (H)']];
   const body = rows.map((row) => [
     row.unit_name,
-    row.detail,
+    // 항목별 머리기호(▪) — 화면·한글(HWPX)·XLSX 와 동일 표기.
+    bulletizeDetails(row.detail),
     String(row.training_hours),
     String(row.instructor_hours.external),
     String(row.instructor_hours.internal),
@@ -205,7 +213,7 @@ function drawFacilitiesTable(
   ctx: DocContext,
   rows: PBLOperationPlan['training_plan']['facilities'],
   autoTable: AutoTable,
-  tableBase: AutoTableStyles,
+  tableBase: AutoTableStyles
 ): void {
   const head = [['연번', '구분', '명칭', '규격(사양)', '위치']];
   const body = rows.map((row) => [String(row.seq), row.category, row.name, row.spec, row.location]);
@@ -225,9 +233,9 @@ function drawInstructorsTable(
   ctx: DocContext,
   rows: PBLOperationPlan['training_plan']['training_instructors'],
   autoTable: AutoTable,
-  tableBase: AutoTableStyles,
+  tableBase: AutoTableStyles
 ): void {
-  const head = [['성명', '내/외부', '경력(년)', '업무명', '세부 교육훈련 내용']];
+  const head = [['성명', '구분', '업무경력', '업무명', '세부 교육훈련 내용']];
   const colWidth = 56;
   const body = rows.map((row) => [
     row.name,
@@ -252,7 +260,7 @@ function drawCourseEvaluation(
   ctx: DocContext,
   ce: PBLCourseEvaluation,
   autoTable: AutoTable,
-  tableBase: AutoTableStyles,
+  tableBase: AutoTableStyles
 ): void {
   drawTableTitle(ctx, '가. 과정평가');
   drawLabelValue(ctx, '과정명', ce.course_name || '-');
@@ -296,7 +304,7 @@ function drawResultEvaluationSummary(ctx: DocContext, re: PBLResultEvaluation): 
   ctx.y += 2;
   drawBodyText(
     ctx,
-    '각 문항은 리커트 5점 척도(매우 아니다~매우 그렇다)로 응답하며, 훈련 종료 후 실시됩니다.',
+    '각 문항은 리커트 5점 척도(매우 아니다~매우 그렇다)로 응답하며, 훈련 종료 후 실시됩니다.'
   );
   ctx.y += 4;
 }

@@ -22,6 +22,7 @@ track 분기:
 from http.server import BaseHTTPRequestHandler
 import json
 import os
+import re
 import sys
 import tempfile
 import urllib.parse
@@ -143,76 +144,309 @@ PBL_TEMPLATE = os.path.normpath(
 # ===============================================================
 
 
+_ROADMAP_KEEP_BLUE = {"106"}  # 표지 제목 부제 '(기업명 – 대상 과업)'
+_PBL_KEEP_BLUE = {"150"}      # 표지(과정개발) 제목 '㈜기업명'
+# ⚠️ charPr id 는 양식 개정 시 밀린다 — PBL ver3 에서 118 이상 id 가 전부 -1 이동해
+# 표지 기업명 파랑이 151→150 이 됐다(구 151 은 신규에서 검정). 새 양식 적용 시
+# header.xml 의 textColor="#0000FF" / <hh:italic/> charPr id 를 반드시 재확인할 것.
+_BLUE_TEXT_COLORS = {"#0000FF", "#2E74B5", "#3057B9"}
+
+
+def _normalize_colors(
+    hwpx_bytes: bytes, keep_blue_ids: set, strip_italic_ids: set = frozenset()
+) -> bytes:
+    """생성 HWPX 의 파랑 계열 charPr textColor 를 검정으로 정규화 + 지정 charPr italic 제거.
+
+    양식이 파랑으로 세팅돼 있어도 채워지는 모든 텍스트를 검정 통일(사용자 요구).
+    단 표지 제목 기업명 charPr(keep_blue_ids)만 파랑 유지. 흰색(헤더 배경)·
+    빨강·회색 form 스타일은 보존. strip_italic_ids 의 charPr 은 `<hh:italic/>` 를
+    제거해 기울임을 없앤다(양식 원본이 특정 값 셀을 italic 으로 세팅한 경우).
+
+    python-hwpx 에 charPr 스타일 setter 가 없어(RunStyle 읽기 전용) 저장된 zip 의
+    header.xml 을 직접 편집한다. textColor 는 속성값 변경, italic 은 요소 제거이나
+    대상 charPr 은 소수(유일 사용) 라 안전.
+    """
+    import io
+    import zipfile
+
+    from lxml import etree
+
+    head = "{http://www.hancom.co.kr/hwpml/2011/head}"
+    zin = zipfile.ZipFile(io.BytesIO(hwpx_bytes))
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zout:
+        for info in zin.infolist():
+            data = zin.read(info.filename)
+            if info.filename.endswith("header.xml"):
+                root = etree.fromstring(data)
+                for ch in root.iter(f"{head}charPr"):
+                    cid = ch.get("id")
+                    tc = (ch.get("textColor") or "").upper()
+                    if tc in _BLUE_TEXT_COLORS and cid not in keep_blue_ids:
+                        ch.set("textColor", "#000000")
+                    if cid in strip_italic_ids:
+                        it = ch.find(f"{head}italic")
+                        if it is not None:
+                            ch.remove(it)
+                data = etree.tostring(
+                    root, xml_declaration=True, encoding="UTF-8", standalone=True
+                )
+            zout.writestr(info, data)
+    return buf.getvalue()
+
+
 def _generate_roadmap(data: dict) -> bytes:
+    """로드맵 HWPX 생성 — {{플레이스홀더}} 치환 방식 (산인공 양식 v2).
+
+    **표 순번·셀 좌표를 전혀 참조하지 않는다.** 템플릿에 이미 심겨 있는 마커를
+    값으로 바꿀 뿐이므로, 앞으로 양식에 표가 추가·삭제돼도 이 함수는 깨지지 않는다.
+    좌표는 빌드 타임(`scripts/insert_placeholders.py`)에서만 쓰이며, 템플릿↔SSOT
+    마커 정합은 `scripts/verify_hwpx_placeholders.py` 가 CI 에서 보증한다.
+    """
     from hwpx import HwpxDocument
-    from _placeholders_roadmap import build_placeholder_map, build_table_rows
 
     doc = HwpxDocument.open(ROADMAP_TEMPLATE)
+    # 입력 차수가 양식 원형(3차)을 넘으면 Ⅰ-2 표 행을 먼저 확장 (마커 치환 전)
+    _expand_activity_rows(
+        doc,
+        table_index=6,
+        rows_per_item=2,
+        base_items=_RM_BASE_ACTIVITIES,
+        needed=len(data.get("performance_activities") or []),
+        marker_prefix="roadmap_overview_performance_",
+        max_items=_RM_MAX_ACTIVITIES,
+    )
+    _apply_markers(doc, _build_roadmap_markers(data))
 
-    # --- 0) 표지 본문 텍스트 직접 치환 (정본 placeholder 미존재 대응) ---
-    # 신규 정본 (84d1e67) 표지 paragraph 3 = "AI훈련로드맵 컨설팅 보고서(기업명)",
-    # paragraph 8 = "202x. 00. 00." 의 raw 텍스트를 회사명·일자로 직접 치환한다.
-    # _replace_in_all_runs 는 표 셀 nested 까지 모두 순회하므로 표지 외 영역도 안전.
-    company_name = data.get("company_name") or ""
-    report_date = data.get("report_date") or ""
-    if company_name:
-        _replace_in_all_runs(doc, "(기업명)", f"({company_name})")
-    if report_date:
-        # 표지 paragraph 8 일자 placeholder 본문 치환.
-        # 사용자 정본 변천: PR #4 "202x. 00. 00." → PR #5 Phase F "2026. 00. 00."
-        # 두 패턴 모두 처리 (정본 재수정 호환).
-        _replace_in_all_runs(doc, "202x. 00. 00.", report_date)
-        _replace_in_all_runs(doc, "2026. 00. 00.", report_date)
+    # 마커로 표현하기 어려운 텍스트 치환 (분할 run·문단·색 보존):
+    #   1) 표지 제목 부제 '(기업명 – 대상 과업)' — cp106(파랑) 단일 run in-place
+    #   2) AI 역량수준 3단계 체크박스 — 양식 '□ X'(cp8)/'(...)'(cp9) 2문단, 선택만 토글
+    pairs: list[tuple[str, str]] = []
+    company = _s(data.get("company_name"))
+    target = _s(data.get("cover_target_task"))
+    if company or target:
+        pairs.append(("(기업명 – 대상 과업)", f"({company} – {target})"))
+    level = _s(data.get("ai_competency_level")).upper()
+    for label in ("초급", "중급", "고급"):
+        pairs.append((f"☑ {label}", f"□ {label}"))
+    selected = {"BEGINNER": "초급", "INTERMEDIATE": "중급", "ADVANCED": "고급"}.get(level)
+    if selected:
+        pairs.append((f"□ {selected}", f"☑ {selected}"))
+    _replace_many_in_all_runs(doc, pairs)
 
-    # --- 1) 본문 + 표 셀 내부 플레이스홀더 치환 ---
-    # replace_text_in_runs는 표 셀 내부를 탐색하지 않으므로 zip_replace_all.py의
-    # 공식 패턴(모든 표 셀의 paragraphs→runs 순회)을 함께 사용한다.
-    placeholders = build_placeholder_map(data)
-    for key, value in placeholders.items():
-        _replace_in_all_runs(doc, key, str(value or ""))
-
-    # --- 2) AI 역량 수준 체크박스 토글 (Table 7) ---
-    level = (data.get("ai_competency_level") or "").upper()
-    level_map = {
-        "BEGINNER": ("□ 초급", "☑ 초급"),
-        "INTERMEDIATE": ("□ 중급", "☑ 중급"),
-        "ADVANCED": ("□ 고급", "☑ 고급"),
-    }
-    if level in level_map:
-        src, dst = level_map[level]
-        _replace_in_all_runs(doc, src, dst)
-
-    # --- 3) 표 셀 데이터 채우기 (공식 API만 사용) ---
-    # 인덱스는 shallow traversal 기준 (중첩 참고자료 표 제외).
-    tables = _collect_tables(doc)
-    _fill_table_cover(tables, data, idx=1)                          # 표지 PM 표 (3x3)
-    _fill_simple_cell(tables, idx=3, row=0, col=0, text=data.get("establishment_necessity"))  # Ⅰ-1
-    _fill_table_performance_activities(tables, data, build_table_rows, idx=5)  # Ⅰ-2 (7x6)
-    _fill_table_outcome(tables, data, idx=7)                        # Ⅰ-3 (3x4)
-    _fill_table_hrd_report(tables, data, idx=11)                    # Ⅱ-1 (1x1)
-    _fill_table_company_requirements(tables, data, idx=13)          # Ⅱ-2 (5x3)
-    _fill_table_task_workflow(tables, data, build_table_rows, idx=15)  # Ⅱ-3 (6x6)
-    _fill_simple_box(tables, 17, data.get("analysis_notes_text"))   # 분석내용
-    _fill_table_training_target(tables, data, idx=19)               # Ⅱ-4 (4x3)
-    _fill_table_competencies(tables, data, build_table_rows, idx=22)  # Ⅲ-1 (6x5)
-    _fill_ncs_boxes(tables, data, methodology_idx=23, derivation_idx=24)
-    _fill_table_training_structure(tables, data, build_table_rows, idx=26)  # Ⅲ-2 (5x6)
-    _fill_simple_box(tables, 28, data.get("training_structure_method"))
-    _fill_table_annual_plan(tables, data, build_table_rows, idx=30)  # Ⅲ-3 (4x5)
-    _fill_simple_box(tables, 32, data.get("annual_plan_usage"))
-    _fill_course_spec_tables(tables, data, build_table_rows, indices=(34, 35, 36))
-    _fill_table_journal(tables, data, build_table_rows, idx=38)     # [별첨] (13x5)
-
-    # --- 4) 저장 ---
     with tempfile.NamedTemporaryFile(delete=False, suffix=".hwpx") as tmp:
         path = tmp.name
     try:
         doc.save_to_path(path)
         with open(path, "rb") as f:
-            return f.read()
+            raw = f.read()
     finally:
         if os.path.exists(path):
             os.unlink(path)
+    return _normalize_colors(raw, _ROADMAP_KEEP_BLUE)
+
+
+_MARKER_RE = re.compile(r"\{\{[^}]*\}\}")
+
+# 양식 구조 상수 (SSOT: docs/references/hwpx-placeholders.json)
+# Ⅰ-2 수행활동 차수. 양식(정본)은 3차분 행만 보유하며, 입력이 이를 넘으면
+# `_expand_activity_rows` 가 생성 시점에 행을 복제한다(≤3차는 구조 편집 없음).
+_RM_BASE_ACTIVITIES = 3  # 양식 원형 행 수 (템플릿·SSOT max_items 와 일치)
+_RM_MAX_ACTIVITIES = 15  # 화면 상한 (StepPerformanceActivities MAX_ROUNDS)
+_RM_MAX_TASKS = 6        # Ⅱ-3 과업 분석표 행
+_RM_MAX_COURSES = 6      # Ⅲ  훈련과정 명세서 표
+_RM_MAX_SUBJECTS = 3     # Ⅲ  명세서당 교과목 행
+# Ⅱ-3 직무 열은 빌드 시 병합 해제(insert_placeholders::unmerge_rowspan2_col) → 매 행이
+# 독립 직무 셀·마커를 가지므로 skip 없이 전 과업의 직무를 채운다.
+_RM_TASK_JOB_SKIP: set[int] = set()
+
+
+def _s(v) -> str:
+    """None-safe 문자열 변환."""
+    return "" if v is None else str(v)
+
+
+def _ensure_sentence_period(text: str) -> str:
+    """서술형(종결어미 '다') 줄 끝에 온점(.) 보정 — 줄 단위.
+
+    각 줄을 rstrip 후 '다'로 끝나면 온점을 부가한다. 명사형·개조식
+    (강의/실습/확보/필요/~됨/~함/~음)은 '다'로 끝나지 않아 자동 무변경이며,
+    이미 종결부호(., !, ? 등)로 끝난 줄은 '다' 미종결이라 이중 온점이 생기지 않는다.
+    """
+    out = []
+    for line in text.split("\n"):
+        stripped = line.rstrip()
+        if stripped.endswith("다"):
+            out.append(stripped + ".")
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
+def _apply_sentence_periods(m: dict) -> None:
+    """마커 값 전체에 서술형 온점 보정(제자리). 샘플·production 공통 단일 지점.
+
+    체크박스(☑/□)·날짜·라벨·명사형 값은 '다'로 끝나지 않아 무변경이므로
+    화이트리스트 없이 전 값에 적용해도 안전하다(자기조정형).
+    """
+    for k, v in m.items():
+        if isinstance(v, str) and v:
+            m[k] = _ensure_sentence_period(v)
+
+
+def _build_roadmap_markers(data: dict) -> dict:
+    """payload → {{마커}}: 값 매핑."""
+    m: dict = {}
+
+    # ── 표지
+    m["{{roadmap_cover_company_name}}"] = _s(data.get("company_name"))
+    m["{{roadmap_cover_target_task}}"] = _s(data.get("cover_target_task"))
+    m["{{roadmap_cover_report_date}}"] = _s(data.get("report_date"))
+    m["{{roadmap_cover_pm_affiliation}}"] = _s(data.get("pm_affiliation"))
+    m["{{roadmap_cover_pm_name}}"] = _s(data.get("pm_name"))
+    m["{{roadmap_cover_internal_expert_affiliation}}"] = _s(
+        data.get("internal_expert_affiliation")
+    )
+    m["{{roadmap_cover_internal_expert_name}}"] = _s(data.get("internal_expert_name"))
+
+    # ── Ⅰ-1 수립 배경
+    m["{{roadmap_overview_establishment_necessity}}"] = _s(
+        data.get("establishment_necessity")
+    )
+
+    # ── Ⅰ-2 주요 활동 (차수당 PM·내부전문가 2행)
+    acts = data.get("performance_activities") or []
+    for i in range(_RM_MAX_ACTIVITIES):
+        a = acts[i] if i < len(acts) else {}
+        m[f"{{{{roadmap_overview_performance_{i}_date}}}}"] = _s(a.get("date"))
+        m[f"{{{{roadmap_overview_performance_{i}_content}}}}"] = _s(a.get("content"))
+        m[f"{{{{roadmap_overview_performance_{i}_method}}}}"] = _s(a.get("method"))
+        parts = a.get("participants") or []
+        pm = next((p.get("name") for p in parts if "PM" in _s(p.get("role"))), "")
+        expert = next(
+            (p.get("name") for p in parts if "내부" in _s(p.get("role"))), ""
+        )
+        m[f"{{{{roadmap_overview_performance_{i}_pm_name}}}}"] = _s(pm)
+        m[f"{{{{roadmap_overview_performance_{i}_expert_name}}}}"] = _s(expert)
+
+    # ── Ⅰ-3 수립 주요 결과 (체크박스 + 선정 과업 + 요약)
+    level = _s(data.get("ai_competency_level")).upper()
+    for key, want in (
+        ("beginner", "BEGINNER"),
+        ("intermediate", "INTERMEDIATE"),
+        ("advanced", "ADVANCED"),
+    ):
+        m[f"{{{{cb_roadmap_level_{key}}}}}"] = "☑" if level == want else "□"
+    m["{{roadmap_outcome_selected_tasks}}"] = _s(data.get("selected_tasks_text"))
+    m["{{roadmap_outcome_main_content}}"] = _s(data.get("roadmap_summary"))
+
+    # ── Ⅱ-1 HRD이음 진단 보고서 (URL 은 본문 노출 금지 → 별첨 안내로 대체)
+    hrd = _s(data.get("hrd_report_attachment"))
+    m["{{roadmap_requirements_hrd_report}}"] = (
+        "※ HRD이음 진단 보고서는 별첨 페이지 참조" if hrd.startswith("http") else hrd
+    )
+
+    # ── Ⅱ-2 기업 요구분석
+    for field in (
+        "company_status",
+        "main_problems",
+        "push_willingness",
+        "expected_outcomes",
+    ):
+        m[f"{{{{roadmap_requirements_{field}}}}}"] = _s(data.get(field))
+        m[f"{{{{roadmap_requirements_{field}_remarks}}}}"] = _s(
+            data.get(f"{field}_remarks")
+        )
+
+    # ── Ⅱ-3 과업·워크플로우 분석표
+    tasks = data.get("task_workflow_items") or []
+    for i in range(_RM_MAX_TASKS):
+        t = tasks[i] if i < len(tasks) else {}
+        if i not in _RM_TASK_JOB_SKIP:
+            m[f"{{{{roadmap_task_{i}_job}}}}"] = _s(t.get("job"))
+        m[f"{{{{roadmap_task_{i}_task}}}}"] = _s(t.get("task"))
+        m[f"{{{{roadmap_task_{i}_as_is}}}}"] = _s(t.get("as_is"))
+        m[f"{{{{roadmap_task_{i}_improvement}}}}"] = _s(t.get("improvement"))
+
+    # ── Ⅱ-3 AI 적용 대상 과업 선정
+    tt = data.get("training_target") or {}
+    m["{{roadmap_target_task_name}}"] = _s(tt.get("task_name"))
+    m["{{roadmap_target_selection_reason}}"] = _s(tt.get("selection_reason"))
+    m["{{roadmap_target_as_is}}"] = _s(tt.get("as_is"))
+    m["{{roadmap_target_to_be}}"] = _s(tt.get("to_be"))
+
+    # ── Ⅲ 훈련실시 계획 제안 — 훈련과정 명세서 6개
+    specs = data.get("course_specs") or []
+    for i in range(_RM_MAX_COURSES):
+        s = specs[i] if i < len(specs) else {}
+        for field in (
+            "training_period",
+            "training_level",
+            "course_name",
+            "training_method",
+            "recommended_program",
+            "training_target",
+            "training_goal",
+            "main_content",
+        ):
+            m[f"{{{{roadmap_course_{i}_{field}}}}}"] = _s(s.get(field))
+
+        subjects = s.get("subjects") or []
+        for j in range(_RM_MAX_SUBJECTS):
+            subj = subjects[j] if j < len(subjects) else {}
+            details = subj.get("details")
+            # details 는 리스트(줄 단위) 또는 문자열 — 항목마다 글머리(▪)를 부여하고
+            # 줄바꿈으로 셀에 분배(세부내용 셀은 좌측 정렬 — insert_placeholders 지정).
+            if isinstance(details, list):
+                items = [_s(d) for d in details if _s(d).strip()]
+            else:
+                items = [ln for ln in _s(details).split("\n") if ln.strip()]
+            details_text = "\n".join(f"▪ {it}" for it in items)
+            base = f"{{{{roadmap_course_{i}_subject_{j}_"
+            m[base + "subject_name}}"] = _s(subj.get("subject_name"))
+            m[base + "details}}"] = details_text
+            m[base + "hours}}"] = _s(subj.get("hours"))
+
+    _apply_sentence_periods(m)
+    return m
+
+
+def _apply_markers(doc, markers: dict) -> None:
+    """문서 전체(본문 + 표 셀)의 마커를 값으로 치환.
+
+    표 셀은 `_set_cell_text` 로 기입하여 줄바꿈이 paragraph 로 분배되고
+    lineWrap=BREAK 가 적용되도록 한다(글자 겹침 방지). 값이 매핑되지 않은
+    잔존 마커는 빈 문자열로 지워 산출물에 `{{...}}` 가 남지 않게 한다.
+    """
+    for para in doc.paragraphs:
+        for tbl in para.tables:
+            for ri in range(tbl.row_count):
+                for ci in range(tbl.column_count):
+                    try:
+                        cell = tbl.cell(ri, ci)
+                    except Exception:
+                        continue
+                    text = "".join(
+                        run.text or "" for p in cell.paragraphs for run in p.runs
+                    )
+                    if "{{" not in text:
+                        continue
+                    for key, value in markers.items():
+                        if key in text:
+                            text = text.replace(key, value)
+                    text = _MARKER_RE.sub("", text)
+                    _set_cell_text(tbl, ri, ci, text)
+
+    # 본문 단락 (표지 일자 등)
+    for para in doc.paragraphs:
+        for run in para.runs:
+            if not run.text or "{{" not in run.text:
+                continue
+            text = run.text
+            for key, value in markers.items():
+                if key in text:
+                    text = text.replace(key, value)
+            run.text = _MARKER_RE.sub("", text)
 
 
 # ---------------------------------------------------------------
@@ -244,6 +478,128 @@ def _collect_tables(doc):
 _HP_NS = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
 
 
+def _expand_activity_rows(
+    doc,
+    table_index: int,
+    rows_per_item: int,
+    base_items: int,
+    needed: int,
+    marker_prefix: str,
+    max_items: int,
+) -> None:
+    """수행활동 표의 차수 행을 입력 개수만큼 동적 확장한다.
+
+    양식(정본)은 `base_items` 차수분 행만 갖는다. 입력 차수가 이를 넘을 때만
+    **마지막 차수 블록(`rows_per_item` 개 `<hp:tr>`)을 deepcopy 복제**해 뒤에
+    덧붙인다. `needed <= base_items` 면 아무것도 하지 않으므로 대부분의 문서는
+    구조 편집 없이 양식 원형 그대로 생성된다.
+
+    복제본은 마커 인덱스만 `{prefix}{base-1}_` → `{prefix}{i}_` 로 치환하므로,
+    호출 직후의 `_apply_markers` 가 기존 경로 그대로 값을 채운다(마커 치환 전에
+    호출해야 한다). 차수 라벨(col 0)은 마커가 없어 텍스트로 직접 기입한다.
+
+    구조 편집이지만 한컴이 만든 노드를 통째로 복제하므로 OWPML 유효
+    (선례: scripts/insert_placeholders.py::unmerge_rowspan2_col).
+    """
+    import copy
+
+    needed = min(needed, max_items)
+    if needed <= base_items:
+        return
+
+    tables = _collect_tables(doc)
+    if table_index >= len(tables):
+        return
+    tbl = tables[table_index]
+
+    try:
+        tbl_el = tbl.cell(0, 0).element.getparent().getparent()
+    except Exception:
+        return
+
+    hp = _HP_NS
+    trs = tbl_el.findall(f"{hp}tr")
+    if len(trs) < rows_per_item:
+        return
+    last_block = trs[-rows_per_item:]
+
+    # 문단 id 전역 유일화용 시드 (표 내 최대값에서 이어붙임)
+    max_pid = 0
+    for p in tbl_el.iter(f"{hp}p"):
+        try:
+            max_pid = max(max_pid, int(p.get("id") or 0))
+        except (TypeError, ValueError):
+            continue
+
+    old_infix = f"{marker_prefix}{base_items - 1}_"
+    added_height = 0
+
+    for i in range(base_items, needed):
+        # 복제 블록의 rowAddr 이동량 = (i - (base_items-1)) * rows_per_item
+        delta = (i - (base_items - 1)) * rows_per_item
+        new_infix = f"{marker_prefix}{i}_"
+        for tr in last_block:
+            clone = copy.deepcopy(tr)
+            for tc in clone.findall(f"{hp}tc"):
+                addr = tc.find(f"{hp}cellAddr")
+                if addr is not None:
+                    try:
+                        addr.set("rowAddr", str(int(addr.get("rowAddr") or 0) + delta))
+                    except (TypeError, ValueError):
+                        pass
+                    # 차수 라벨(col 0)은 마커가 없으므로 텍스트로 직접 기입
+                    if addr.get("colAddr") == "0":
+                        tnodes = list(tc.iter(f"{hp}t"))
+                        for n, tnode in enumerate(tnodes):
+                            tnode.text = f"{i + 1}차" if n == 0 else ""
+            # 마커 인덱스 치환 (3차 → 4·5…차)
+            for tnode in clone.iter(f"{hp}t"):
+                if tnode.text and old_infix in tnode.text:
+                    tnode.text = tnode.text.replace(old_infix, new_infix)
+            # 문단 id 유일화
+            for p in clone.iter(f"{hp}p"):
+                max_pid += 1
+                p.set("id", str(max_pid))
+            tbl_el.append(clone)
+
+        # 표 전체 높이 = 블록 높이 누적 (첫 행 tc 의 cellSz.height 합)
+        for tr in last_block:
+            tc = tr.find(f"{hp}tc")
+            csz = tc.find(f"{hp}cellSz") if tc is not None else None
+            if csz is not None:
+                try:
+                    added_height += int(csz.get("height") or 0)
+                except (TypeError, ValueError):
+                    pass
+
+    # rowCnt / 표 높이 갱신
+    try:
+        tbl_el.set("rowCnt", str(len(tbl_el.findall(f"{hp}tr"))))
+    except Exception:
+        pass
+    sz = tbl_el.find(f"{hp}sz")
+    if sz is not None and added_height:
+        try:
+            sz.set("height", str(int(sz.get("height") or 0) + added_height))
+        except (TypeError, ValueError):
+            pass
+
+
+def _approx_text_width(s: str) -> int:
+    """텍스트의 렌더 폭 근사(HWPX 단위). CJK/전각 기호 ≈ 1000, ASCII ≈ 550,
+    공백 ≈ 400. 셀 폭(cellSz.width)과 비교해 SQUEEZE 로 한 줄에 담을 수 있는지
+    판정한다(정확한 폰트 메트릭 대신 근사 — lineWrap 결정용으로 충분)."""
+    width = 0
+    for ch in s:
+        if ch in (" ", "\t"):
+            width += 400
+        elif ch.isascii():
+            width += 550
+        else:
+            width += 1000
+    return width
+
+
 def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
     """표 셀의 값을 설정 (multi-line = paragraph 분배).
 
@@ -261,7 +617,8 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
        부족한 paragraph 를 동적 추가 + 첫 paragraph 의 paraPrIDRef·
        styleIDRef·charPrIDRef 를 명시 전달 (한컴오피스 폰트 일관성 보장 —
        python-hwpx Cell.add_paragraph 는 None 전달 시 기본 글꼴로 폴백).
-    4. 줄 수 <= 템플릿 paragraph 수 인 경우 남은 paragraph 는 빈 상태 유지.
+    4. 줄 수 < 템플릿 paragraph 수 인 경우 잉여 paragraph 를 제거(트림)하여
+       하단 빈 문단 여백·자동 글머리(BULLET) 고정 개수를 방지 (최소 1 유지).
     5. (Phase E) 셀의 subList lineWrap 을 BREAK 로 설정. 양식 원본이 SQUEEZE
        또는 누락 상태이면 한컴오피스가 셀 폭 초과 텍스트를 압축 렌더해 글자
        겹침이 발생하므로, 단어 wrap 으로 강제 전환.
@@ -307,15 +664,35 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
             continue
         p.runs[0].text = lines[i] if i < len(lines) else ""
 
-    # Step 5: 셀 subList 의 lineWrap 을 BREAK 로 설정 (한컴오피스 자동 단어 wrap)
-    #   양식 원본의 SQUEEZE 또는 누락 상태에서 발생하는 글자 겹침 회피.
-    #   python-hwpx 에 공식 setter 가 없어 OWPML subList element 의 lineWrap
-    #   속성을 직접 set. 실패 시 silent — 양식 의도 보존.
+    # Step 4.5: 잉여 문단 트림 — 내용 줄 수보다 많은 문단 제거 (하단 여백·자동
+    #   글머리 고정 개수 방지). split 결과는 항상 ≥1 이므로 최소 1 문단 유지.
+    for p in list(cell.paragraphs)[len(lines):]:
+        parent = p.element.getparent()
+        if parent is not None:
+            parent.remove(p.element)
+
+    # Step 5: 셀 폭 기반 lineWrap 결정.
+    #   양식은 셀마다 lineWrap 을 다르게 설계한다 — 짧은 고정 셀(일시·방법·차수)은
+    #   SQUEEZE(자간 압축해 한 줄), 긴 자유텍스트 셀은 BREAK(줄바꿈). 무조건 BREAK 로
+    #   덮으면 '14:00~17:00' 같은 짧은 값이 셀 폭을 넘겨 마지막 글자가 다음 줄로 깨진다.
+    #   → 내용이 셀 폭(SQUEEZE 압축 여유 25% 포함)에 들어가면 양식 원본 lineWrap 을
+    #     유지하고, 넘칠 때만 BREAK 로 전환해 긴 내용의 글자 겹침을 막는다.
+    #   python-hwpx 에 공식 setter 가 없어 OWPML subList/cellSz element 를 직접 참조.
     try:
         cell._ensure_sublist()
         sublist_elem = cell.element.find(f"{_HP_NS}subList")
-        if sublist_elem is not None and sublist_elem.get("lineWrap") != "BREAK":
-            sublist_elem.set("lineWrap", "BREAK")
+        if sublist_elem is not None:
+            csz = cell.element.find(f"{_HP_NS}cellSz")
+            cw = csz.get("width") if csz is not None else None
+            cell_w = int(cw) if cw and cw.isdigit() else 0
+            max_line_w = max((_approx_text_width(ln) for ln in lines), default=0)
+            overflow = (
+                max_line_w > cell_w * 1.25
+                if cell_w
+                else max((len(ln) for ln in lines), default=0) > 22
+            )
+            if overflow and sublist_elem.get("lineWrap") != "BREAK":
+                sublist_elem.set("lineWrap", "BREAK")
     except Exception:
         pass
 
@@ -666,443 +1043,226 @@ def _fill_table_journal(tables, data, build_table_rows, idx: int = 38):
 
 
 # ===============================================================
-# PBL HWPX 생성 (Step 10) — python-hwpx 공식 API만 사용
+# PBL HWPX 생성 (Step 10) — {{플레이스홀더}} 치환 방식 (산인공 양식 v2)
 # ===============================================================
 #
-# 설계 원칙 (hwpx-docgen 스킬 준수):
-# - lxml 직접 OXML 편집 금지
-# - `_set_cell_text` / `_replace_in_all_runs` 공용 헬퍼(로드맵 렌더러 정의) 재사용
-# - 표 행 복제 금지 — 템플릿 행 수 초과 데이터는 truncate
-# - 체크박스는 본문 텍스트 치환(`□ 라벨` → `☑ 라벨`)로 처리
+# 로드맵과 동일한 패턴을 따른다 (PR 1):
+# - 표 순번·셀 좌표를 전혀 참조하지 않는다. 템플릿에 이미 심긴 마커를 값으로
+#   바꿀 뿐이므로, 양식에 표가 추가·삭제돼도 이 함수는 깨지지 않는다.
+# - 좌표는 빌드 타임(scripts/insert_placeholders.py)에서만 쓰이며, 템플릿↔SSOT
+#   마커 정합은 scripts/verify_hwpx_placeholders.py 가 CI 에서 보증한다.
+# - 셀은 `_set_cell_text`(lineWrap=BREAK) 로 기입한다(글자 겹침 방지).
+#
+# 마커로 표현하기 어려운 두 부류는 본문/셀 텍스트 직접 치환으로 처리한다:
+#   1) 표지 제목·기업명 — T1/T42 셀 내부가 여러 run·paragraph 로 분할돼 있어
+#      마커 삽입 시 서식이 깨진다. `(훈련과정명)`·`㈜기업명 기재` 부분 문자열만 치환.
+#   2) 양식 고정 인라인 체크박스 — 훈련목표 5종(Ⅰ-개요·Ⅳ-2 동일 문자열)·
+#      과정평가 방법 3종. `□ 라벨` → `☑ 라벨` 텍스트 치환.
 # ===============================================================
 
 
 def _generate_pbl(data: dict) -> bytes:
-    """PBL HWPX 생성 — 과정개발보고서 + 결과보고서(공란 유지).
+    """PBL HWPX 생성 — {{플레이스홀더}} 치환 방식 (산인공 PBL 양식 v2).
 
-    shallow 표 인덱스 매핑:
-      0=표지 / 1=Ⅰ 개요(15x5) / 3=Ⅱ-1-가 이슈 / 5=Ⅱ-1-나 조직도 /
-      7=Ⅱ-2 훈련환경(12x7) / 9=Ⅱ-3-가 HRD이음(8x8) / 10=추천훈련사업(4x4) /
-      11=Ⅱ-3-나 필요성 / 13=Ⅲ-1 수행활동(13x6) / 15=Ⅲ-2-가 문제정의(5x2) /
-      17=Ⅲ-2-나 우선순위(6x7) / 19=Ⅲ-3-가 훈련대상(6x7) / 20=Ⅲ-3-나 사유 /
-      22=Ⅲ-3-다 세부내용(4x5) / 24=Ⅲ-4-가 현재 AI역량(5x3) /
-      25=Ⅲ-4-나 향상도(2x3) / 27=Ⅳ-1 훈련목표 / 28=Ⅳ-2 AI도구5단계(6x6) /
-      30=Ⅳ-3-가 과정개요(2x2) / 31=Ⅳ-3-나 학습그룹(6x6) /
-      32=Ⅳ-3-다 교과목 프로파일(15x10) / 34=Ⅳ-3-라 시설장비(3x5) /
-      35=Ⅳ-3-마 훈련강사(3x5) / 36=Ⅳ-4-가 과정평가(16x9) /
-      37=만족도·성취도(고정) / 38=외부·현업적용도(고정) /
-      42=결과 표지 / 43~51=결과보고서(공란 유지).
-      (Ⅴ장 성과분석·확산전략 표 39, 40은 사용자 양식 요구사항에 따라 공란 유지)
+    로드맵(`_generate_roadmap`)과 동일하게 표 순번·셀 좌표를 참조하지 않는다.
     """
     from hwpx import HwpxDocument
-    from _placeholders_pbl import (
-        AI_LEVEL_ENUM_TO_LABEL,
-        AI_LEVEL_GRADE,
-        AI_LEVEL_LABELS,
-        COURSE_EVALUATION_METHODS,
-        TRAINING_GOAL_LABELS,
-        build_pbl_placeholder_map,
-        build_pbl_table_rows,
-    )
+    from _placeholders_pbl import TRAINING_GOAL_LABELS, COURSE_EVALUATION_METHODS
 
     doc = HwpxDocument.open(PBL_TEMPLATE)
 
-    # --- 0) 표지 고정 텍스트 치환 (원본 양식 자리표시어) ---
-    company_name = data.get("company_name") or ""
-    course_name = data.get("course_name") or ""
-    report_date = data.get("report_date") or ""
+    # 0) 입력 차수가 양식 원형(3차)을 넘으면 수행활동 표 행을 먼저 확장.
+    #    Ⅲ-1(T19) → Ⅱ-1-나(T9) 순으로 처리해 앞 표 확장이 뒤 표 인덱스에
+    #    영향을 주지 않게 한다(둘 다 shallow 인덱스라 무관하나 명시적 순서 유지).
+    _expand_activity_rows(
+        doc,
+        table_index=19,
+        rows_per_item=4,
+        base_items=_PBL_BASE_PERF_ACTS,
+        needed=len(data.get("pbl_perf_activities") or []),
+        marker_prefix="pbl_perf_",
+        max_items=_PBL_MAX_PERF_ACTS,
+    )
+    _expand_activity_rows(
+        doc,
+        table_index=9,
+        rows_per_item=2,
+        base_items=_PBL_BASE_SETUP_ACTS,
+        needed=len(data.get("roadmap_setup_activities") or []),
+        marker_prefix="pbl_roadmap_activity_",
+        max_items=_PBL_MAX_SETUP_ACTS,
+    )
+
+    # 1) 마커 일괄 치환 (본문 단락 + 표 셀)
+    _apply_markers(doc, _build_pbl_markers(data))
+
+    # 2) 마커로 표현하기 어려운 텍스트 치환을 1 회 순회로 일괄 적용:
+    #    - 표지 제목·기업명 (T1/T42 셀 내부 분할 run)
+    #    - 훈련목표 5종 (Ⅰ-개요 r14 + Ⅳ-2 본문, 동일 문자열) + 과정평가 방법 3종 체크박스
+    #    체크박스는 "리셋(☑/☐→□) 전부 → 선택 토글(□→☑)" 순서로 pairs 를 쌓아
+    #    한 run 안에서 순차 적용돼도 정확히 동작한다.
+    pairs: list[tuple[str, str]] = []
+    course_name = _s(data.get("course_name"))
+    company_name = _s(data.get("company_name"))
     if course_name:
-        _replace_in_all_runs(doc, "(훈련과정명)", f"({course_name})")
+        pairs.append(("(훈련과정명)", f"({course_name})"))
     if company_name:
-        _replace_in_all_runs(doc, "㈜기업명 기재", company_name)
-    if report_date:
-        _replace_in_all_runs(doc, "202 .   .  ", report_date)
-
-    # --- 0.5) 표지 nested 8×5 표 (PM/외부/내부/주치의 소속·성명) ---
-    _fill_pbl_cover_nested(doc, data)
-
-    # --- 1) 본문·표 내부 {{key}} 플레이스홀더 일괄 치환 ---
-    placeholders = build_pbl_placeholder_map(data)
-    for key, value in placeholders.items():
-        _replace_in_all_runs(doc, key, str(value or ""))
-
-    # --- 2) AI역량 4등급 체크박스 (T1, T24는 별도) ---
-    # V2: data.get("current_ai_level") 은 영문 enum (BASIC/EXPLORER/USER/LEADER).
-    # 한글 라벨 ("AI기초형" 등) 로 변환 후 본문 체크박스 패턴에 사용.
-    current_level_enum = (data.get("current_ai_level") or "").upper()
-    current_level = AI_LEVEL_ENUM_TO_LABEL.get(current_level_enum, "")
-    # T1 본문 체크박스 패턴 — 전역 reset 후 선택 등급만 ☑
-    for label in AI_LEVEL_LABELS:
-        # "□ AI기초형" 또는 "☑ AI기초형" → "□ AI기초형" reset
-        _replace_in_all_runs(doc, f"☑ {label}", f"□ {label}")
-        # T1 원본에는 공백 2개 변형도 존재 ("□AI선도형")
-        _replace_in_all_runs(doc, f"☑{label}", f"□{label}")
-    if current_level in AI_LEVEL_LABELS:
-        _replace_in_all_runs(doc, f"□ {current_level}", f"☑ {current_level}")
-        _replace_in_all_runs(doc, f"□{current_level}", f"☑{current_level}")
-
-    # --- 3) 훈련목표 5종 체크박스 ---
-    selected_goals = set(data.get("training_goals") or [])
+        pairs.append(("㈜기업명 기재", company_name))
     for label in TRAINING_GOAL_LABELS:
-        # 원본에 U+2610 (☐) 변형 포함 — 모두 □ 로 정규화 후 처리
-        _replace_in_all_runs(doc, f"☑ {label}", f"□ {label}")
-        _replace_in_all_runs(doc, f"☐ {label}", f"□ {label}")
-    for label in selected_goals:
-        if label in TRAINING_GOAL_LABELS:
-            _replace_in_all_runs(doc, f"□ {label}", f"☑ {label}")
-
-    # --- 4) 훈련장소 사내/사외 체크박스 (T7) ---
-    place_types = set(data.get("training_place_types") or [])
-    _replace_in_all_runs(doc, "☑ 사내", "□ 사내")
-    _replace_in_all_runs(doc, "☑ 사외", "□ 사외")
-    if "사내" in place_types:
-        _replace_in_all_runs(doc, "□ 사내", "☑ 사내")
-    if "사외" in place_types:
-        _replace_in_all_runs(doc, "□ 사외", "☑ 사외")
-
-    # --- 5) 사내강사 예/아니오 체크박스 (T7) ---
-    internal_used = bool(data.get("internal_instructor_used"))
-    _replace_in_all_runs(doc, "☑ 예", "□ 예")
-    _replace_in_all_runs(doc, "☑ 아니오", "□ 아니오")
-    if internal_used:
-        _replace_in_all_runs(doc, "□ 예", "☑ 예")
-    else:
-        _replace_in_all_runs(doc, "□ 아니오", "☑ 아니오")
-
-    # --- 6) 과정평가 방법 3종 체크박스 (T36 상단) ---
-    selected_methods = set(data.get("course_evaluation_methods") or [])
+        pairs.append((f"☑ {label}", f"□ {label}"))
+        pairs.append((f"☐ {label}", f"□ {label}"))
     for label in COURSE_EVALUATION_METHODS:
-        _replace_in_all_runs(doc, f"☑ {label}", f"□ {label}")
-    for label in selected_methods:
+        pairs.append((f"☑ {label}", f"□ {label}"))
+    for label in set(data.get("training_goals") or []):
+        if label in TRAINING_GOAL_LABELS:
+            pairs.append((f"□ {label}", f"☑ {label}"))
+    for label in set(data.get("course_evaluation_methods") or []):
         if label in COURSE_EVALUATION_METHODS:
-            _replace_in_all_runs(doc, f"□ {label}", f"☑ {label}")
+            pairs.append((f"□ {label}", f"☑ {label}"))
+    # AI 역량수준 3단계 체크박스 (Ⅱ-1-나 T10) — 양식 '□ X'/'(...)'2문단 보존, 선택만 토글
+    level = _s(data.get("roadmap_ai_level")).upper()
+    for label in ("초급", "중급", "고급"):
+        pairs.append((f"☑ {label}", f"□ {label}"))
+    selected = {"BEGINNER": "초급", "INTERMEDIATE": "중급", "ADVANCED": "고급"}.get(level)
+    if selected:
+        pairs.append((f"□ {selected}", f"☑ {selected}"))
+    # 사내 강사 활용 여부 예/아니오 (Ⅱ-3 기업 훈련환경 분석 T17) — 리셋 후 데이터로 토글
+    pairs.append(("☑ 예", "□ 예"))
+    pairs.append(("☑ 아니오", "□ 아니오"))
+    _instr_used = data.get("internal_instructor_used")
+    _instr_usage = _s(data.get("internal_instructor_usage")).upper()
+    if _instr_used or _instr_usage == "YES":
+        pairs.append(("□ 예", "☑ 예"))
+    elif _instr_usage == "NO":
+        pairs.append(("□ 아니오", "☑ 아니오"))
+    # Ⅲ-1 수행차수 3행 양식 리터럴 '...차' → '3차'
+    pairs.append(("...차", "3차"))
+    _replace_many_in_all_runs(doc, pairs)
 
-    # --- 7) 표 셀 반복 데이터 (V2 매핑) ---
-    # V2 인터뷰 정본 (PR #28) 기준. V1 키는 fallback 으로만 사용.
-    tables = _collect_tables(doc)
-    _fill_pbl_overview(tables, data, idx=1)                           # Ⅰ
-    # Ⅱ-1-가 (idx=3, 1×1): V2 P-03 = company_issues. V1 호환 위해 business_issues 도 fallback.
-    # 1×1 표라 _fill_simple_box (col 1) 가 silent skip → _fill_pbl_simple_content (col 0) 사용.
-    _fill_pbl_simple_content(
-        tables, 3, data.get("company_issues") or data.get("business_issues")
-    )
-    # Ⅱ-1-나 조직 및 주요 업무 (idx=5): 사용자 요청 (PR #5 Phase F-2) 에 따라
-    # 자동 채우기를 비활성화한다. 양식 원본 (조직도 + ☑/☐ 박스 + 부서명 sample
-    # 텍스트) 을 한컴오피스에서 컨설턴트가 직접 수정하는 영역으로 사용.
-    # _fill_pbl_organization(tables, build_pbl_table_rows, data, idx=5)  # disabled
-    _fill_pbl_training_env(tables, data, idx=7)                       # Ⅱ-2
-    # Ⅱ-3-가 HRD이음 (idx=9, 10): V2 에서는 PDF 첨부로 대체. 표는 양식 그대로 유지
-    # (한글 오피스에서 사용자가 직접 PDF 첨부 또는 placeholder 안내 fallback 으로 전환).
-    # V1 호환: training_history/support_history/recommendations 데이터가 있으면 채움.
-    if data.get("training_history") or data.get("support_history"):
-        _fill_pbl_hrd_history(tables, build_pbl_table_rows, data, idx=9)
-    if data.get("recommendations"):
-        _fill_pbl_recommendations(tables, build_pbl_table_rows, data, idx=10)
-    # Ⅱ-3-나 (idx=11, 1×1): V2 P-07 = course_necessity. V1 호환 fallback.
-    # 1×1 표라 _fill_simple_box (col 1) 가 silent skip → _fill_pbl_simple_content (col 0) 사용.
-    _fill_pbl_simple_content(
-        tables,
-        11,
-        data.get("course_necessity") or data.get("course_development_necessity"),
-    )
-    _fill_pbl_performance_activities(tables, build_pbl_table_rows, data, idx=13)
-    _fill_pbl_problems(tables, build_pbl_table_rows, data, idx=15)    # Ⅲ-2-가 V2
-    _fill_pbl_problem_priorities(tables, build_pbl_table_rows, data, idx=17)  # V2 priorities key
-    _fill_pbl_target_tasks(tables, build_pbl_table_rows, data, idx=19)  # V2 target_single key
-    # Ⅲ-3-나 (idx=20): V2 P-12 = target_necessity (target.necessity 자유서술).
-    _fill_pbl_simple_content(
-        tables,
-        20,
-        data.get("target_necessity") or data.get("target_tasks_selection_reason"),
-    )
-    _fill_pbl_target_task_details(tables, build_pbl_table_rows, data, idx=22)  # V2 details
-    _fill_pbl_ai_level_current(tables, current_level, AI_LEVEL_LABELS, AI_LEVEL_GRADE, idx=24)
-    _fill_pbl_ai_level_improvement(tables, data, AI_LEVEL_ENUM_TO_LABEL, AI_LEVEL_GRADE, idx=25)
-    _fill_pbl_simple_content(tables, 27, data.get("training_goal"))
-    _fill_pbl_ai_tool_usage(tables, build_pbl_table_rows, data, idx=28)
-    _fill_pbl_course_overview(tables, data, idx=30)
-    _fill_pbl_learning_group(tables, build_pbl_table_rows, data, idx=31)
-    _fill_pbl_subject_profile(tables, build_pbl_table_rows, data, selected_methods, idx=32)
-    _fill_pbl_facilities(tables, build_pbl_table_rows, data, idx=34)
-    _fill_pbl_training_instructors(tables, build_pbl_table_rows, data, idx=35)
-    _fill_pbl_course_evaluation(tables, build_pbl_table_rows, data, idx=36)
-    # R8 PBL-자체-05 — Ⅴ-1, Ⅴ-2 LLM 결과 채움 복구.
-    # payload 빌더가 outcome_analysis 4 키 (quantitative_metrics / qualitative_metrics
-    # / internalization_plan / dissemination_plan) 를 생성하면 양식 표 39·40 에 채움.
-    _fill_pbl_performance_metrics(tables, data, idx=39)
-    _fill_pbl_dissemination(tables, data, idx=40)
-
-    # --- 8) 저장 ---
-    with tempfile.NamedTemporaryFile(delete=True, suffix=".hwpx") as tmp:
-        doc.save_to_path(tmp.name)
-        with open(tmp.name, "rb") as f:
-            return f.read()
-
-
-# ---------------------------------------------------------------
-# PBL 표별 렌더 함수
-# ---------------------------------------------------------------
-
-
-def _fill_pbl_simple_content(tables, idx: int, text):
-    """1×1 단일 셀 박스 (예: 훈련 목표, 사유, 필요성).
-
-    1 줄 입력에 양식 paragraph 가 여러 개 있는 셀의 경우, 사용되지 않는
-    빈 paragraph 의 `paraPrIDRef` 가 머리기호 스타일 (예: 76 번) 이면
-    한컴오피스에서 빈 줄에도 머리기호 (∙·□ 등) 가 자동 표시되어 사용자
-    검증에서 "1 항목에 머리기호 2 개" 회귀로 보고됐다 (P-12).
-
-    해결: 텍스트가 모두 비어있는 paragraph 의 paraPrIDRef 를 기본 단락
-    스타일 ("0", PBL 정본에서 65 회 사용 — 가장 일반적 ID) 로 reset 하여
-    자동 머리기호를 회피한다.
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    if tbl.row_count < 1 or tbl.column_count < 1:
-        return
-    _set_cell_text(tbl, 0, 0, text or "")
-    # 빈 paragraph 의 머리기호 회피 — paraPrIDRef "0" (기본 단락) 으로 reset
+    # 3) 저장
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".hwpx") as tmp:
+        path = tmp.name
     try:
-        cell = tbl.cell(0, 0)
-    except Exception:
-        return
-    for p in cell.paragraphs:
-        if all(not (r.text or "") for r in p.runs):
-            try:
-                p.para_pr_id_ref = "0"
-            except Exception:
-                pass
+        doc.save_to_path(path)
+        with open(path, "rb") as f:
+            raw = f.read()
+    finally:
+        if os.path.exists(path):
+            os.unlink(path)
+    # charPr 106 = Ⅳ-2 성과분석 '정량' 값 셀(양식이 italic 세팅, 유일 사용) → 기울임 제거
+    return _normalize_colors(raw, _PBL_KEEP_BLUE, strip_italic_ids={"106"})
 
 
-def _fill_pbl_cover_nested(doc, data):
-    """PBL 표지 nested 8×5 표 (PM/외부전문가/내부전문가/주치의) 채움.
+def _replace_many_in_all_runs(doc, pairs) -> None:
+    """여러 (old, new) 치환을 본문 + 표 셀(중첩 포함) 전체에 1 회 순회로 적용.
 
-    paragraph 0 의 outer 2×2 표의 cell(1,0) 과 cell(1,1) 안에 각각 nested 8×5
-    표 (구분/소속/성명/-/기업체확인) 가 있다 (좌·우 표지 양면). 동일 cover
-    데이터를 양쪽에 채운다.
-
-    nested 8×5 row 매핑 (실제 OXML 구조 — col 1·2 수직 병합):
-      row 0 = 헤더
-      row 1 = 컨설팅책임자(PM)                     [단일]
-      row 2~3 = 외부전문가(직무,HRD)               [col 1·2 수직 병합 — 1 슬롯]
-      row 4~5 = 기업 내부전문가                    [col 1·2 수직 병합 — 1 슬롯]
-      row 6~7 = 능력개발전담주치의                 [col 1·2 수직 병합 — 1 슬롯]
-    각 row 의 col 1 = 소속, col 2 = 성명.
-
-    NOTE: 양식 row 2~3 등은 col 0 만 분리되어 있고 col 1·2 가 수직 병합되어 있어
-    데이터는 row 2 (대표 row) 에만 1 회 채운다. row 3 에 별도 데이터를 채우면
-    같은 병합 cell 이 덮어쓰여진다.
-
-    cover 객체 (data["cover"]):
-      {pm: {affiliation, name},
-       external_experts: [{affiliation, name}],   # 양식상 1 슬롯
-       internal_experts: [{affiliation, name}],   # 1 슬롯
-       doctors: [{affiliation, name}]}            # 1 슬롯
+    `_replace_in_all_runs` 를 pair 수만큼 반복하면 매번 전 표를 순회해 느리다
+    (양식 표 54개 × 셀). 체크박스·표지 치환을 한 번의 순회로 묶어 처리한다.
+    pairs 는 순서대로 각 run 텍스트에 적용된다(리셋→토글 순서 보존).
     """
-    cover = data.get("cover") or {}
-    pm = cover.get("pm") or {}
-    externals = cover.get("external_experts") or []
-    internals = cover.get("internal_experts") or []
-    doctors = cover.get("doctors") or []
-
-    role_rows = [
-        (1, pm),
-        (2, externals[0] if len(externals) > 0 else {}),
-        (4, internals[0] if len(internals) > 0 else {}),
-        (6, doctors[0] if len(doctors) > 0 else {}),
-    ]
-
-    if not doc.paragraphs:
-        return
-    para0 = doc.paragraphs[0]
-    if not para0.tables:
-        return
-    outer = para0.tables[0]
-    if outer.row_count < 2:
+    if not pairs:
         return
 
-    # outer 2×2 의 cell(1,0) 와 cell(1,1) 각각에 nested 8×5 (좌·우 표지)
-    for outer_col in range(min(2, outer.column_count)):
-        try:
-            outer_cell = outer.cell(1, outer_col)
-        except Exception:
-            continue
-        for inner_para in outer_cell.paragraphs:
-            for nested in inner_para.tables:
-                if nested.row_count == 8 and nested.column_count == 5:
-                    for row_idx, person in role_rows:
-                        if row_idx >= nested.row_count:
-                            break
-                        try:
-                            _set_cell_text(
-                                nested, row_idx, 1,
-                                str(person.get("affiliation") or "") if person else "",
-                            )
-                            _set_cell_text(
-                                nested, row_idx, 2,
-                                str(person.get("name") or "") if person else "",
-                            )
-                        except Exception:
-                            # 셀 좌표 이상 시 silent skip — 한컴오피스가 OXML 구조
-                            # 이상으로 거부하지 않도록 fail-soft.
-                            pass
+    def _apply(text: str) -> str:
+        for old, new in pairs:
+            if old in text:
+                text = text.replace(old, new)
+        return text
+
+    def _walk_table(tbl) -> None:
+        for ri in range(tbl.row_count):
+            for ci in range(tbl.column_count):
+                try:
+                    cell = tbl.cell(ri, ci)
+                except Exception:
+                    continue
+                for cp in cell.paragraphs:
+                    for run in cp.runs:
+                        if run.text:
+                            nt = _apply(run.text)
+                            if nt != run.text:
+                                run.text = nt
+                    for ntbl in cp.tables:
+                        _walk_table(ntbl)
+
+    for para in doc.paragraphs:
+        for run in para.runs:
+            if run.text:
+                nt = _apply(run.text)
+                if nt != run.text:
+                    run.text = nt
+        for tbl in para.tables:
+            _walk_table(tbl)
 
 
-def _fill_pbl_overview(tables, data, idx: int = 1):
-    """Ⅰ. 훈련과정 개요 — 15×5 복합 표.
+# 양식 구조 상수 (SSOT: docs/references/hwpx-placeholders.json)
+# Ⅱ-1-나(T9)·Ⅲ-1(T19) 수행활동 차수. 양식은 3차분 행만 보유하며 초과 입력 시
+# `_expand_activity_rows` 가 생성 시점에 행을 복제한다(≤3차는 구조 편집 없음).
+_PBL_BASE_SETUP_ACTS = 3   # 양식 원형 행 수 (T9)
+_PBL_BASE_PERF_ACTS = 3    # 양식 원형 행 수 (T19)
+_PBL_MAX_SETUP_ACTS = 15   # Ⅱ-1-나 주요 활동 차수 상한 (T9)
+_PBL_MAX_PERF_ACTS = 15    # Ⅲ-1 수행활동 차수 상한 (T19)
+_PBL_MAX_TASKS = 5         # Ⅱ-2-다 과업 분석표 행 (T15)
+_PBL_MAX_SELECTIONS = 5    # Ⅲ-3-가 훈련대상 업무 선정 행 (T23)
+_PBL_MAX_DETAILS = 2       # Ⅲ-3-다 세부내용 행 (T26)
+_PBL_MAX_TOOLS = 3         # Ⅳ-3 AI도구 활용 계획 행 (T31)
+_PBL_MAX_GROUP = 5         # Ⅳ-4-나 학습그룹 행 (T34)
+_PBL_MAX_CONTENTS = 3      # Ⅳ-4-다 훈련내용 행 (T35 r7~9)
+_PBL_MAX_FACILITIES = 2    # Ⅳ-4-라 시설·장비 행 (T37)
+_PBL_MAX_INSTRUCTORS = 2   # Ⅳ-4-마 훈련강사 행 (T38)
+_PBL_MAX_CHECKLIST = 7     # Ⅳ-5-가 수행 체크리스트 행 (T39 r7~13)
 
-    양식은 label/value가 불규칙하게 배치돼 셀 좌표로 직접 채운다.
-    shallow traversal과 template 원본 셀 구조 기준:
-      row 0 = 기업명 | 값 | 사업장관리번호 | 값 | (분리)
-      row 1 = 주요 업종 ...
-    정확한 좌표는 원본 row/col 구조를 따른다.
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-
-    # 셀 좌표는 실제 템플릿 T1(15x5) 구조 기준 (병합 다수):
-    #   row 0: [0,0]=기업명 / [0,1..2]=값 / [0,3]=사업장관리번호 / [0,4]=값
-    #   row 1: [1,0..2]=주요 업종 라벨 (병합) / [1,3..4]=라벨 연장
-    #   row 2: [2,0]=주요 업종 / [2,1..4]=업종코드·주업종 placeholder
-    #   row 3: [3,0]=주소 / [3,1..4]=값
-    #   row 4: [4,0]=훈련실시주소 / [4,1..4]=값
-    #   row 5: [5,0]=훈련실시주소 / [5,3]=관할 지부·지사 / [5,4]=값
-    #   row 6: [6,0]=담당자연락처 / [6,1]=직 위 / [6,2]=값 / [6,3]=성 명 / [6,4]=값
-    #   row 7: [7,0]=담당자연락처 / [7,1]=연락처 / [7,2]=값 / [7,3]=e-mail / [7,4]=값
-    #   row 8: [8,0]=훈련과정명 / [8,1..4]=값
-    #   row 9: [9,0]=NCS 분류 / [9,1..4]=값
-    #   row 10: [10,0]=훈련시간 / [10,1..4]=값
-    #   row 11: [11,0]=훈련생 / [11,1..4]=값
-    #   row 12: [12,0]=훈련 직무 / [12,1..4]=값
-    #   row 13: AI역량 체크박스 (문자열 replace)
-    #   row 14: 훈련 목표 체크박스 (문자열 replace)
-    industry_text = data.get("industry_main") or data.get("industry_code") or ""
-    if data.get("industry_code") and data.get("industry_main"):
-        industry_text = f"업종코드: {data['industry_code']}  주업종: {data['industry_main']}"
-    # 주소/훈련실시주소가 수직 병합이면 한 셀만 남으므로 줄바꿈으로 합쳐서 표시.
-    address_value = data.get("address") or ""
-    training_address = data.get("training_address") or ""
-    address_block = address_value
-    if training_address and training_address != address_value:
-        address_block = (
-            f"{address_value}\n(훈련실시: {training_address})".strip()
-            if address_value
-            else f"훈련실시: {training_address}"
-        )
-    # row 11 훈련생 — V2 우선 (training_target_label), V1 fallback (trainee_count → "N 명")
-    trainee_text = (
-        data.get("training_target_label")
-        or _format_trainees(data.get("trainee_count"))
-        or ""
-    )
-    mapping = [
-        (0, 1, data.get("company_name")),
-        (0, 4, data.get("business_registration_no")),
-        (2, 1, industry_text),  # 업종 placeholder가 row 2에 존재
-        (3, 1, address_block),
-        (5, 4, data.get("jurisdiction_office")),
-        (6, 2, data.get("contact_position")),
-        (6, 4, data.get("contact_name")),
-        (7, 2, data.get("contact_phone")),
-        (7, 4, data.get("contact_email")),
-        (8, 1, data.get("course_name")),
-        (9, 1, data.get("ncs_code")),
-        (10, 1, _format_hours(data.get("training_hours"))),
-        (11, 1, trainee_text),
-        (12, 1, data.get("training_job")),
-    ]
-    for r, c, text in mapping:
-        try:
-            _set_cell_text(tbl, r, c, text or "")
-        except Exception:
-            pass
+# Ⅲ-3-가 직무 열(col 0)은 빌드 시 병합 해제(로드맵 R-10 동일) → skip 없이 전 과업 직무 채움.
+_PBL_SELECTION_JOB_SKIP: set[int] = set()
 
 
-def _format_hours(v):
-    if v is None or v == "":
-        return ""
-    return f"{v} 시간"
+def _to_int(v):
+    """숫자 문자열/실수 → int (실패 시 None)."""
+    if v is None or str(v).strip() == "":
+        return None
+    try:
+        return int(float(str(v)))
+    except (TypeError, ValueError):
+        return None
 
 
-def _format_trainees(v):
-    if v is None or v == "":
-        return ""
-    return f"{v} 명"
+def _join_list(v) -> str:
+    """리스트 → 줄바꿈 결합 (문자열은 그대로)."""
+    if isinstance(v, (list, tuple)):
+        return "\n".join(_s(x) for x in v if _s(x).strip())
+    return _s(v)
 
 
-def _fill_pbl_organization(tables, build_pbl_table_rows, data, idx: int = 5):
-    """Ⅱ-1-나 조직도 (6×3) — 최대 3행 데이터 치환."""
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    rows = build_pbl_table_rows(data, "organization")
-    max_rows = min(3, tbl.row_count - 1)  # 첫 행은 헤더 아니지만 예시 보존
-    # 전체 데이터 영역 reset
-    for r in range(tbl.row_count):
-        for c in range(tbl.column_count):
-            _set_cell_text(tbl, r, c, "")
-    for i, row in enumerate(rows[:max_rows]):
-        _set_cell_text(tbl, i, 1, row.get("department_name", ""))
-        _set_cell_text(tbl, i, 2, row.get("tasks", ""))
+def _pbl_industry(data: dict) -> str:
+    code = _s(data.get("industry_code"))
+    main = _s(data.get("industry_main"))
+    if code and main:
+        return f"업종코드: {code}  주업종: {main}"
+    return main or code
 
 
-def _fill_pbl_training_env(tables, data, idx: int = 7):
-    """Ⅱ-2 훈련환경 분석 — 12×7.
-
-    양식 row 매핑 (대략):
-      row 0 헤더(구분/내용) / row 1~2 훈련여건 시간/장소 / row 3 사내강사 /
-      row 4 대상인원 / row 5 대상자특성 / row 6 AI인프라 / row 7 요구분석 /
-      row 8 기대효과 / row 9 작성 가이드 영역
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-
-    # 실제 T7(12x7) 구조:
-    #   row 1 적정 훈련시간 [1,2..6]=값
-    #   row 2 적정 훈련장소 사내 [2,2]=체크박스, [2,3..6]=location
-    #   row 3 적정 훈련장소 사외 [3,2]=체크박스, [3,3..6]=special_notes
-    #   row 4 사내강사 [4,2]=□예, [4,3]=이름, [4,4..5]=값, [4,6]=□아니오
-    #   row 5 사내강사 [5,3]=직책, [5,4..5]=값
-    #   row 6 대상 인원 [6,2..6]=값
-    #   row 7 대상자 특성 [7,2..6]=값
-    #   row 8 AI활용 가능 인프라 [8,2..6]=값
-    #   row 9 AI훈련 요구분석 결과 [9,2..6]=값
-    #   row 10 기대효과 헤더
-    #   row 11 기대효과 [11,2..4]=As-is, [11,5..6]=To-be
-    mapping = [
-        (1, 2, _str_hours(data.get("proper_training_hours"))),
-        (2, 3, data.get("training_place_location")),
-        (3, 3, data.get("training_place_special_notes")),
-        (4, 4, data.get("internal_instructor_name")),
-        (5, 4, data.get("internal_instructor_position")),
-        (6, 2, _str_count(data.get("target_count"))),
-        (7, 2, _str_characteristics(data)),
-        (8, 2, _compose_ai_infra(data)),
-        (9, 2, data.get("training_needs_analysis")),
-        (11, 2, data.get("expectation_as_is")),
-        (11, 5, data.get("expectation_to_be")),
-    ]
-    for r, c, text in mapping:
-        try:
-            _set_cell_text(tbl, r, c, text or "")
-        except Exception:
-            pass
+def _pbl_address_block(data: dict) -> str:
+    """주소·훈련실시주소 값 셀은 rowSpan=2 병합(1 셀) → 한 셀에 조합."""
+    addr = _s(data.get("address"))
+    training = _s(data.get("training_address"))
+    if training and training != addr:
+        return f"{addr}\n(훈련실시: {training})".strip() if addr else f"훈련실시: {training}"
+    return addr
 
 
-def _str_hours(v):
-    return f"{v} 시간" if v else ""
+def _pbl_hours(v) -> str:
+    s = _s(v).strip()
+    return f"{s} 시간" if s else ""
 
 
-def _str_count(v):
-    return f"{v} 명" if v else ""
+def _pbl_count(v) -> str:
+    s = _s(v).strip()
+    return f"{s} 명" if s else ""
 
 
-def _str_characteristics(data):
-    career = data.get("target_career") or ""
-    level = data.get("target_level") or ""
+def _pbl_characteristics(data: dict) -> str:
+    career = _s(data.get("target_career"))
+    level = _s(data.get("target_level"))
     lines = []
     if career:
         lines.append(f"(업무 경력) {career}")
@@ -1111,703 +1271,282 @@ def _str_characteristics(data):
     return "\n".join(lines)
 
 
-def _compose_ai_infra(data):
-    tools = data.get("ai_tools_status") or ""
-    network = data.get("network_status") or ""
+def _pbl_ai_infra(data: dict) -> str:
+    tools = _s(data.get("ai_tools_status"))
+    network = _s(data.get("network_status"))
     pc = data.get("pc_count")
-    etc = data.get("etc_equipment") or ""
+    etc = _s(data.get("etc_equipment"))
     lines = []
     if tools:
         lines.append(f"AI 도구 사용 가능 환경: {tools}")
     if network:
         lines.append(f"네트워크 환경: {network}")
-    if pc is not None and pc != "":
+    if pc is not None and _s(pc).strip() != "":
         lines.append(f"PC 보유 현황: {pc} 대")
     if etc:
         lines.append(f"기타 장비: {etc}")
     return "\n".join(lines)
 
 
-def _fill_pbl_hrd_history(tables, build_pbl_table_rows, data, idx: int = 9):
-    """Ⅱ-3-가 HRD이음 결과 — 8×8.
+def _build_pbl_markers(data: dict) -> dict:
+    """payload → {{마커}}: 값 매핑 (로드맵 `_build_roadmap_markers` 미러)."""
+    m: dict = {}
 
-    이 표는 훈련이력 3행 + 지원이력 3행 구조이며 좌표가 복잡해 **최선 best-effort**로
-    중요 필드만 채운다. 원본 예시 텍스트는 reset 후 덮어쓴다.
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
+    # ── 표지 서명표 (T2) + 일자 (본문 앵커)
+    m["{{pbl_cover_pm_affiliation}}"] = _s(data.get("pm_affiliation"))
+    m["{{pbl_cover_pm_name}}"] = _s(data.get("pm_name"))
+    m["{{pbl_cover_external_expert_affiliation}}"] = _s(data.get("external_expert_affiliation"))
+    m["{{pbl_cover_external_expert_name}}"] = _s(data.get("external_expert_name"))
+    m["{{pbl_cover_internal_expert_affiliation}}"] = _s(data.get("internal_expert_affiliation"))
+    m["{{pbl_cover_internal_expert_name}}"] = _s(data.get("internal_expert_name"))
+    m["{{pbl_cover_doctor_affiliation}}"] = _s(data.get("doctor_affiliation"))
+    m["{{pbl_cover_doctor_name}}"] = _s(data.get("doctor_name"))
+    m["{{pbl_cover_report_date}}"] = _s(data.get("report_date"))
 
-    # 훈련이력 상단 3행 (row 1~3 가정)
-    training = build_pbl_table_rows(data, "training_history")
-    for i, row in enumerate(training[:3]):
-        base_row = 1 + i
-        try:
-            _set_cell_text(tbl, base_row, 2, _str_or_empty_local(row.get("seq")))
-            _set_cell_text(tbl, base_row, 3, _str_or_empty_local(row.get("program")))
-            _set_cell_text(tbl, base_row, 4, _str_or_empty_local(row.get("course_name")))
-            _set_cell_text(tbl, base_row, 5, _str_or_empty_local(row.get("method")))
-            _set_cell_text(tbl, base_row, 6, _str_or_empty_local(row.get("duration_days")))
-        except Exception:
-            pass
+    # ── Ⅰ. 훈련과정 개요 (T4)
+    m["{{pbl_overview_company_name}}"] = _s(data.get("company_name"))
+    m["{{pbl_overview_business_no}}"] = _s(data.get("business_registration_no"))
+    m["{{pbl_overview_industry}}"] = _pbl_industry(data)
+    m["{{pbl_overview_address}}"] = _pbl_address_block(data)
+    m["{{pbl_overview_branch}}"] = _s(data.get("jurisdiction_office"))
+    m["{{pbl_overview_contact_position}}"] = _s(data.get("contact_position"))
+    m["{{pbl_overview_contact_name}}"] = _s(data.get("contact_name"))
+    m["{{pbl_overview_contact_phone}}"] = _s(data.get("contact_phone"))
+    m["{{pbl_overview_contact_email}}"] = _s(data.get("contact_email"))
+    m["{{pbl_overview_course_name}}"] = _s(data.get("course_name"))
+    m["{{pbl_overview_ncs_code}}"] = _s(data.get("ncs_code"))
+    m["{{pbl_overview_training_hours}}"] = _pbl_hours(data.get("training_hours"))
+    m["{{pbl_overview_training_target}}"] = _s(data.get("training_target_label"))
+    m["{{pbl_overview_training_job}}"] = _s(data.get("training_job"))
 
-    # 지원이력 하단 3행 (row 5~7 가정)
-    support = build_pbl_table_rows(data, "support_history")
-    for i, row in enumerate(support[:3]):
-        base_row = 5 + i
-        try:
-            _set_cell_text(tbl, base_row, 2, _str_or_empty_local(row.get("year")))
-            _set_cell_text(tbl, base_row, 3, _str_or_empty_local(row.get("annual_limit")))
-            _set_cell_text(tbl, base_row, 4, _str_or_empty_local(row.get("supported")))
-            _set_cell_text(tbl, base_row, 5, _str_or_empty_local(row.get("ratio")))
-        except Exception:
-            pass
+    # ── Ⅱ-1-나 AI훈련 로드맵 수립 (T8 배경 / T9 주요 활동 / T10 결과)
+    m["{{pbl_roadmap_setup_background}}"] = _s(data.get("roadmap_setup_background"))
+    setup_acts = data.get("roadmap_setup_activities") or []
+    for i in range(_PBL_MAX_SETUP_ACTS):
+        a = setup_acts[i] if i < len(setup_acts) else {}
+        m[f"{{{{pbl_roadmap_activity_{i}_date}}}}"] = _s(a.get("date"))
+        m[f"{{{{pbl_roadmap_activity_{i}_content}}}}"] = _s(a.get("content"))
+        m[f"{{{{pbl_roadmap_activity_{i}_method}}}}"] = _s(a.get("method"))
+        m[f"{{{{pbl_roadmap_activity_{i}_pm_name}}}}"] = _s(a.get("pm_name"))
+        m[f"{{{{pbl_roadmap_activity_{i}_expert_name}}}}"] = _s(a.get("expert_name"))
+    level = _s(data.get("roadmap_ai_level")).upper()
+    for key, want in (("beginner", "BEGINNER"), ("intermediate", "INTERMEDIATE"), ("advanced", "ADVANCED")):
+        m[f"{{{{cb_pbl_roadmap_level_{key}}}}}"] = "☑" if level == want else "□"
+    m["{{pbl_roadmap_selected_task}}"] = _s(data.get("roadmap_selected_task"))
+    # 요약(r2) — 선행 로드맵 outcome_summary.main_content 연계 (로드맵 R-07 과 대칭)
+    m["{{pbl_roadmap_main_content}}"] = _s(data.get("roadmap_summary"))
 
+    # ── Ⅱ-1-다 AI훈련과정 개발 필요성 (T11)
+    m["{{pbl_analysis_course_necessity}}"] = _s(data.get("course_necessity"))
 
-def _str_or_empty_local(v):
-    return "" if v is None else str(v)
-
-
-def _fill_pbl_recommendations(tables, build_pbl_table_rows, data, idx: int = 10):
-    """Ⅱ-3-가 추천훈련사업·HRD제안 — 4×4.
-
-    row 0 헤더(추천훈련사업 | 1순위 | 2순위 | 3순위)
-    row 1 데이터 (사업명 3개)
-    row 2 HRD 제안
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    recommendations = build_pbl_table_rows(data, "recommendations")
-
-    # 예시 텍스트 reset
-    for r in range(1, tbl.row_count):
-        for c in range(1, tbl.column_count):
-            _set_cell_text(tbl, r, c, "")
-
-    # recommendations 정렬: rank 1, 2, 3
-    by_rank = {r.get("rank"): r for r in recommendations if r.get("rank") in (1, 2, 3)}
-    for rank in (1, 2, 3):
-        rec = by_rank.get(rank)
-        if rec:
-            try:
-                _set_cell_text(tbl, 1, rank, rec.get("program", ""))
-            except Exception:
-                pass
-
-    # HRD 제안 (row 2 전체 merge 되어있을 수 있음 — col 1 사용)
-    proposal = " / ".join(
-        f"{r.get('rank')}순위: {r.get('proposal')}" for r in recommendations if r.get("proposal")
-    )
-    try:
-        _set_cell_text(tbl, 2, 1, proposal)
-    except Exception:
-        pass
-
-
-def _fill_pbl_performance_activities(tables, build_pbl_table_rows, data, idx: int = 13):
-    """Ⅲ-1 수행활동 — 13×6 (V2 activities[] 또는 V1 performance_activities[]).
-
-    row 0 헤더 / 이후 차수당 4행 (PM / 외부전문가 / 내부전문가 / 능력개발전담주치의).
-    최대 3차 = 12 데이터 행. 초과 truncate.
-
-    V2 activities[] = [{round, date, content, method, participants (string)}]
-      → participants 가 단일 string 이므로 첫 행 (PM) col 5 에 표시,
-        2~4행은 라벨만 유지 (이름 빈칸).
-    V1 performance_activities[] = participants 가 dict (pm/external_expert/...).
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    # V2 activities key 우선
-    rows = build_pbl_table_rows(data, "activities")
-    is_v2 = bool(rows)
-    if not is_v2:
-        rows = build_pbl_table_rows(data, "performance_activities")
-    header_rows = 1
-    rows_per_round = 4
-    max_rounds = (tbl.row_count - header_rows) // rows_per_round  # = 3
-
-    # 데이터 영역 reset (원본 예시 텍스트 제거)
-    for r in range(header_rows, tbl.row_count):
-        for c in range(tbl.column_count):
-            _set_cell_text(tbl, r, c, "")
-
-    roles = (
-        ("컨설팅책임자(PM)", "pm"),
-        ("외부전문가(직무,HRD)", "external_expert"),
-        ("기업내부전문가", "internal_expert"),
-        ("능력개발전담주치의", "jurisdiction_manager"),
+    # ── Ⅱ-2-가 기업 AI 역량 수준 진단 — HRD이음 (T13, URL fallback)
+    from _placeholders_roadmap import _hrd_attachment_text
+    m["{{pbl_analysis_hrd_report_attachment}}"] = _hrd_attachment_text(
+        data.get("hrd_report_attachment")
     )
 
-    for ri, row in enumerate(rows[:max_rounds]):
-        base = header_rows + ri * rows_per_round
-        _set_cell_text(tbl, base, 0, row.get("round", ""))
-        _set_cell_text(tbl, base, 1, row.get("date", ""))
-        _set_cell_text(tbl, base, 2, row.get("content", ""))
-        method_text = row.get("method", "")
-        if not is_v2 and row.get("operation_mode"):
-            method_text = f"{method_text} ({row['operation_mode']})".strip()
-        _set_cell_text(tbl, base, 3, method_text)
+    # ── Ⅱ-2-나 기업 요구분석 (T14)
+    m["{{pbl_req_company_status}}"] = _s(data.get("roadmap_req_company_status"))
+    m["{{pbl_req_main_problems}}"] = _s(data.get("roadmap_req_main_problems"))
+    m["{{pbl_req_push_willingness}}"] = _s(data.get("roadmap_req_push_willingness"))
+    m["{{pbl_req_expected_outcomes}}"] = _s(data.get("roadmap_req_expected_outcomes"))
 
-        # V1·V2 통합 처리 (PR #5 Phase F-4): participants 는 dict
-        # {pm, external_expert, internal_expert, jurisdiction_manager} —
-        # _placeholders_pbl 의 build_pbl_table_rows 가 string·dict 모두
-        # 동일 dict 형태로 정규화한다. 4 역할 라벨 + 각 역할 성명을 4 행에 분배.
-        participants = row.get("participants") or {}
-        if not isinstance(participants, dict):
-            participants = {}
-        for role_i, (role_label, role_key) in enumerate(roles):
-            r = base + role_i
-            if r < tbl.row_count:
-                _set_cell_text(tbl, r, 4, role_label)
-                _set_cell_text(tbl, r, 5, participants.get(role_key, ""))
+    # ── Ⅱ-2-다 과업·워크플로우 분석표 (T15)
+    tasks = data.get("roadmap_task_analysis") or []
+    for i in range(_PBL_MAX_TASKS):
+        t = tasks[i] if i < len(tasks) else {}
+        m[f"{{{{pbl_task_{i}_job}}}}"] = _s(t.get("job"))
+        m[f"{{{{pbl_task_{i}_task}}}}"] = _s(t.get("task"))
+        m[f"{{{{pbl_task_{i}_as_is}}}}"] = _s(t.get("as_is"))
+        m[f"{{{{pbl_task_{i}_improvement}}}}"] = _s(t.get("improvement"))
 
+    # ── Ⅱ-2 훈련대상 과업 선정 (T16)
+    tt = data.get("roadmap_target_task") or {}
+    m["{{pbl_target_task_name}}"] = _s(tt.get("name"))
+    m["{{pbl_target_task_reason}}"] = _s(tt.get("reason"))
+    m["{{pbl_target_task_as_is}}"] = _s(tt.get("as_is"))
+    m["{{pbl_target_task_to_be}}"] = _s(tt.get("to_be"))
 
-def _fill_pbl_problems(tables, build_pbl_table_rows, data, idx: int = 15):
-    """Ⅲ-2-가 문제 정의 — 5×2.
+    # ── Ⅱ-3 기업 훈련환경 분석 (T17)
+    m["{{pbl_env_proper_hours}}"] = _pbl_hours(data.get("proper_training_hours"))
+    m["{{pbl_env_place_location}}"] = _s(data.get("training_place_location"))
+    m["{{pbl_env_place_special}}"] = _s(data.get("training_place_special_notes"))
+    m["{{pbl_env_instructor_name}}"] = _s(data.get("internal_instructor_name"))
+    m["{{pbl_env_instructor_position}}"] = _s(data.get("internal_instructor_position"))
+    m["{{pbl_env_target_count}}"] = _pbl_count(data.get("target_count"))
+    m["{{pbl_env_target_characteristics}}"] = _pbl_characteristics(data)
+    m["{{pbl_env_ai_infra}}"] = _pbl_ai_infra(data)
+    m["{{pbl_env_needs_analysis}}"] = _s(data.get("training_needs_analysis"))
+    m["{{pbl_env_expectation_as_is}}"] = _s(data.get("expectation_as_is"))
+    m["{{pbl_env_expectation_to_be}}"] = _s(data.get("expectation_to_be"))
 
-    우선순위 (V2 정본 → V2 problems[] → V1):
-      ① data["problem_definition_sheet"] {background, core, scope, constraints}
-         → 4 행 col 1 에 1:1 매핑 (양식 라벨 행 0 + 구분 col 0 = 양식 고정 텍스트).
-         TS V2 PBL 인터뷰 (`PBLInterviewStrict`) 가 송신하는 정본 키.
-      ② data["problems"][] {title, description, impact} (대안 형식, max 4)
-         → col 0 = title, col 1 = description.
-      ③ V1 fallback — problem_background / core / scope / constraints (legacy).
+    # ── Ⅲ-1 훈련과제 도출 수행활동 (T19) — **PBL 자체 입력**, 참석자 4역할 전부.
+    # offset0 PM / offset1 외부전문가 / offset2 기업내부전문가 / offset3 능력개발전담주치의.
+    # ⚠️ 로드맵 연계(`roadmap_perf_activities`) 아님 — 정본 표가 로드맵 Ⅰ-2 와 다르고
+    # PBL 인터뷰는 별도 일정이라 로드맵 값을 쓰면 날짜가 틀린다.
+    perf = data.get("pbl_perf_activities") or []
+    for i in range(_PBL_MAX_PERF_ACTS):
+        a = perf[i] if i < len(perf) else {}
+        # Ⅲ-1 수행활동은 일자만 표기 (양식에 시간 칸 없음) — 시간 줄이 섞여 오면 제거
+        m[f"{{{{pbl_perf_{i}_date}}}}"] = _s(a.get("date")).split("\n", 1)[0]
+        m[f"{{{{pbl_perf_{i}_content}}}}"] = _s(a.get("content"))
+        m[f"{{{{pbl_perf_{i}_method}}}}"] = _s(a.get("method"))
+        m[f"{{{{pbl_perf_{i}_pm_name}}}}"] = _s(a.get("pm_name"))
+        m[f"{{{{pbl_perf_{i}_external_expert_name}}}}"] = _s(a.get("external_expert_name"))
+        m[f"{{{{pbl_perf_{i}_internal_expert_name}}}}"] = _s(a.get("internal_expert_name"))
+        m[f"{{{{pbl_perf_{i}_jurisdiction_manager_name}}}}"] = _s(
+            a.get("jurisdiction_manager_name")
+        )
 
-    근거: TS payload (`hwpx-payload-pbl.ts:233-238`) 가 V2 정본 키
-    `problem_definition_sheet` 로 데이터 송신하지만, 이전 구현은 V1 키만
-    인지해 셀이 빈 채로 출력됐음. 패턴 참고: `_fill_pbl_performance_activities`
-    (V2 activities → V1 performance_activities fallback).
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
+    # ── Ⅲ-2-가 문제 정의서 (T21)
+    sheet = data.get("problem_definition_sheet") or {}
+    m["{{pbl_problem_background}}"] = _s(sheet.get("background"))
+    m["{{pbl_problem_core}}"] = _s(sheet.get("core"))
+    m["{{pbl_problem_scope}}"] = _s(sheet.get("scope"))
+    m["{{pbl_problem_constraints}}"] = _s(sheet.get("constraints"))
 
-    # ① V2 정본 — problem_definition_sheet
-    sheet = data.get("problem_definition_sheet")
-    if isinstance(sheet, dict) and any(
-        sheet.get(k) for k in ("background", "core", "scope", "constraints")
-    ):
-        mapping = [
-            (1, 1, sheet.get("background")),
-            (2, 1, sheet.get("core")),
-            (3, 1, sheet.get("scope")),
-            (4, 1, sheet.get("constraints")),
-        ]
-        for r, c, text in mapping:
-            _set_cell_text(tbl, r, c, text or "")
-        return
+    # ── Ⅲ-3-가 훈련대상 업무 선정 (T23) — 직무 col 병합 해제로 전 행 채움
+    sels = data.get("roadmap_task_selections") or []
+    for i in range(_PBL_MAX_SELECTIONS):
+        s = sels[i] if i < len(sels) else {}
+        if i not in _PBL_SELECTION_JOB_SKIP:
+            m[f"{{{{pbl_selection_{i}_job}}}}"] = _s(s.get("job"))
+        m[f"{{{{pbl_selection_{i}_task}}}}"] = _s(s.get("task"))
+        m[f"{{{{pbl_selection_{i}_as_is}}}}"] = _s(s.get("as_is"))
+        m[f"{{{{pbl_selection_{i}_improvement}}}}"] = _s(s.get("improvement"))
+        m[f"{{{{pbl_selection_{i}_ai_necessity}}}}"] = _s(s.get("ai_necessity"))
+        m[f"{{{{pbl_selection_{i}_training_selected}}}}"] = (
+            "☑" if s.get("training_selected") else "☐"
+        )
 
-    # ② V2 problems[] (대안 형식)
-    problems = build_pbl_table_rows(data, "problems")
-    if problems:
-        max_rows = min(4, tbl.row_count - 1)
-        for i, row in enumerate(problems[:max_rows]):
-            target_row = 1 + i
-            _set_cell_text(tbl, target_row, 0, row.get("title", ""))
-            _set_cell_text(tbl, target_row, 1, row.get("description", ""))
-        return
+    # ── Ⅲ-3-나 AI기반 문제해결의 필요성 (T24)
+    m["{{pbl_tasks_target_necessity}}"] = _s(data.get("target_necessity"))
 
-    # ③ V1 fallback (legacy)
-    mapping = [
-        (1, 1, data.get("problem_background")),
-        (2, 1, data.get("problem_core")),
-        (3, 1, data.get("problem_scope")),
-        (4, 1, data.get("problem_constraints")),
-    ]
-    for r, c, text in mapping:
-        _set_cell_text(tbl, r, c, text or "")
+    # ── Ⅲ-3-다 훈련대상 업무 세부내용 (T26)
+    details = data.get("target_details") or []
+    for i in range(_PBL_MAX_DETAILS):
+        d = details[i] if i < len(details) else {}
+        m[f"{{{{pbl_detail_{i}_title}}}}"] = _s(d.get("title"))
+        m[f"{{{{pbl_detail_{i}_as_is}}}}"] = _s(d.get("as_is"))
+        m[f"{{{{pbl_detail_{i}_to_be}}}}"] = _s(d.get("to_be"))
+        m[f"{{{{pbl_detail_{i}_required_knowledge}}}}"] = _s(d.get("required_knowledge"))
+        m[f"{{{{pbl_detail_{i}_required_skill}}}}"] = _s(d.get("required_skill"))
 
+    # ── Ⅳ-1 훈련 목표 (T28)
+    m["{{pbl_ops_training_goal}}"] = _s(data.get("training_goal"))
 
-# 하위 호환 alias (기존 호출자 보호)
-_fill_pbl_problem_definition = _fill_pbl_problems
+    # ── Ⅳ-2 성과분석 측정 지표 (T29)
+    m["{{pbl_ops_quantitative_metrics}}"] = _s(data.get("quantitative_metrics"))
+    m["{{pbl_ops_qualitative_metrics}}"] = _s(data.get("qualitative_metrics"))
 
+    # ── Ⅳ-3 AI도구 활용 계획 (T31)
+    tools = data.get("ai_tool_usage_plan") or []
+    for i in range(_PBL_MAX_TOOLS):
+        t = tools[i] if i < len(tools) else {}
+        m[f"{{{{pbl_ops_tool_{i}_stage}}}}"] = _s(t.get("stage"))
+        m[f"{{{{pbl_ops_tool_{i}_main_activity}}}}"] = _s(t.get("main_activity"))
+        m[f"{{{{pbl_ops_tool_{i}_ai_tools}}}}"] = _join_list(t.get("ai_tools"))
+        m[f"{{{{pbl_ops_tool_{i}_utilized_data}}}}"] = _s(t.get("utilized_data"))
+        m[f"{{{{pbl_ops_tool_{i}_purpose}}}}"] = _s(t.get("purpose"))
+        m[f"{{{{pbl_ops_tool_{i}_specific_method}}}}"] = _s(t.get("specific_method"))
 
-def _fill_pbl_problem_priorities(tables, build_pbl_table_rows, data, idx: int = 17):
-    """Ⅲ-2-나 문제 우선순위 — 6×7 (V2 priority.items[]).
+    # ── Ⅳ-4-가 훈련과정 개요 (T33)
+    m["{{pbl_ops_course_name}}"] = _s(data.get("training_plan_course_name"))
+    m["{{pbl_ops_training_period}}"] = _s(data.get("training_period"))
 
-    row 0 헤더 / row 1~5 데이터.
-    col 0 = 문제명 / col 1~5 = score 1~5 (선택 시 √) / col 6 = 선정여부 (rank=1 ☑).
+    # ── Ⅳ-4-나 학습그룹 구성 (T34) — 강사→훈련생 순, 소속/직위/성명만 (구분·역할 양식 고정)
+    group = data.get("learning_group") or {}
+    lg_rows = []
+    for ins in (group.get("instructors") or []):
+        lg_rows.append(ins if isinstance(ins, dict) else {})
+    for tr in (group.get("trainees") or []):
+        lg_rows.append(tr if isinstance(tr, dict) else {})
+    for i in range(_PBL_MAX_GROUP):
+        r = lg_rows[i] if i < len(lg_rows) else {}
+        m[f"{{{{pbl_ops_group_{i}_affiliation}}}}"] = _s(r.get("affiliation"))
+        m[f"{{{{pbl_ops_group_{i}_position}}}}"] = _s(r.get("position"))
+        m[f"{{{{pbl_ops_group_{i}_name}}}}"] = _s(r.get("name"))
 
-    V2 priority.items[] = [{problem, score(1-5), rank}] (rank=1 → selected).
-    V1 호환: priorities 가 비어 있으면 problem_priorities (V1 형식) fallback.
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    rows = build_pbl_table_rows(data, "priorities")
-    if not rows:
-        # V1 호환 (problem_name/priority/selected)
-        v1_rows = build_pbl_table_rows(data, "problem_priorities")
-        rows = [
-            {
-                "problem": r.get("problem_name", ""),
-                "score": r.get("priority", 0),
-                "rank": 1 if r.get("selected") else 0,
-                "selected": r.get("selected", False),
-            }
-            for r in v1_rows
-        ]
-    max_rows = min(5, tbl.row_count - 1)
-
-    for r in range(1, tbl.row_count):
-        for c in range(tbl.column_count):
-            _set_cell_text(tbl, r, c, "")
-
-    for i, row in enumerate(rows[:max_rows]):
-        target_row = 1 + i
-        _set_cell_text(tbl, target_row, 0, row.get("problem", ""))
-        # 점수 1~5: 선택된 칼럼에 √ 표시
-        try:
-            score = int(row.get("score") or 0)
-        except (TypeError, ValueError):
-            score = 0
-        if 1 <= score <= 5:
-            _set_cell_text(tbl, target_row, score, "√")
-        # rank=1 → selected ☑
-        if row.get("selected"):
-            _set_cell_text(tbl, target_row, 6, "☑")
-
-
-def _fill_pbl_target_tasks(tables, build_pbl_table_rows, data, idx: int = 19):
-    """Ⅲ-3-가 훈련대상 업무 선정 — 6×7 (V2 단일 target).
-
-    양식 6x7 — row 0 헤더, row 1 = target 한 항목 (V2 단일 객체).
-    col 0 = name, col 1~5 = 점수 (V2 schema 는 자유서술이므로 비움), col 6 = ☑.
-
-    V1 호환: target_tasks (배열) 도 처리.
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    rows = build_pbl_table_rows(data, "target_single")
-    if not rows:
-        # V1 호환 — target_tasks (배열) 사용
-        v1_rows = build_pbl_table_rows(data, "target_tasks")
-        rows = [
-            {
-                "name": r.get("task_name", ""),
-                "necessity_score": r.get("necessity", 0),
-                "selected": r.get("selected", False),
-            }
-            for r in v1_rows
-        ]
-    max_rows = min(5, tbl.row_count - 1)
-
-    for r in range(1, tbl.row_count):
-        for c in range(tbl.column_count):
-            _set_cell_text(tbl, r, c, "")
-
-    for i, row in enumerate(rows[:max_rows]):
-        target_row = 1 + i
-        _set_cell_text(tbl, target_row, 0, row.get("name", ""))
-        # V1 호환: necessity_score 가 1~5 정수인 경우만 √ 처리
-        try:
-            score = int(row.get("necessity_score") or 0)
-        except (TypeError, ValueError):
-            score = 0
-        if 1 <= score <= 5:
-            _set_cell_text(tbl, target_row, score, "√")
-        # V2 target_single 은 single 항목이므로 항상 ☑
-        if row.get("selected", True):
-            _set_cell_text(tbl, target_row, 6, "☑")
-
-
-def _fill_pbl_target_task_details(tables, build_pbl_table_rows, data, idx: int = 22):
-    """Ⅲ-3-다 훈련대상 업무 세부내용 — 4×5 (V2 PR #7: 5 컬럼 1:1 정합).
-
-    양식 4x5 — row 0~1 헤더, row 2~3 데이터 (max_items=2).
-    V2 details[] 5 필드: {title, as_is, to_be, required_knowledge, required_skill}.
-      → col 0 = title (업무명)
-      → col 1 = as_is (현재 업무방식)
-      → col 2 = to_be (AI활용방식)
-      → col 3 = required_knowledge (요구지식)
-      → col 4 = required_skill (기술)
-
-    V1 호환: target_task_details (V1 형식) 가 있으면 그대로 사용.
-    PR #5 의 단일 description 통합 회귀를 보강.
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    rows = build_pbl_table_rows(data, "target_details_v2")
-    use_v2 = bool(rows)
-    if not use_v2:
-        rows = build_pbl_table_rows(data, "target_task_details")
-    max_rows = min(2, tbl.row_count - 2)
-
-    for r in range(2, tbl.row_count):
-        for c in range(tbl.column_count):
-            _set_cell_text(tbl, r, c, "")
-
-    for i, row in enumerate(rows[:max_rows]):
-        target_row = 2 + i
-        if use_v2:
-            _set_cell_text(tbl, target_row, 0, row.get("title", ""))
-            _set_cell_text(tbl, target_row, 1, row.get("as_is", ""))
-            _set_cell_text(tbl, target_row, 2, row.get("to_be", ""))
-            _set_cell_text(tbl, target_row, 3, row.get("required_knowledge", ""))
-            _set_cell_text(tbl, target_row, 4, row.get("required_skill", ""))
-        else:
-            _set_cell_text(tbl, target_row, 0, row.get("task_name", ""))
-            _set_cell_text(tbl, target_row, 1, row.get("as_is") or "")
-            _set_cell_text(tbl, target_row, 2, row.get("to_be") or "")
-            _set_cell_text(tbl, target_row, 3, row.get("required_knowledge", ""))
-            _set_cell_text(tbl, target_row, 4, row.get("required_skill", ""))
-
-
-def _fill_pbl_ai_level_current(tables, current_level, labels, grade_map, idx: int = 24):
-    """Ⅲ-4-가 현재 AI역량 수준 — 5×3.
-
-    row 0 헤더(구분/수준(등급)/주요내용)
-    row 1~4 = AI기초형/AI탐구형/AI활용형/AI선도형
-    col 0 = 체크박스, col 1 = 라벨(등급), col 2 = 설명.
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    descriptions = {
-        "AI기초형": "AI 및 디지털 기술 도입에 대한 인식은 있으나, 실제 활용은 거의 없거나 매우 제한적",
-        "AI탐구형": "AI 및 디지털 기술에 대해 학습하고, 내부 탐색 또는 외부 파일럿 검토를 준비(검토) 중인 단계",
-        "AI활용형": "생성형 AI나 기타 AI기술이 특정 단위업무나 부서에서 활용되고 있으며, 데이터 기반 개선이 나타나기 시작한 단계",
-        "AI선도형": "AI가 조직 전반에 내재화되어 있으며, 조직 AX 전환 및 전 프로세스 AI 기술 적용, 신사업과 혁신적 활용까지 이루어진 단계",
-    }
-    for i, label in enumerate(labels):
-        r = 1 + i
-        if r >= tbl.row_count:
-            break
-        checkbox = "☑" if label == current_level else "□"
-        _set_cell_text(tbl, r, 0, checkbox)
-        grade = grade_map.get(label, "")
-        _set_cell_text(tbl, r, 1, f"{label}({grade})")
-        _set_cell_text(tbl, r, 2, descriptions.get(label, ""))
-
-
-def _fill_pbl_ai_level_improvement(tables, data, enum_to_label, grade_map, idx: int = 25):
-    """Ⅲ-4-나 훈련 이후 AI역량 수준 향상도 — 2×3 (V2 enum + note).
-
-    row 0 헤더(현행/향후/사유) / row 1 = 데이터 (cell_fill, 4 등급 체크박스 아님).
-
-    V2: data.get("current_ai_level") / data.get("expected_ai_level") 는 영문 enum
-    (BASIC/EXPLORER/USER/LEADER). 한글 라벨 + 등급으로 변환.
-    V2: data.get("expected_ai_level_note") = 사유.
-    V1 호환: ai_current_level/ai_expected_level (한글) + ai_improvement_reason.
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-
-    # V2 enum 우선
-    current_enum = (data.get("current_ai_level") or "").upper()
-    expected_enum = (data.get("expected_ai_level") or "").upper()
-    current_label = enum_to_label.get(current_enum) or data.get("ai_current_level") or ""
-    expected_label = enum_to_label.get(expected_enum) or data.get("ai_expected_level") or ""
-    reason = (
-        data.get("expected_ai_level_note")
-        or data.get("ai_improvement_reason")
-        or ""
+    # ── Ⅳ-4-다 훈련 교과목 프로파일 상단 (T35)
+    m["{{pbl_ops_subject_course_name}}"] = _s(data.get("subject_profile_course_name"))
+    m["{{pbl_ops_subject_total_hours}}"] = _s(data.get("total_training_hours"))
+    m["{{pbl_ops_subject_training_goals}}"] = _s(data.get("subject_training_goals"))
+    m["{{pbl_ops_subject_ai_tools}}"] = _s(data.get("subject_ai_tools"))
+    m["{{pbl_ops_subject_utilized_data}}"] = _s(data.get("subject_utilized_data"))
+    m["{{pbl_ops_subject_analysis_method}}"] = _s(data.get("subject_analysis_method"))
+    # 훈련내용 반복 행 (T35 r7~9) + 전체시간·강사시간 자동 합산
+    contents = data.get("training_contents") or []
+    sum_h = sum_ext = sum_int = 0
+    has_h = has_ext = has_int = False
+    for i in range(_PBL_MAX_CONTENTS):
+        c = contents[i] if i < len(contents) else {}
+        ih = c.get("instructor_hours") or {}
+        th, ext, intl = c.get("training_hours"), ih.get("external"), ih.get("internal")
+        m[f"{{{{pbl_ops_content_{i}_unit_name}}}}"] = _s(c.get("unit_name"))
+        # 세부내용 항목마다 글머리(▪) — 로드맵 명세서 세부내용과 동일 방식.
+        # \n 분리된 항목별로 부착(세부내용 셀은 좌측 정렬 — insert_placeholders 지정).
+        _det_items = [ln for ln in _s(c.get("detail")).split("\n") if ln.strip()]
+        m[f"{{{{pbl_ops_content_{i}_detail}}}}"] = "\n".join(f"▪ {it}" for it in _det_items)
+        m[f"{{{{pbl_ops_content_{i}_training_hours}}}}"] = _s(th)
+        m[f"{{{{pbl_ops_content_{i}_external_hours}}}}"] = _s(ext)
+        m[f"{{{{pbl_ops_content_{i}_internal_hours}}}}"] = _s(intl)
+        iv = _to_int(th)
+        if iv is not None:
+            sum_h += iv
+            has_h = True
+        iv = _to_int(ext)
+        if iv is not None:
+            sum_ext += iv
+            has_ext = True
+        iv = _to_int(intl)
+        if iv is not None:
+            sum_int += iv
+            has_int = True
+    m["{{pbl_ops_subject_sum_hours}}"] = (
+        str(sum_h) if has_h else _s(data.get("subject_total_sum_hours"))
     )
+    m["{{pbl_ops_subject_sum_external}}"] = str(sum_ext) if has_ext else ""
+    m["{{pbl_ops_subject_sum_internal}}"] = str(sum_int) if has_int else ""
 
-    def _fmt(label: str) -> str:
-        if not label:
-            return ""
-        grade = grade_map.get(label, "")
-        return f"{label}({grade})" if grade else label
+    # ── Ⅳ-4-라 시설·장비 (T37)
+    facs = data.get("facilities") or []
+    for i in range(_PBL_MAX_FACILITIES):
+        f = facs[i] if i < len(facs) else {}
+        m[f"{{{{pbl_ops_facility_{i}_seq}}}}"] = _s(f.get("seq"))
+        m[f"{{{{pbl_ops_facility_{i}_category}}}}"] = _s(f.get("category"))
+        m[f"{{{{pbl_ops_facility_{i}_name}}}}"] = _s(f.get("name"))
+        m[f"{{{{pbl_ops_facility_{i}_spec}}}}"] = _s(f.get("spec"))
+        m[f"{{{{pbl_ops_facility_{i}_location}}}}"] = _s(f.get("location"))
 
-    if tbl.row_count >= 2:
-        _set_cell_text(tbl, 1, 0, _fmt(current_label))
-        _set_cell_text(tbl, 1, 1, _fmt(expected_label))
-        _set_cell_text(tbl, 1, 2, reason)
+    # ── Ⅳ-4-마 훈련강사 (T38)
+    instrs = data.get("training_instructors") or []
+    for i in range(_PBL_MAX_INSTRUCTORS):
+        ins = instrs[i] if i < len(instrs) else {}
+        m[f"{{{{pbl_ops_instructor_{i}_name}}}}"] = _s(ins.get("name"))
+        m[f"{{{{pbl_ops_instructor_{i}_internal_external}}}}"] = _s(ins.get("internal_external"))
+        m[f"{{{{pbl_ops_instructor_{i}_career_years}}}}"] = _s(ins.get("career_years"))
+        m[f"{{{{pbl_ops_instructor_{i}_work_name}}}}"] = _s(ins.get("work_name"))
+        # 글머리는 양식 자동 글머리(BULLET paraPr)에 위임 — 값엔 리터럴 '•' 미부착
+        m[f"{{{{pbl_ops_instructor_{i}_detailed_training_content}}}}"] = _join_list(
+            ins.get("detailed_training_content")
+        )
 
+    # ── Ⅳ-5-가 과정평가 계획 상단 (T39)
+    m["{{pbl_ops_eval_course_name}}"] = _s(data.get("course_eval_course_name"))
+    m["{{pbl_ops_eval_target}}"] = _s(data.get("course_eval_target"))
+    m["{{pbl_ops_eval_date}}"] = _s(data.get("course_eval_date"))
+    m["{{pbl_ops_eval_criteria}}"] = _s(data.get("course_eval_criteria"))
+    m["{{pbl_ops_eval_result}}"] = _s(data.get("course_eval_result"))
+    m["{{pbl_ops_eval_overall_comment}}"] = _s(data.get("course_eval_overall_comment"))
+    # 수행 체크리스트 (T39 r7~13) — performance_level 열에 √
+    checklist = data.get("performance_checklist") or []
+    for i in range(_PBL_MAX_CHECKLIST):
+        c = checklist[i] if i < len(checklist) else {}
+        m[f"{{{{pbl_ops_checklist_{i}_unit_name}}}}"] = _s(c.get("unit_name"))
+        m[f"{{{{pbl_ops_checklist_{i}_evaluation_criteria}}}}"] = _s(c.get("evaluation_criteria"))
+        lvl = _to_int(c.get("performance_level")) or 0
+        for L in range(1, 6):
+            m[f"{{{{pbl_ops_checklist_{i}_level_{L}_check}}}}"] = "√" if lvl == L else ""
 
-def _fill_pbl_ai_tool_usage(tables, build_pbl_table_rows, data, idx: int = 28):
-    """Ⅳ-2 AI 도구 활용 계획 — 6×6.
-
-    row 0 헤더 / row 1~5 = 데이터 5단계.
-    col: 0=단계, 1=주요활동, 2=AI도구, 3=활용데이터, 4=활용목적, 5=구체적방법.
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    rows = build_pbl_table_rows(data, "ai_tool_usage_plan")
-    max_rows = min(5, tbl.row_count - 1)
-
-    for r in range(1, tbl.row_count):
-        for c in range(tbl.column_count):
-            _set_cell_text(tbl, r, c, "")
-
-    for i, row in enumerate(rows[:max_rows]):
-        target_row = 1 + i
-        _set_cell_text(tbl, target_row, 0, row.get("stage", ""))
-        _set_cell_text(tbl, target_row, 1, row.get("main_activity", ""))
-        _set_cell_text(tbl, target_row, 2, row.get("ai_tools", ""))
-        _set_cell_text(tbl, target_row, 3, row.get("utilized_data", ""))
-        _set_cell_text(tbl, target_row, 4, row.get("purpose", ""))
-        _set_cell_text(tbl, target_row, 5, row.get("specific_method", ""))
-
-
-def _fill_pbl_course_overview(tables, data, idx: int = 30):
-    """Ⅳ-3-가 훈련과정 개요 — 2×2 (과정명/훈련기간)."""
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    _set_cell_text(tbl, 0, 1, data.get("training_plan_course_name") or "")
-    _set_cell_text(tbl, 1, 1, data.get("training_period") or "")
-
-
-def _fill_pbl_learning_group(tables, build_pbl_table_rows, data, idx: int = 31):
-    """Ⅳ-3-나 학습그룹 구성 — 6×6.
-
-    row 0 헤더 / row 1~2 훈련강사(외부/내부) / row 3~5 훈련생.
-    col: 0=구분 / 1=역할(강사/훈련생 or 팀원/팀장) / 2=역할상세 /
-         3=소속(부서) / 4=직위 / 5=성명.
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    rows = build_pbl_table_rows(data, "learning_group")
-    # 데이터 영역 reset
-    for r in range(1, tbl.row_count):
-        for c in range(tbl.column_count):
-            _set_cell_text(tbl, r, c, "")
-
-    max_rows = tbl.row_count - 1
-    for i, row in enumerate(rows[:max_rows]):
-        target_row = 1 + i
-        _set_cell_text(tbl, target_row, 0, row.get("category", ""))
-        _set_cell_text(tbl, target_row, 1, row.get("type", ""))
-        _set_cell_text(tbl, target_row, 2, row.get("role", ""))
-        _set_cell_text(tbl, target_row, 3, row.get("affiliation", ""))
-        _set_cell_text(tbl, target_row, 4, row.get("position", ""))
-        _set_cell_text(tbl, target_row, 5, row.get("name", ""))
-
-
-def _fill_pbl_subject_profile(tables, build_pbl_table_rows, data, selected_methods, idx: int = 32):
-    """Ⅳ-3-다 훈련 교과목 프로파일 — 15×10 (대형 복합 표).
-
-    신규 정본 (8952576) 의 정확한 좌표 (병합 셀의 대표 col 만 채움):
-      row 0 = 헤더 "훈련 교과목 프로파일" (col 0~9 병합)
-      row 1 col 1 = 과정명           (col 1·2·3·4 병합, span=(1,4))
-      row 1 col 6 = 총 훈련시간(h)   (col 6·7·8·9 병합, span=(1,4))
-      row 2 col 1 = 훈련목표         (col 1~9 병합, span=(1,9))
-      row 3 col 1 = 활용 AI도구      (col 1·2·3·4 병합, span=(1,4))
-      row 3 col 7 = 활용 데이터       (col 7·8·9 병합, span=(1,3))
-      row 4 col 1 = 분석방법         (col 1~9 병합, span=(1,9))
-      row 5~6 = 훈련내용 헤더 (업무명·세부내용·훈련시간·강사 투입시간)
-      row 7~9 = 훈련내용 데이터 (max 3 행)
-        col 0   = "훈련내용" (rowspan=6 병합 라벨)
-        col 1   = 업무(단원)명         (col 1·2 병합)
-        col 3   = 세부 내용             (col 3·4·5 병합)
-        col 6   = 훈련시간(H)          (col 6·7 병합)
-        col 8   = 강사 투입시간(외부)
-        col 9   = 강사 투입시간(내부)
-      row 10 col 6 = 전체시간 (col 6·7 합)
-
-    이전 코드는 data_start=5 로 잘못 위치 (헤더 row) 에 데이터를 채우고 있었다.
-    PR #5 사용자 한컴 검증에서 "거의 다 누락" 으로 보고됨 — 정확한 좌표로 보강.
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-
-    # === 상단 7 cell_fill 매핑 (병합 셀의 대표 col 만) ===
-    upper_mapping = [
-        (1, 1, data.get("subject_profile_course_name")),
-        (1, 6, data.get("total_training_hours")),
-        (2, 1, data.get("subject_training_goals")),
-        (3, 1, data.get("subject_ai_tools")),
-        (3, 7, data.get("subject_utilized_data")),
-        (4, 1, data.get("subject_analysis_method")),
-    ]
-    for r, c, text in upper_mapping:
-        try:
-            _set_cell_text(tbl, r, c, text or "")
-        except Exception:
-            pass
-
-    # === training_contents 반복 행 (row 7~9, max 3) ===
-    contents = build_pbl_table_rows(data, "training_contents")
-    data_start = 7
-    max_rows = 3
-    # 데이터 영역 reset (양식 sample 텍스트 제거 — col 0 "훈련내용" 라벨은 병합이라 보존)
-    for offset in range(max_rows):
-        r = data_start + offset
-        if r >= tbl.row_count:
-            break
-        for c in (1, 3, 6, 8, 9):
-            try:
-                _set_cell_text(tbl, r, c, "")
-            except Exception:
-                pass
-
-    for offset, row in enumerate(contents[:max_rows]):
-        r = data_start + offset
-        if r >= tbl.row_count:
-            break
-        try:
-            _set_cell_text(tbl, r, 1, row.get("unit_name", ""))
-            _set_cell_text(tbl, r, 3, row.get("detail", ""))
-            _set_cell_text(tbl, r, 6, row.get("training_hours", ""))
-            _set_cell_text(tbl, r, 8, row.get("external_hours", ""))
-            _set_cell_text(tbl, r, 9, row.get("internal_hours", ""))
-        except Exception:
-            pass
-
-    # === row 10 전체시간 합 (col 6·7 병합) — training_contents 자동 합산 ===
-    # PR #5 Phase F-5 (사용자 한컴 재검증 후): subject_total_sum_hours 입력값과
-    # training_contents 합이 안 맞는 회귀 (예: 사용자 입력 40 vs 4+8=12) 가 보고됨.
-    # 데이터 일관성 보장을 위해 training_contents[].training_hours 합산을 우선
-    # 사용. 합산 실패 (모든 항목이 숫자 아님) 시에만 fixture 값 fallback.
-    auto_total = 0
-    has_numeric = False
-    for c in contents:
-        raw = c.get("training_hours")
-        if raw is None or str(raw).strip() == "":
-            continue
-        try:
-            auto_total += int(float(str(raw)))
-            has_numeric = True
-        except (TypeError, ValueError):
-            continue
-
-    if has_numeric:
-        total_value = str(auto_total)
-    else:
-        total_value = str(data.get("subject_total_sum_hours") or "")
-
-    if total_value:
-        try:
-            _set_cell_text(tbl, 10, 6, total_value)
-        except Exception:
-            pass
-
-    # === row 10 외부·내부 강사 시간 자동 합산 (col 8 외부, col 9 내부) ===
-    auto_ext, auto_int = 0, 0
-    has_ext, has_int = False, False
-    for c in contents:
-        for raw_key, accumulator, has_flag_name in (
-            ("external_hours", "auto_ext", "has_ext"),
-            ("internal_hours", "auto_int", "has_int"),
-        ):
-            raw = c.get(raw_key)
-            if raw is None or str(raw).strip() == "":
-                continue
-            try:
-                val = int(float(str(raw)))
-                if raw_key == "external_hours":
-                    auto_ext += val
-                    has_ext = True
-                else:
-                    auto_int += val
-                    has_int = True
-            except (TypeError, ValueError):
-                continue
-
-    if has_ext:
-        try:
-            _set_cell_text(tbl, 10, 8, str(auto_ext))
-        except Exception:
-            pass
-    if has_int:
-        try:
-            _set_cell_text(tbl, 10, 9, str(auto_int))
-        except Exception:
-            pass
-
-
-def _fill_pbl_facilities(tables, build_pbl_table_rows, data, idx: int = 34):
-    """Ⅳ-3-라 시설·장비 — 3×5 (row 0 헤더 + row 1~2 데이터)."""
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    rows = build_pbl_table_rows(data, "facilities")
-    max_rows = min(2, tbl.row_count - 1)
-
-    for r in range(1, tbl.row_count):
-        for c in range(tbl.column_count):
-            _set_cell_text(tbl, r, c, "")
-
-    for i, row in enumerate(rows[:max_rows]):
-        target_row = 1 + i
-        _set_cell_text(tbl, target_row, 0, row.get("seq", ""))
-        _set_cell_text(tbl, target_row, 1, row.get("category", ""))
-        _set_cell_text(tbl, target_row, 2, row.get("name", ""))
-        _set_cell_text(tbl, target_row, 3, row.get("spec", ""))
-        _set_cell_text(tbl, target_row, 4, row.get("location", ""))
-
-
-def _fill_pbl_training_instructors(tables, build_pbl_table_rows, data, idx: int = 35):
-    """Ⅳ-3-마 훈련강사 — 3×5."""
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    rows = build_pbl_table_rows(data, "training_instructors")
-    max_rows = min(2, tbl.row_count - 1)
-
-    for r in range(1, tbl.row_count):
-        for c in range(tbl.column_count):
-            _set_cell_text(tbl, r, c, "")
-
-    for i, row in enumerate(rows[:max_rows]):
-        target_row = 1 + i
-        _set_cell_text(tbl, target_row, 0, row.get("name", ""))
-        _set_cell_text(tbl, target_row, 1, row.get("internal_external", ""))
-        _set_cell_text(tbl, target_row, 2, row.get("career_years", ""))
-        _set_cell_text(tbl, target_row, 3, row.get("work_name", ""))
-        _set_cell_text(tbl, target_row, 4, row.get("detailed_training_content", ""))
-
-
-def _fill_pbl_course_evaluation(tables, build_pbl_table_rows, data, idx: int = 36):
-    """Ⅳ-4-가 과정평가 계획 — 16×9 (복합).
-
-    상단 row 0~2 = 과정명/평가대상/일자·기준/결과 — 플레이스홀더로 치환됨.
-    중간 row 4~10 = 수행 체크리스트 7행 (업무단원명/평가기준/수준 1~5 체크 + √)
-    row 11 총평 / row 12~15 = 척도 고정.
-    """
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    checklist = build_pbl_table_rows(data, "performance_checklist")
-    data_start = 4
-    max_rows = min(7, tbl.row_count - data_start)
-
-    # 체크리스트 영역 reset
-    for r in range(data_start, data_start + 7):
-        if r >= tbl.row_count:
-            break
-        for c in range(min(8, tbl.column_count)):
-            try:
-                _set_cell_text(tbl, r, c, "")
-            except Exception:
-                pass
-
-    for i, row in enumerate(checklist[:max_rows]):
-        r = data_start + i
-        if r >= tbl.row_count:
-            break
-        _set_cell_text(tbl, r, 0, row.get("unit_name", ""))
-        _set_cell_text(tbl, r, 1, row.get("evaluation_criteria", ""))
-        level = int(row.get("performance_level") or 0)
-        if 1 <= level <= 5:
-            _set_cell_text(tbl, r, 1 + level, "√")
-
-
-def _fill_pbl_performance_metrics(tables, data, idx: int = 39):
-    """Ⅴ-1 성과분석 측정 지표 — 3×2 (row 0 헤더 / row 1 정량 / row 2 정성)."""
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    from _placeholders_pbl import _bulletize  # type: ignore
-    _set_cell_text(tbl, 1, 1, _bulletize(data.get("quantitative_metrics")))
-    _set_cell_text(tbl, 2, 1, _bulletize(data.get("qualitative_metrics")))
-
-
-def _fill_pbl_dissemination(tables, data, idx: int = 40):
-    """Ⅴ-2 성과 확산 전략 — 3×2 (row 1 내재화 / row 2 전사확산)."""
-    if idx >= len(tables):
-        return
-    tbl = tables[idx]
-    from _placeholders_pbl import _bulletize  # type: ignore
-    _set_cell_text(tbl, 1, 1, _bulletize(data.get("internalization_plan")))
-    _set_cell_text(tbl, 2, 1, _bulletize(data.get("dissemination_plan")))
+    _apply_sentence_periods(m)
+    return m

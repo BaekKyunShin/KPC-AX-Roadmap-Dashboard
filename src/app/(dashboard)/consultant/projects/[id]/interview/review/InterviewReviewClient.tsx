@@ -15,10 +15,7 @@ import type { PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
 import { editInterviewFieldRoadmap, editInterviewFieldPbl } from './actions';
 import { StaleResultBanner } from './_components/StaleResultBanner';
 import { ReviewActions } from './_components/ReviewActions';
-import {
-  SttInsightsCards,
-  hasAnyStt,
-} from '@/components/interview/SttInsightsCards';
+import { SttInsightsCards, hasAnyStt } from '@/components/interview/SttInsightsCards';
 
 /**
  * PR5 (R6 spec) §5.3 — 인터뷰 검토 페이지 Client.
@@ -144,7 +141,10 @@ function ReviewSectionRoadmap({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title={`Ⅰ-2. 주요 활동 (${(data.performanceActivities ?? []).length}차수)`} {...sigProps}>
+      <CollapsibleSection
+        title={`Ⅰ-2. 주요 활동 (${(data.performanceActivities ?? []).length}차수)`}
+        {...sigProps}
+      >
         {(data.performanceActivities ?? []).length > 0 ? (
           <ul className="list-decimal space-y-2 pl-5 text-sm">
             {(data.performanceActivities ?? []).map((act, i) => (
@@ -162,7 +162,10 @@ function ReviewSectionRoadmap({
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅰ-3. 수립 주요 결과 (AI 수준 · 선정 과업)" {...sigProps}>
+      <CollapsibleSection
+        title="Ⅰ-3. AI훈련로드맵 수립 주요 결과 (AI 수준 · 선정 과업)"
+        {...sigProps}
+      >
         <p className="text-sm">
           AI 수준: <strong>{data.aiLevel ?? '미정'}</strong>
         </p>
@@ -178,7 +181,7 @@ function ReviewSectionRoadmap({
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-1. HRD이음 PDF" {...sigProps}>
+      <CollapsibleSection title="Ⅱ-1. 기업 AI 역량 수준 진단" {...sigProps}>
         <p className="text-sm">
           {data.hrdReportPdf?.fileName
             ? `첨부 파일: ${data.hrdReportPdf.fileName}`
@@ -192,95 +195,80 @@ function ReviewSectionRoadmap({
             label="현재 상태"
             projectId={projectId}
             field="status"
-            value={data.companyRequirements?.status ?? ''}          />
+            value={data.companyRequirements?.status ?? ''}
+          />
           <CompanyReqRow
             label="문제점"
             projectId={projectId}
             field="problem"
-            value={data.companyRequirements?.problem ?? ''}          />
+            value={data.companyRequirements?.problem ?? ''}
+          />
           <CompanyReqRow
             label="기업 의지"
             projectId={projectId}
             field="will"
-            value={data.companyRequirements?.will ?? ''}          />
+            value={data.companyRequirements?.will ?? ''}
+          />
           <CompanyReqRow
             label="기대 성과"
             projectId={projectId}
             field="outcomes"
-            value={data.companyRequirements?.outcomes ?? ''}          />
+            value={data.companyRequirements?.outcomes ?? ''}
+          />
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title={`Ⅱ-3. 과업·워크플로우 분석 (${(data.taskAnalysis ?? []).length}건)`} {...sigProps}>
+      <CollapsibleSection
+        title={`Ⅱ-3. 과업(Task)·워크플로우 분석표 (${(data.taskAnalysis ?? []).length}건)`}
+        {...sigProps}
+      >
         {(data.taskAnalysis ?? []).length > 0 ? (
           <ul className="list-decimal space-y-2 pl-5 text-sm">
             {(data.taskAnalysis ?? []).map((t, i) => (
               <li key={i}>
-                <strong>{t.domain || '직무 미입력'}</strong> · {t.task || '과업 미입력'} ·
-                As-Is: {t.asIs || '-'} · 문제점: {t.problem || '-'} · 데이터 발생:{' '}
-                {t.dataTiming || '-'}
+                <strong>{t.domain || '직무 미입력'}</strong> · {t.task || '과업 미입력'} · As-Is:{' '}
+                {t.asIs || '-'} · 개선점: {t.improvement || '-'}
               </li>
             ))}
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">과업 분석이 입력되지 않았습니다.</p>
         )}
-        <div className="mt-3">
-          <p className="mb-1 text-xs text-muted-foreground">분석 메모</p>
-          <RoadmapInlineText
-            projectId={projectId}
-            fieldKey="taskAnalysisNote"
-            value={data.taskAnalysisNote ?? ''}
-            multiline
-            placeholder="분석 메모를 입력하세요"
-          />
-        </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-4. 훈련대상 과업·워크플로우 선정" {...sigProps}>
+      <CollapsibleSection title="Ⅱ-4. AI 적용 대상 과업(Task)·워크플로우 선정" {...sigProps}>
         <div className="space-y-3">
           <TargetTaskRow
             label="과업명"
             projectId={projectId}
             field="name"
-            value={data.targetTask?.name ?? ''}          />
+            value={data.targetTask?.name ?? ''}
+          />
           <TargetTaskRow
-            label="선정 사유"
+            label="선정사유"
             projectId={projectId}
             field="reason"
-            value={data.targetTask?.reason ?? ''}            multiline
+            value={data.targetTask?.reason ?? ''}
+            multiline
           />
           <TargetTaskRow
-            label="기대 효과 As-Is"
+            label="기대효과 As-Is"
             projectId={projectId}
             field="expectedAsIs"
-            value={data.targetTask?.expectedAsIs ?? ''}            multiline
+            value={data.targetTask?.expectedAsIs ?? ''}
+            multiline
           />
           <TargetTaskRow
-            label="기대 효과 To-Be"
+            label="기대효과 To-Be"
             projectId={projectId}
             field="expectedToBe"
-            value={data.targetTask?.expectedToBe ?? ''}            multiline
+            value={data.targetTask?.expectedToBe ?? ''}
+            multiline
           />
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title={`Ⅲ-1. 역량 모델링 (${(data.competencies ?? []).length}건)`} {...sigProps}>
-        {(data.competencies ?? []).length > 0 ? (
-          <ul className="list-decimal space-y-2 pl-5 text-sm">
-            {(data.competencies ?? []).map((c, i) => (
-              <li key={i}>
-                <strong>{c.name || '역량명 미입력'}</strong> — {c.definition || '정의 미입력'}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">역량이 입력되지 않았습니다.</p>
-        )}
-        <p className="mt-2 text-xs text-muted-foreground">
-          NCS 활용: <strong>{data.ncsUsed ? '사용' : '미사용'}</strong>
-        </p>
-      </CollapsibleSection>
+      {/* 양식 v2: Ⅲ-1 역량 모델링·NCS 스텝은 삭제됨 (Ⅲ장이 훈련과정 명세서로 축소) */}
 
       {/* 선택 항목 — STT 인사이트가 추출되어 있을 때만 노출 */}
       {hasAnyStt(data.sttInsights) && (
@@ -310,7 +298,7 @@ function ReviewSectionPbl({
   const sigProps = { expandSignal, collapseSignal };
   return (
     <div className="space-y-4">
-      <CollapsibleSection title="Ⅰ-1. 훈련과정 개요" {...sigProps}>
+      <CollapsibleSection title="Ⅰ. 훈련과정 개요" {...sigProps}>
         <div className="space-y-3">
           <PblOverviewRow
             label="훈련과정명"
@@ -325,7 +313,7 @@ function ReviewSectionPbl({
             value={data.companyName ?? ''}
           />
           <PblOverviewRow
-            label="훈련대상"
+            label="훈련생"
             projectId={projectId}
             field="trainingTarget"
             value={data.trainingTarget ?? ''}
@@ -340,9 +328,9 @@ function ReviewSectionPbl({
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-1. 기업 이슈" {...sigProps}>
+      <CollapsibleSection title="Ⅱ-1. 기업 경영 이슈" {...sigProps}>
         <PblOverviewRow
-          label="기업 이슈"
+          label="기업 경영 이슈"
           projectId={projectId}
           field="companyIssues"
           value={data.companyIssues ?? ''}
@@ -350,15 +338,13 @@ function ReviewSectionPbl({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-2. 훈련 환경" {...sigProps}>
+      <CollapsibleSection title="Ⅱ-3-a. 훈련 환경" {...sigProps}>
         {/* R8 PBL-자체-02 — 정형 객체. 인라인 편집은 인터뷰 페이지에서 (검토는 read-only 요약). */}
         {(() => {
           const env = data.trainingEnv;
           if (!env) {
             return (
-              <p className="text-sm text-muted-foreground">
-                훈련 환경이 입력되지 않았습니다.
-              </p>
+              <p className="text-sm text-muted-foreground">훈련 환경이 입력되지 않았습니다.</p>
             );
           }
           return (
@@ -395,7 +381,7 @@ function ReviewSectionPbl({
         </p>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-3. 교과목 필요성" {...sigProps}>
+      <CollapsibleSection title="Ⅱ-1-다. 교과목 필요성" {...sigProps}>
         <PblOverviewRow
           label="교과목 필요성"
           projectId={projectId}
@@ -405,21 +391,7 @@ function ReviewSectionPbl({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title={`Ⅲ-1. 수행 활동 (${(data.activities ?? []).length}건)`} {...sigProps}>
-        {(data.activities ?? []).length > 0 ? (
-          <ul className="list-decimal space-y-2 pl-5 text-sm">
-            {(data.activities ?? []).map((a, i) => (
-              <li key={i}>
-                {a.round}차 · {a.date || '-'} · {a.content || '-'} · 방법: {a.method || '-'}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">수행 활동이 입력되지 않았습니다.</p>
-        )}
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Ⅲ-2-가. 문제 정의서" {...sigProps}>
+      <CollapsibleSection title="Ⅲ-2. 문제 정의서" {...sigProps}>
         {/* R8 PBL-자체-04 — 양식 5×2 표 4 정형 항목 (배경/핵심/범위/제약) 단일 세트.
             모든 필드가 빈 문자열이면 안내문 표시, 한 항목이라도 채워지면 4 라벨 노출. */}
         {(() => {
@@ -432,9 +404,7 @@ function ReviewSectionPbl({
               (sheet.constraints ?? '').trim() === '');
           if (allEmpty) {
             return (
-              <p className="text-sm text-muted-foreground">
-                문제 정의서가 입력되지 않았습니다.
-              </p>
+              <p className="text-sm text-muted-foreground">문제 정의서가 입력되지 않았습니다.</p>
             );
           }
           return (
@@ -452,7 +422,7 @@ function ReviewSectionPbl({
         })()}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅲ-3·Ⅲ-4. 훈련대상 업무 · AI 수준" {...sigProps}>
+      <CollapsibleSection title="Ⅲ-3. 훈련대상 업무" {...sigProps}>
         <p className="text-sm text-muted-foreground">
           상세 내용은 인터뷰 페이지에서 확인·수정하세요.
         </p>
@@ -537,10 +507,7 @@ function RoadmapInlineText({
       showErrorToast('인터뷰 수정 실패', msg);
       throw new Error(msg);
     }
-    showSuccessToast(
-      '수정되었습니다',
-      "결과 탭에서 '다시 생성' 버튼을 눌러야 반영됩니다",
-    );
+    showSuccessToast('수정되었습니다', "결과 탭에서 '다시 생성' 버튼을 눌러야 반영됩니다");
   };
   return (
     <InlineEditField
@@ -575,10 +542,7 @@ function CompanyReqRow({
       showErrorToast('인터뷰 수정 실패', msg);
       throw new Error(msg);
     }
-    showSuccessToast(
-      '수정되었습니다',
-      "결과 탭에서 '다시 생성' 버튼을 눌러야 반영됩니다",
-    );
+    showSuccessToast('수정되었습니다', "결과 탭에서 '다시 생성' 버튼을 눌러야 반영됩니다");
   };
   return (
     <div>
@@ -611,10 +575,7 @@ function TargetTaskRow({
       showErrorToast('인터뷰 수정 실패', msg);
       throw new Error(msg);
     }
-    showSuccessToast(
-      '수정되었습니다',
-      "결과 탭에서 '다시 생성' 버튼을 눌러야 반영됩니다",
-    );
+    showSuccessToast('수정되었습니다', "결과 탭에서 '다시 생성' 버튼을 눌러야 반영됩니다");
   };
   return (
     <div>
@@ -662,4 +623,3 @@ function PblOverviewRow({
     </div>
   );
 }
-

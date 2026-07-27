@@ -1,110 +1,49 @@
 import type { RoadmapResult, ValidationResult } from './roadmap-types';
+import { ROADMAP_COURSE_SPEC_COUNT } from './roadmap-types';
 
 // ============================================================================
-// 산인공 공식 양식(Ⅰ·Ⅲ장) 기반 로드맵 검증
+// 산인공 공식 양식 v2 (2026-07-13 개정) 기반 로드맵 검증
 // ----------------------------------------------------------------------------
+// 양식 Ⅲ장이 "훈련체계 수립"에서 "훈련실시 계획 제안"으로 재설계되면서
+// 역량 모델링·NCS·훈련체계도·연간 훈련계획 표가 전부 삭제되었다.
+// LLM 생성물은 훈련과정 명세서 6개로 축소되었고, 각 명세서에
+// 훈련시기·훈련수준이 새로 추가되었다.
+//
 // 정책:
-//  1. competencies.length >= 1
-//  2. training_structure.length >= 1
-//  3. annual_plan.items.length >= 1
-//  4. course_specs.length >= 3
-//  5. 각 course_specs[*].subjects.length >= 1
-//  6. 루트 NCS 일관성: ncs_used=true → ncs_methodology 필수
-//                      ncs_used=false → ncs_derivation_method 필수 (Ⅲ-1 표 전체 단위)
-//  7. training_structure_method 비어있으면 warning (Ⅲ-2 수립 방법)
-//  8. 역량 참조 정합성: training_structure / annual_plan.items 의
-//     competency_name 은 competencies[*].name 집합에 존재해야 함 (errors)
-//  9. 과정명 정합성: course_specs[*].course_name 은
-//     annual_plan.items[*].course_name 집합과 일치해야 함 (warnings)
-// 10. diagnosis_summary 누락 시 warning
+//  1. course_specs.length >= 6              (error) — 양식의 명세서 표 개수
+//  2. course_specs[*].course_name 공백       (error)
+//  3. course_specs[*].subjects.length >= 1  (error)
+//  4. course_specs[*].training_period 공백   (warning)
+//  5. diagnosis_summary 공백                 (warning)
 // ============================================================================
 
-function validateRequiredFields(
-  result: RoadmapResult,
-  errors: string[],
-  warnings: string[],
-): void {
+function validateRequiredFields(result: RoadmapResult, errors: string[], warnings: string[]): void {
   if (!result.diagnosis_summary || result.diagnosis_summary.trim() === '') {
     warnings.push('진단 요약(diagnosis_summary)이 비어있습니다.');
   }
 
-  if (!result.competencies || result.competencies.length === 0) {
-    errors.push('역량 모델링(competencies)이 비어있습니다.');
-  }
-
-  if (!result.training_structure || result.training_structure.length === 0) {
-    errors.push('훈련체계도(training_structure)가 비어있습니다.');
-  }
-
-  if (!result.annual_plan?.items || result.annual_plan.items.length === 0) {
-    errors.push('연간 훈련계획(annual_plan.items)이 비어있습니다.');
-  }
-
-  if (!result.course_specs || result.course_specs.length < 3) {
+  const count = result.course_specs?.length ?? 0;
+  if (count < ROADMAP_COURSE_SPEC_COUNT) {
     errors.push(
-      `훈련과정 명세서(course_specs)는 최소 3개 이상이어야 합니다. 현재: ${result.course_specs?.length ?? 0}개`,
+      `훈련과정 명세서(course_specs)는 최소 ${ROADMAP_COURSE_SPEC_COUNT}개 이상이어야 합니다. 현재: ${count}개`
     );
   }
-
-  if (!result.training_structure_method || result.training_structure_method.trim() === '') {
-    warnings.push('훈련체계 수립 방법(training_structure_method)이 비어있습니다.');
-  }
 }
 
-function validateCourseSubjects(result: RoadmapResult, errors: string[]): void {
-  result.course_specs?.forEach((spec) => {
+function validateCourseSpecs(result: RoadmapResult, errors: string[], warnings: string[]): void {
+  result.course_specs?.forEach((spec, index) => {
+    const label = spec.course_name?.trim() || `${index + 1}번째 과정`;
+
+    if (!spec.course_name || spec.course_name.trim() === '') {
+      errors.push(`과정명 누락: ${index + 1}번째 훈련과정 명세서에 과정명이 없습니다.`);
+    }
+
     if (!spec.subjects || spec.subjects.length === 0) {
-      errors.push(`교과목 누락: "${spec.course_name}" 명세서에 교과목(subjects)이 없습니다.`);
+      errors.push(`교과목 누락: "${label}" 명세서에 교과목(subjects)이 없습니다.`);
     }
-  });
-}
 
-function validateNcsConsistency(result: RoadmapResult, errors: string[]): void {
-  if (result.ncs_used) {
-    if (!result.ncs_methodology || result.ncs_methodology.trim() === '') {
-      errors.push(
-        'NCS 활용 방법(ncs_methodology)이 누락되었습니다. ncs_used=true 이지만 활용 방법이 비어있습니다.',
-      );
-    }
-  } else {
-    if (!result.ncs_derivation_method || result.ncs_derivation_method.trim() === '') {
-      errors.push(
-        'NCS 도출 방법(ncs_derivation_method)이 누락되었습니다. ncs_used=false 이지만 도출 방법이 비어있습니다.',
-      );
-    }
-  }
-}
-
-function validateCompetencyReferences(result: RoadmapResult, errors: string[]): void {
-  const competencyNames = new Set(result.competencies?.map((c) => c.name) ?? []);
-
-  result.training_structure?.forEach((item) => {
-    if (!competencyNames.has(item.competency_name)) {
-      errors.push(
-        `훈련체계도 역량 참조 오류: "${item.competency_name}"은(는) competencies에 정의되지 않은 역량입니다.`,
-      );
-    }
-  });
-
-  result.annual_plan?.items?.forEach((item) => {
-    if (!competencyNames.has(item.competency_name)) {
-      errors.push(
-        `연간 훈련계획 역량 참조 오류: "${item.competency_name}"은(는) competencies에 정의되지 않은 역량입니다.`,
-      );
-    }
-  });
-}
-
-function validateCourseNameAlignment(result: RoadmapResult, warnings: string[]): void {
-  const annualCourseNames = new Set(
-    result.annual_plan?.items?.map((item) => item.course_name) ?? [],
-  );
-
-  result.course_specs?.forEach((spec) => {
-    if (!annualCourseNames.has(spec.course_name)) {
-      warnings.push(
-        `명세서 과정명 불일치: "${spec.course_name}"은(는) 연간 훈련계획 items의 course_name에 존재하지 않습니다.`,
-      );
+    if (!spec.training_period || spec.training_period.trim() === '') {
+      warnings.push(`훈련시기 누락: "${label}" 명세서에 훈련시기가 비어있습니다.`);
     }
   });
 }
@@ -117,10 +56,7 @@ export function validateRoadmap(result: RoadmapResult): ValidationResult {
   const warnings: string[] = [];
 
   validateRequiredFields(result, errors, warnings);
-  validateCourseSubjects(result, errors);
-  validateNcsConsistency(result, errors);
-  validateCompetencyReferences(result, errors);
-  validateCourseNameAlignment(result, warnings);
+  validateCourseSpecs(result, errors, warnings);
 
   return {
     isValid: errors.length === 0,

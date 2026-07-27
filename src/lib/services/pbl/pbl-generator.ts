@@ -48,7 +48,7 @@ export interface GeneratePBLContentResult {
  *  - 모든 재시도 실패 시 PBLGenerationError throw → 상위에서 사용자에게 수동 편집 유도.
  */
 export async function generatePBLContent(
-  input: GeneratePBLContentInput,
+  input: GeneratePBLContentInput
 ): Promise<GeneratePBLContentResult> {
   const systemPrompt = buildPBLSystemPrompt();
   const baseUserPrompt = buildPBLUserPrompt(
@@ -57,7 +57,7 @@ export async function generatePBLContent(
     input.consultantProfile,
     input.diagnosisSummary,
     input.revisionPrompt,
-    input.selfAssessment ?? null,
+    input.selfAssessment ?? null
   );
 
   let lastError: unknown = null;
@@ -74,8 +74,8 @@ export async function generatePBLContent(
 - total_sum_hours === sum(training_contents.training_hours)
 - evaluation_result는 반드시 "예정"
 - satisfaction_survey 길이 5, achievement_survey 길이 3, external_expert_survey 길이 5, practical_application_survey 길이 4
-- outcome_analysis.outcome_metrics.selected_goals 최소 1개 이상 (허용값: "기술문제 해결" | "공정 최적화" | "불량률 감소" | "기술 매뉴얼 개발" | "기타")
-- outcome_analysis.diffusion_strategy.internalization 및 company_wide_diffusion 비어있지 않아야 함`;
+- operation_plan.outcome_metrics.selected_goals 최소 1개 이상 (허용값: "기술문제 해결" | "공정 최적화" | "불량률 감소" | "기술 매뉴얼 개발" | "기타")
+- operation_plan.outcome_metrics.quantitative 및 qualitative 비어있지 않아야 함`;
 
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -84,7 +84,12 @@ export async function generatePBLContent(
 
     let raw: unknown;
     try {
-      raw = await callLLMForJSON<unknown>(messages, { temperature: LLM_TEMPERATURE }, 2, input.signal);
+      raw = await callLLMForJSON<unknown>(
+        messages,
+        { temperature: LLM_TEMPERATURE },
+        2,
+        input.signal
+      );
     } catch (error) {
       lastError = error;
       console.warn(`[generatePBLContent] LLM 호출 실패 (시도 ${attempt}):`, error);
@@ -96,7 +101,7 @@ export async function generatePBLContent(
       lastError = parsed.error;
       console.warn(
         `[generatePBLContent] 스키마 검증 실패 (시도 ${attempt}):`,
-        JSON.stringify(parsed.error.issues).slice(0, 500),
+        JSON.stringify(parsed.error.issues).slice(0, 500)
       );
       continue;
     }
@@ -106,10 +111,7 @@ export async function generatePBLContent(
     // 2차 validator(business rule)는 warning만 나올 수 있음. error가 있으면 재시도.
     if (!validation.isValid) {
       lastError = new Error(validation.errors.join(' / '));
-      console.warn(
-        `[generatePBLContent] 비즈니스 검증 실패 (시도 ${attempt}):`,
-        validation.errors,
-      );
+      console.warn(`[generatePBLContent] 비즈니스 검증 실패 (시도 ${attempt}):`, validation.errors);
       continue;
     }
 
@@ -118,6 +120,6 @@ export async function generatePBLContent(
 
   throw new PBLGenerationError(
     `LLM이 산인공 PBL 양식에 맞지 않는 결과를 ${MAX_VALIDATION_RETRIES}회 반환했습니다. 수동 편집이 필요합니다.`,
-    { cause: lastError instanceof Error ? lastError : undefined },
+    { cause: lastError instanceof Error ? lastError : undefined }
   );
 }

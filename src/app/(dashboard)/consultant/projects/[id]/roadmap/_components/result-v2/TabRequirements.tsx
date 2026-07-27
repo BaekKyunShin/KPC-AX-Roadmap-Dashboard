@@ -5,13 +5,6 @@ import { ExternalLink, FileText } from 'lucide-react';
 import { SectionCard } from '@/components/result/SectionCard';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { FormTable } from '@/components/forms/FormTable';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 import type { TabCommonProps } from './types';
 
@@ -26,15 +19,10 @@ import type { TabCommonProps } from './types';
  *
  * 제외 없음 — Ⅱ장 전체가 [인터뷰 입력] 또는 [PDF 첨부] 섹션으로만 구성.
  */
-export function TabRequirements({
-  interview,
-  readOnly,
-  onEdit,
-}: TabCommonProps) {
+export function TabRequirements({ interview, readOnly, onEdit }: TabCommonProps) {
   const hrdPdf = interview?.hrdReportPdf ?? null;
   const cr = interview?.companyRequirements;
   const tasks = interview?.taskAnalysis ?? [];
-  const taskNote = interview?.taskAnalysisNote ?? '';
   const taskAttachment = interview?.taskAnalysisAttachment ?? null;
   const target = interview?.targetTask;
 
@@ -42,7 +30,7 @@ export function TabRequirements({
     <div className="space-y-6">
       {/* Ⅱ-1 HRD이음 PDF */}
       <SectionCard
-        title="Ⅱ-1. HRD이음 진단 보고서"
+        title="Ⅱ-1. 기업 AI 역량 수준 진단"
         description="훈련수요 진단 보고서 PDF 첨부 (인터뷰에서 업로드, LLM 내부 분석용)"
         dataSource="user"
       >
@@ -152,25 +140,33 @@ export function TabRequirements({
         />
       </SectionCard>
 
-      {/* Ⅱ-3 과업·워크플로우 분석표 */}
+      {/* Ⅱ-3 과업·워크플로우 분석표 (양식 v2: 6열 → 4열) */}
       <SectionCard
-        title="Ⅱ-3. 과업·워크플로우 분석"
-        description="직무별 과업 As-Is / 문제점 / 데이터 보유 / AI 필요도 (1~5) + 분석 메모"
+        title="Ⅱ-3. 과업(Task)·워크플로우 분석표"
+        description="직무별 과업 현행(As-Is) / 개선점 및 AI 적용 가능성"
         dataSource="user"
       >
         {tasks.length > 0 ? (
           <div className="overflow-x-auto">
             <FormTable
-              caption="과업·워크플로우 분석표"
+              caption="과업(Task)·워크플로우 분석표"
               headerRows={[
                 {
                   cells: [
                     { content: '직무', header: true },
-                    { content: '과업', header: true },
-                    { content: '현행 (As-Is)', header: true },
-                    { content: '문제점', header: true },
-                    { content: '데이터 발생/보유', header: true },
-                    { content: 'AI 필요도', header: true },
+                    { content: '과업(Task)', header: true },
+                    { content: '현행 방식', header: true },
+                    {
+                      content: (
+                        <>
+                          <span>개선점 및 AI 적용 가능성</span>
+                          <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground/80">
+                            (데이터 발생 여부 또는 보유현황)
+                          </span>
+                        </>
+                      ),
+                      header: true,
+                    },
                   ],
                 },
               ]}
@@ -226,57 +222,16 @@ export function TabRequirements({
                     {
                       content: (
                         <InlineEditField
-                          value={t.problem ?? ''}
+                          value={t.improvement ?? ''}
                           onSave={async (next) => {
-                            await patchRow({ problem: next });
+                            await patchRow({ improvement: next });
                           }}
                           readOnly={readOnly}
                           multiline
-                          placeholder="문제점 미입력"
+                          placeholder="개선점 및 AI 적용 가능성 미입력"
                         />
                       ),
                       align: 'left',
-                    },
-                    {
-                      content: (
-                        <InlineEditField
-                          value={t.dataTiming ?? ''}
-                          onSave={async (next) => {
-                            await patchRow({ dataTiming: next });
-                          }}
-                          readOnly={readOnly}
-                          multiline
-                          placeholder="데이터 발생/보유 미입력"
-                        />
-                      ),
-                      align: 'left',
-                    },
-                    {
-                      content: readOnly ? (
-                        <span className="text-sm">{t.aiScore ?? '-'}</span>
-                      ) : (
-                        <Select
-                          value={String(t.aiScore ?? '')}
-                          onValueChange={async (nextValue) => {
-                            await patchRow({ aiScore: Number(nextValue) });
-                          }}
-                        >
-                          <SelectTrigger
-                            className="mx-auto h-8 w-16"
-                            aria-label={`AI 필요도 ${idx + 1}`}
-                          >
-                            <SelectValue placeholder="-" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[1, 2, 3, 4, 5].map((n) => (
-                              <SelectItem key={n} value={String(n)}>
-                                {n}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ),
-                      align: 'center',
                     },
                   ],
                 };
@@ -284,25 +239,8 @@ export function TabRequirements({
             />
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            등록된 과업 분석이 없습니다.
-          </p>
+          <p className="text-sm text-muted-foreground">등록된 과업 분석이 없습니다.</p>
         )}
-
-        <div>
-          <p className="mb-2 text-sm font-medium text-muted-foreground">
-            분석 내용
-          </p>
-          <InlineEditField
-            value={taskNote}
-            onSave={async (next) => {
-              await onEdit({ task_analysis_note: next });
-            }}
-            readOnly={readOnly}
-            multiline
-            placeholder="분석 내용이 입력되지 않았습니다."
-          />
-        </div>
 
         {taskAttachment && (
           <div className="flex items-center justify-between gap-3 rounded border bg-muted/30 p-3">
@@ -324,18 +262,18 @@ export function TabRequirements({
         )}
       </SectionCard>
 
-      {/* Ⅱ-4 훈련대상 과업(Task)·워크플로우 선정 */}
+      {/* Ⅱ-4 AI 적용 대상 과업(Task)·워크플로우 선정 */}
       <SectionCard
-        title="Ⅱ-4. 훈련대상 과업(Task)·워크플로우 선정"
+        title="Ⅱ-4. AI 적용 대상 과업(Task)·워크플로우 선정"
         description="선정 과업명 · 사유 · 기대효과 (현행 → 개선)"
         dataSource="user"
       >
         <FormTable
-          caption="훈련대상 과업 선정"
+          caption="AI 적용 대상 과업(Task)·워크플로우 선정"
           bodyRows={[
             {
               cells: [
-                { content: '훈련대상 과업명', header: true, className: 'w-[160px]' },
+                { content: 'AI 적용 대상 과업', header: true, className: 'w-[160px]' },
                 {
                   content: (
                     <InlineEditField
@@ -346,7 +284,7 @@ export function TabRequirements({
                         });
                       }}
                       readOnly={readOnly}
-                      placeholder="훈련대상 과업명이 없습니다."
+                      placeholder="AI 적용 대상 과업이 없습니다."
                     />
                   ),
                   align: 'left',
@@ -355,7 +293,7 @@ export function TabRequirements({
             },
             {
               cells: [
-                { content: '선정 사유', header: true },
+                { content: '선정사유', header: true },
                 {
                   content: (
                     <InlineEditField

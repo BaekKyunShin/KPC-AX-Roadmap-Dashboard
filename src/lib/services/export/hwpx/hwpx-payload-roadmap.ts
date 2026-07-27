@@ -1,27 +1,24 @@
 /**
- * 로드맵 데이터 → Python HWPX 함수 payload 변환기 (Step 7 Task 7).
+ * 로드맵 데이터 → Python HWPX 함수 payload 변환기 — 산인공 양식 v2 (2026-07-13 개정)
  *
  * 입력: RoadmapVersion (DB 저장본) + Project + Interview
- * 출력: Python 측 `_placeholders_roadmap.py` 가 기대하는 key-value 구조
+ * 출력: Python 측이 기대하는 key-value 구조
  *
  * 원칙:
  * - 누락(undefined/null/빈 배열) → 빈 문자열 또는 빈 배열로 안전 변환
- * - 훈련체계도는 buildTrainingStructureTable() 결과를 사용 (매트릭스 → 단순 6열)
- * - Step 6.5 신규 필드 전체 매핑 (setup_necessity, outcome_summary,
- *   training_structure_method, ncs_*)
+ * - v2 에서 역량 모델링·NCS·훈련체계도·연간 훈련계획 표가 양식에서 삭제되어
+ *   해당 payload 키도 함께 제거됨. Ⅲ장 산출물은 훈련과정 명세서 6개뿐이다.
+ * - 명세서에 훈련시기(training_period)·훈련수준(training_level) 이 신규 추가됨
  */
-import { buildTrainingStructureTable } from '@/lib/services/roadmap/roadmap-matrix-builder';
 import { fromRoadmapVersionColumns } from '@/lib/services/roadmap/roadmap-storage-mapper';
-import type { RoadmapResult } from '@/lib/services/roadmap/roadmap-types';
+import { TRAINING_LEVEL_LABEL, type RoadmapResult } from '@/lib/services/roadmap/roadmap-types';
 import type { Interview, Project, RoadmapVersion } from '@/types/database';
-import {
-  INTERVIEW_METHOD_LABEL,
-  type InterviewMethod,
-} from '@/lib/schemas/interview-roadmap';
-import { bulletize, splitByUnit } from '@/lib/utils/list-format';
+import { INTERVIEW_METHOD_LABEL, type InterviewMethod } from '@/lib/schemas/interview-roadmap';
+import { splitByUnit } from '@/lib/utils/list-format';
 import { formatTimeRange } from '@/lib/utils/time';
 
 import type { RoadmapHwpxPayload } from './hwpx-client';
+import { formatActivityDate, formatReportDate } from './hwpx-date';
 import { sanitizeFileNamePart } from './hwpx-filename';
 
 export interface RoadmapHwpxPayloadInputs {
@@ -87,19 +84,17 @@ interface InterviewLike {
   };
   job_tasks?: Array<{
     id?: string;
-    // V2 DB 키 (mapRoadmapInterviewToDb 출력)
+    // v2 DB 키 (mapRoadmapInterviewToDb 출력)
     roadmap_job?: string;
     task_name?: string;
     task_description?: string;
+    roadmap_improvement?: string;
+    // v1 legacy 키 (읽기 하위호환 — improvement 로 승격)
+    job?: string;
+    as_is?: string;
     roadmap_problems?: string;
     roadmap_data_availability?: string;
     roadmap_ai_necessity?: number | string;
-    // V1 legacy 키 (fallback)
-    job?: string;
-    as_is?: string;
-    problems?: string;
-    data_availability?: string;
-    ai_necessity?: number;
   }>;
   improvement_goals?: Array<{
     id?: string;
@@ -128,7 +123,7 @@ function buildFileName(companyName: string, versionNumber: number): string {
 }
 
 function participantsToPython(
-  participants: Array<{ name?: string; position?: string }> | undefined | null,
+  participants: Array<{ name?: string; position?: string }> | undefined | null
 ): Array<{ role: string; name: string; hrd4u_id: string }> {
   if (!participants) return [];
   return participants.map((p) => ({
@@ -140,12 +135,10 @@ function participantsToPython(
 
 function pickByPosition(
   participants: Array<{ name?: string; position?: string }> | undefined | null,
-  keywords: string[],
+  keywords: string[]
 ): { name: string; position: string } | null {
   if (!participants) return null;
-  const found = participants.find((p) =>
-    keywords.some((k) => (p.position || '').includes(k)),
-  );
+  const found = participants.find((p) => keywords.some((k) => (p.position || '').includes(k)));
   return found ? { name: found.name || '', position: found.position || '' } : null;
 }
 
@@ -153,9 +146,7 @@ function normalizeLevel(level: RoadmapResult['outcome_summary']['ai_competency_l
   return level; // 이미 BEGINNER/INTERMEDIATE/ADVANCED
 }
 
-export function buildRoadmapHwpxPayload(
-  inputs: RoadmapHwpxPayloadInputs,
-): RoadmapHwpxPayload {
+export function buildRoadmapHwpxPayload(inputs: RoadmapHwpxPayloadInputs): RoadmapHwpxPayload {
   const { roadmap, project, interview } = inputs;
   const typedInterview = interview as InterviewLike | null;
 
@@ -179,28 +170,13 @@ export function buildRoadmapHwpxPayload(
   const pm = pickByPosition(participants, ['PM', '책임자', 'AI훈련코치']);
   const internalExpert = pickByPosition(participants, ['내부전문가']);
 
-  // 4) 훈련체계도 매트릭스 → 단순 6열 표
-  // result.competencies / training_structure 도 storage mapper 가 array 보장
-  const structureRows = buildTrainingStructureTable(
-    result.competencies,
-    result.training_structure,
-  ).map((r) => ({
-    competency_name: r.competency_name,
-    training_level: r.level_label,
-    training_content: r.content,
-    training_target: r.target_audience,
-    training_method: r.method,
-    training_goal: r.goal,
-  }));
-
-  // 5) 훈련대상 과업 (Ⅱ-4) - 첫 항목 — V2 DB 키(kpi·goal_description·roadmap_as_is·
+  // 4) AI 적용 대상 과업 (Ⅱ-3) - 첫 항목 — V2 DB 키(kpi·goal_description·roadmap_as_is·
   // roadmap_to_be) 우선, V1 legacy(task_name·selection_reason·as_is·to_be) fallback. (#21·#22)
   const firstTarget = improvementGoals[0];
   const trainingTarget = firstTarget
     ? {
         task_name: firstTarget.kpi ?? firstTarget.task_name ?? '',
-        selection_reason:
-          firstTarget.goal_description ?? firstTarget.selection_reason ?? '',
+        selection_reason: firstTarget.goal_description ?? firstTarget.selection_reason ?? '',
         as_is: firstTarget.roadmap_as_is ?? firstTarget.as_is ?? '',
         to_be: firstTarget.roadmap_to_be ?? firstTarget.to_be ?? '',
       }
@@ -208,9 +184,9 @@ export function buildRoadmapHwpxPayload(
 
   // 6) HRD이음 보고서 첨부 URL (Storage path 기반 — 실제 퍼블릭 URL은 Step 12에서 보강)
   const hrdAttachmentUrl =
-    (result as RoadmapResult & { hrd_report_attachment_url?: string }).hrd_report_attachment_url
-    ?? overview?.hrd_report_attachment?.file_name
-    ?? '';
+    (result as RoadmapResult & { hrd_report_attachment_url?: string }).hrd_report_attachment_url ??
+    overview?.hrd_report_attachment?.file_name ??
+    '';
   // Step 6.5 legacy storage 경로도 허용
   const hrdFromLegacy =
     (roadmap.pbl_course as unknown as { hrd_report_attachment_url?: string })
@@ -220,8 +196,7 @@ export function buildRoadmapHwpxPayload(
   // 7) 수행일지 차수 — V2 우선 (company_details.roadmap_overview.performance_activities[]),
   // 없으면 V1 legacy 단일 컬럼(interview_date · interview_round · interview_method · participants)
   // 으로 1차 단일 항목 자동 집계. (#22)
-  const v2PerfActs =
-    typedInterview?.company_details?.roadmap_overview?.performance_activities;
+  const v2PerfActs = typedInterview?.company_details?.roadmap_overview?.performance_activities;
 
   const performanceActivities = (() => {
     if (v2PerfActs && v2PerfActs.length > 0) {
@@ -231,9 +206,7 @@ export function buildRoadmapHwpxPayload(
         const timeLine = a.time_range ?? '';
         const methodKey = a.method ?? '';
         const methodLabelV2 =
-          INTERVIEW_METHOD_LABEL[methodKey as InterviewMethod] ??
-          methodKey ??
-          '';
+          INTERVIEW_METHOD_LABEL[methodKey as InterviewMethod] ?? methodKey ?? '';
         const rowParticipants: Array<{ role: string; name: string; hrd4u_id: string }> = [];
         if (a.pm_name) {
           rowParticipants.push({ role: 'PM', name: a.pm_name, hrd4u_id: '' });
@@ -247,9 +220,11 @@ export function buildRoadmapHwpxPayload(
         }
         return {
           round: a.round ?? 1,
-          date: [dateLine, timeLine].filter(Boolean).join('\n'),
+          // 수행 일시: 양식 '26.00.00'(2자리 연도) 폭에 맞춰 날짜 컴팩트화 + 시간 2줄
+          date: [formatActivityDate(dateLine), timeLine].filter(Boolean).join('\n'),
           content: a.content ?? '',
-          method: methodLabelV2,
+          // 수행 방법: 양식 '대면'/'(인터뷰)' 2줄 — 괄호 앞에서 줄바꿈
+          method: methodLabelV2.replace('(', '\n('),
           participants: rowParticipants,
         };
       });
@@ -260,91 +235,87 @@ export function buildRoadmapHwpxPayload(
     //   1) company_details.roadmap_interview_time JSONB { start, end } 정식 경로
     //   2) interview_time 단일 컬럼 (legacy production 3건 호환)
     const savedInterviewTime = typedInterview?.company_details?.roadmap_interview_time;
-    const interviewTimeText = savedInterviewTime?.start || savedInterviewTime?.end
-      ? formatTimeRange(savedInterviewTime.start, savedInterviewTime.end)
-      : (typedInterview?.interview_time ?? '');
+    const interviewTimeText =
+      savedInterviewTime?.start || savedInterviewTime?.end
+        ? formatTimeRange(savedInterviewTime.start, savedInterviewTime.end)
+        : (typedInterview?.interview_time ?? '');
     const methodLabel = typedInterview.interview_method
       ? (INTERVIEW_METHOD_LABEL[typedInterview.interview_method as InterviewMethod] ??
-          typedInterview.interview_method ??
-          '')
+        typedInterview.interview_method ??
+        '')
       : '';
     return [
       {
         round: typedInterview.interview_round ?? 1,
-        date: [typedInterview.interview_date ?? '', interviewTimeText]
+        date: [formatActivityDate(typedInterview.interview_date ?? ''), interviewTimeText]
           .filter(Boolean)
           .join('\n'),
         content: notes?.text ?? '',
-        method: methodLabel,
+        method: methodLabel.replace('(', '\n('),
         participants: participantsToPython(participants),
       },
     ];
   })();
 
-  // 8) 단순 역량 필드 포맷 (배열 → 줄바꿈 텍스트)
-  // result.competencies / annual_plan 은 storage mapper 가 항상 array/object 로
-  // normalize 하므로 ?? fallback 은 dead branch.
-  const competencies = result.competencies.map((c) => ({
-    name: c.name,
-    definition_performance_criteria: c.definition,
-    knowledge: bulletize(c.knowledge),
-    skill: bulletize(c.skills),
-    attitude: bulletize(c.attitudes),
-  }));
-
-  // 9) 연간 훈련계획 items
-  const annualPlanItems = result.annual_plan.items.map((i) => ({
-    competency_name: i.competency_name,
-    course_name: i.course_name,
-    training_type: i.format,
-    training_hours: String(i.hours),
-    remarks: i.notes,
-  }));
-
-  // 10) 훈련과정 명세서 (course_specs/subjects 도 storage mapper 가 항상 array)
+  // 8) Ⅲ. 훈련과정 명세서 (6개) — v2 신규 필드 훈련시기·훈련수준 포함.
+  // course_specs/subjects 는 storage mapper 가 항상 array 보장.
   const courseSpecs = result.course_specs.map((s) => ({
+    training_period: s.training_period,
+    training_level: TRAINING_LEVEL_LABEL[s.training_level],
     course_name: s.course_name,
-    training_type: s.format,
+    training_method: s.training_method,
     recommended_program: s.recommended_program,
     training_goal: s.goal,
     main_content: s.main_content,
     training_target: s.target_audience,
     subjects: s.subjects.map((subj) => ({
       subject_name: subj.name,
+      // ⚠️ 여기서는 `bulletizeDetails` 를 쓰지 않는다 — `api/hwpx/generate.py` 가
+      // 항목마다 `▪` 를 부여하므로 이중 접두가 된다. 줄 분리까지만 담당.
+      // (화면·PDF·XLSX 는 `bulletizeDetails` 로 같은 모양을 만든다.)
       details: splitByUnit(subj.details),
       hours: String(subj.hours),
     })),
   }));
 
-  // 11) task_workflow items — V2 DB 키(roadmap_job·task_description·roadmap_problems·
-  // roadmap_data_availability·roadmap_ai_necessity) 우선, V1 legacy 키 fallback. (#20·#22)
-  const taskWorkflowItems = jobTasks.map((t) => ({
-    job: t.roadmap_job ?? t.job ?? '',
-    task: t.task_name ?? '',
-    as_is: t.task_description ?? t.as_is ?? '',
-    problem: t.roadmap_problems ?? t.problems ?? '',
-    data_availability:
-      t.roadmap_data_availability ?? t.data_availability ?? '',
-    ai_necessity_score:
-      t.roadmap_ai_necessity ?? t.ai_necessity ?? '',
-  }));
+  // 11) 과업·워크플로우 분석표 (Ⅱ-3) — v2 4열: 직무·과업·현행방식·개선점.
+  // v1 의 problem·dataTiming·aiScore 3필드는 improvement 로 승격한다 (운영 DB 호환).
+  const taskWorkflowItems = jobTasks.map((t) => {
+    const improvement =
+      t.roadmap_improvement ??
+      [
+        t.roadmap_problems ? `문제점: ${t.roadmap_problems}` : '',
+        t.roadmap_data_availability
+          ? `데이터 발생 시점/보유현황: ${t.roadmap_data_availability}`
+          : '',
+        t.roadmap_ai_necessity !== undefined && `${t.roadmap_ai_necessity}` !== ''
+          ? `AI 도입·활용 필요도: ${t.roadmap_ai_necessity}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+    return {
+      job: t.roadmap_job ?? t.job ?? '',
+      task: t.task_name ?? '',
+      as_is: t.task_description ?? t.as_is ?? '',
+      improvement,
+    };
+  });
 
   // 12) 보고서 날짜 (최종화 시점 우선, 없으면 updated_at)
+  //     로케일·타임존 비의존 결정론 포맷 `YYYY. MM. DD.` (formatReportDate).
   const reportDate = roadmap.finalized_at || roadmap.updated_at;
-  const reportDateText = reportDate
-    ? new Date(reportDate).toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      })
-    : '';
+  const reportDateText = formatReportDate(reportDate);
 
   return {
     track: 'ROADMAP' as const,
     fileName: buildFileName(project.company_name, roadmap.version_number),
     data: {
-      // 표지 (Project.company_name 은 타입상 필수 string — ?? 는 dead branch)
+      // 표지 — v2 제목: "AI훈련로드맵 보고서 (기업명 – 대상 과업)"
+      // (Project.company_name 은 타입상 필수 string — ?? 는 dead branch)
       company_name: project.company_name,
+      // v2 신규: 표지 제목의 "대상 과업" (인터뷰 Ⅰ-3 선정 과업 재사용)
+      cover_target_task: overview?.selected_tasks_summary ?? result.outcome_summary.selected_tasks,
       report_date: reportDateText,
       pm_affiliation: roadmap.consultant_profile_snapshot?.affiliation ?? '',
       pm_name: pm?.name ?? '',
@@ -365,7 +336,7 @@ export function buildRoadmapHwpxPayload(
       ai_competency_level: normalizeLevel(
         overview?.ai_competency_level
           ? (overview.ai_competency_level as RoadmapResult['outcome_summary']['ai_competency_level'])
-          : result.outcome_summary.ai_competency_level,
+          : result.outcome_summary.ai_competency_level
       ),
       selected_tasks_text: overview?.selected_tasks_summary ?? '',
       // main_content 빈 문자열 → overview.roadmap_summary fallback (`||`),
@@ -391,31 +362,11 @@ export function buildRoadmapHwpxPayload(
       task_workflow_items: taskWorkflowItems,
       analysis_notes_text: notes?.text ?? '',
 
-      // Ⅱ-4 훈련대상 과업 (첫 항목)
+      // Ⅱ-3 AI 적용 대상 과업 (첫 항목)
       training_target: trainingTarget,
 
-      // Ⅲ-1 역량 모델링
-      // RoadmapResult 타입상 ncs_*, training_structure_method, annual_plan 모두
-      // 필수 필드 (storage mapper 가 default 적용). ?? fallback 은 dead branch.
-      competencies,
-      ncs_used: result.ncs_used,
-      ncs_methodology: result.ncs_methodology,
-      ncs_derivation_method: result.ncs_derivation_method,
-
-      // Ⅲ-2 훈련체계도 (6열 단순 표)
-      training_structure_rows: structureRows,
-      training_structure_method: result.training_structure_method,
-
-      // Ⅲ-3 연간 훈련계획
-      annual_plan_items: annualPlanItems,
-      annual_plan_usage: result.annual_plan.usage_plan,
-
-      // Ⅲ-4 훈련과정 명세서
+      // Ⅲ 훈련실시 계획 제안 — 훈련과정 명세서 6개
       course_specs: courseSpecs,
-
-      // 별첨 수행일지
-      employment_insurance_no: '',
-      journal_attachments: '',
     },
   };
 }

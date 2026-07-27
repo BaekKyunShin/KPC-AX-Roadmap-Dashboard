@@ -17,13 +17,19 @@ vi.mock('@/lib/actions/auth-helpers', () => ({
   requireAuthWithRole: (...args: unknown[]) => mockAuthResult(...args),
 }));
 
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminClient: vi.fn(),
+}));
+
 // ─── 테스트 대상 import ──────────────────────────────────────────────────────
 
 import {
   fetchProjects,
   fetchProjectTimeline,
   fetchProjectsWithTimeline,
+  fetchRoadmapProjectsForLink,
 } from './queries';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
 
@@ -31,7 +37,13 @@ const TEST_USER_ID = '550e8400-e29b-41d4-a716-446655440001';
 
 function createAuthSuccess() {
   const mock = createMockSupabase({ authUser: { id: TEST_USER_ID } });
-  return { user: { id: TEST_USER_ID, email: 'ops@test.com' }, supabase: mock.client, role: 'OPS_ADMIN', status: 'ACTIVE', _mock: mock };
+  return {
+    user: { id: TEST_USER_ID, email: 'ops@test.com' },
+    supabase: mock.client,
+    role: 'OPS_ADMIN',
+    status: 'ACTIVE',
+    _mock: mock,
+  };
 }
 
 // ─── fetchProjects ──────────────────────────────────────────────────────────
@@ -59,9 +71,15 @@ describe('fetchProjects', () => {
     auth._mock.addResult({
       data: [
         {
-          id: 'p1', company_name: 'A사', industry: '제조업', company_size: '50-299',
-          status: 'NEW', created_at: '2026-01-15', contact_email: 'a@a.com',
-          assigned_consultant: null, created_by_user: { id: 'u1', name: '관리자A' },
+          id: 'p1',
+          company_name: 'A사',
+          industry: '제조업',
+          company_size: '50-299',
+          status: 'NEW',
+          created_at: '2026-01-15',
+          contact_email: 'a@a.com',
+          assigned_consultant: null,
+          created_by_user: { id: 'u1', name: '관리자A' },
         },
       ],
       error: null,
@@ -136,8 +154,13 @@ describe('fetchProjects', () => {
     auth._mock.addResult({
       data: [
         {
-          id: 'p1', company_name: 'A사', industry: '제조업', company_size: '50-299',
-          status: 'ASSIGNED', created_at: '2026-01-15', contact_email: 'a@a.com',
+          id: 'p1',
+          company_name: 'A사',
+          industry: '제조업',
+          company_size: '50-299',
+          status: 'ASSIGNED',
+          created_at: '2026-01-15',
+          contact_email: 'a@a.com',
           assigned_consultant: [{ id: 'c1', name: '컨설턴트A', email: 'c@test.com' }],
           created_by_user: [{ id: 'u1', name: '관리자A' }],
         },
@@ -147,7 +170,11 @@ describe('fetchProjects', () => {
     });
 
     const result = await fetchProjects();
-    expect(result.projects[0].assigned_consultant).toEqual({ id: 'c1', name: '컨설턴트A', email: 'c@test.com' });
+    expect(result.projects[0].assigned_consultant).toEqual({
+      id: 'c1',
+      name: '컨설턴트A',
+      email: 'c@test.com',
+    });
     expect(result.projects[0].created_by_user).toEqual({ id: 'u1', name: '관리자A' });
   });
 });
@@ -212,7 +239,12 @@ describe('fetchProjectTimeline', () => {
 
     // 1. 프로젝트 기본 정보
     auth._mock.addResult({
-      data: { id: 'p1', company_name: 'A사', status: 'FINALIZED', created_at: '2026-01-15T09:00:00Z' },
+      data: {
+        id: 'p1',
+        company_name: 'A사',
+        status: 'FINALIZED',
+        created_at: '2026-01-15T09:00:00Z',
+      },
       error: null,
     });
 
@@ -243,19 +275,25 @@ describe('fetchProjectTimeline', () => {
     });
     // 7. allAssignments (thenable — consumed last via .then())
     auth._mock.addResult({
-      data: [{
-        id: 'a1', assignment_reason: '매칭', is_current: true,
-        assigned_at: '2026-01-18T09:00:00Z', unassigned_at: null, unassignment_reason: null,
-        consultant: { id: 'c1', name: '컨설턴트A', email: 'c@test.com' },
-        assigned_by_user: { id: 'u1', name: '관리자A' },
-      }],
+      data: [
+        {
+          id: 'a1',
+          assignment_reason: '매칭',
+          is_current: true,
+          assigned_at: '2026-01-18T09:00:00Z',
+          unassigned_at: null,
+          unassignment_reason: null,
+          consultant: { id: 'c1', name: '컨설턴트A', email: 'c@test.com' },
+          assigned_by_user: { id: 'u1', name: '관리자A' },
+        },
+      ],
       error: null,
     });
 
     const result = await fetchProjectTimeline('p1');
     expect(result).not.toBeNull();
-    expect(result!.steps.every(s => s.isCompleted)).toBe(true);
-    expect(result!.steps.every(s => !s.isCurrent)).toBe(true);
+    expect(result!.steps.every((s) => s.isCompleted)).toBe(true);
+    expect(result!.steps.every((s) => !s.isCurrent)).toBe(true);
     expect(result!.assignments).toHaveLength(1);
     expect(result!.steps[2].detail).toContain('컨설턴트A');
     expect(result!.steps[4].detail).toContain('버전 2');
@@ -299,9 +337,14 @@ describe('fetchProjectsWithTimeline', () => {
     auth._mock.addResult({
       data: [
         {
-          id: 'p1', company_name: 'A사', industry: '제조업',
-          status: 'ASSIGNED', created_at: '2026-01-15', updated_at: '2026-03-01T00:00:00Z',
-          contact_email: 'a@a.com', assigned_consultant: null,
+          id: 'p1',
+          company_name: 'A사',
+          industry: '제조업',
+          status: 'ASSIGNED',
+          created_at: '2026-01-15',
+          updated_at: '2026-03-01T00:00:00Z',
+          contact_email: 'a@a.com',
+          assigned_consultant: null,
         },
       ],
       error: null,
@@ -338,5 +381,93 @@ describe('fetchProjectsWithTimeline', () => {
     await fetchProjectsWithTimeline({ search: '테스트', industry: '제조업' });
     expect(auth._mock.chainable.or).toHaveBeenCalled();
     expect(auth._mock.chainable.eq).toHaveBeenCalledWith('industry', '제조업');
+  });
+});
+
+// ─── fetchRoadmapProjectsForLink (PR2) ────────────────────────────────────────
+
+describe('fetchRoadmapProjectsForLink', () => {
+  let adminMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    adminMock = createMockSupabase();
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('인증 실패 시 빈 배열', async () => {
+    mockAuthResult.mockResolvedValue({ error: '로그인이 필요합니다.' });
+    const result = await fetchRoadmapProjectsForLink();
+    expect(result).toEqual([]);
+  });
+
+  it('FINAL 로드맵 보유 ROADMAP 프로젝트만 필터해 매핑 반환', async () => {
+    mockAuthResult.mockResolvedValue(createAuthSuccess());
+    adminMock.addResult({
+      data: [
+        {
+          id: 'r1',
+          company_name: 'A사',
+          business_reg_no: '111',
+          roadmap_versions: [{ status: 'FINAL' }],
+        },
+        {
+          id: 'r2',
+          company_name: 'B사',
+          business_reg_no: null,
+          roadmap_versions: [{ status: 'FINAL' }],
+        },
+      ],
+      error: null,
+    });
+
+    const result = await fetchRoadmapProjectsForLink();
+
+    expect(result).toEqual([
+      { id: 'r1', company_name: 'A사', business_reg_no: '111' },
+      { id: 'r2', company_name: 'B사', business_reg_no: null },
+    ]);
+    // 인너 조인 + 필터 적용 확인
+    expect(adminMock.chainable.select).toHaveBeenCalledWith(
+      expect.stringContaining('roadmap_versions!inner')
+    );
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('track', 'ROADMAP');
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('roadmap_versions.status', 'FINAL');
+  });
+
+  it('조인으로 중복된 프로젝트 id는 제거', async () => {
+    mockAuthResult.mockResolvedValue(createAuthSuccess());
+    adminMock.addResult({
+      data: [
+        {
+          id: 'r1',
+          company_name: 'A사',
+          business_reg_no: '111',
+          roadmap_versions: [{ status: 'FINAL' }],
+        },
+        {
+          id: 'r1',
+          company_name: 'A사',
+          business_reg_no: '111',
+          roadmap_versions: [{ status: 'FINAL' }],
+        },
+      ],
+      error: null,
+    });
+
+    const result = await fetchRoadmapProjectsForLink();
+    expect(result).toHaveLength(1);
+  });
+
+  it('쿼리 에러 시 빈 배열', async () => {
+    mockAuthResult.mockResolvedValue(createAuthSuccess());
+    adminMock.addResult({ data: null, error: { message: 'boom' } });
+
+    const result = await fetchRoadmapProjectsForLink();
+    expect(result).toEqual([]);
   });
 });

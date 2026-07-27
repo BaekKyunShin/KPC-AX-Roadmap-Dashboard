@@ -1,11 +1,15 @@
 /**
- * Task 2.10 — PBL Ⅳ·Ⅴ장 LLM 프롬프트 재설계 테스트
+ * PBL Ⅳ장 LLM 프롬프트/스키마 테스트 (v2 양식)
+ *
+ * v2 변경점:
+ *  - 성과분석 측정 지표(outcome_metrics)가 operation_plan 하위(training_goal 다음)로 이동
+ *  - 성과 확산 전략(구 Ⅴ-2 diffusion_strategy)은 출력처 소멸 → 삭제
+ *  - 최상위 outcome_analysis 래퍼 제거 → PBLContent = { operation_plan }
  *
  * 검증 범위:
- * 1. pblContentSchema (Ⅴ장 포함) safeParse — fixture 기반
- * 2. buildPBLSystemPrompt — Ⅳ few-shot + Ⅴ장 섹션 포함 여부
- * 3. pbl-types Ⅴ장 상수/타입 export
- * 4. pbl-validator Ⅴ장 비즈니스 검증
+ * 1. pblContentSchema safeParse — fixture 기반
+ * 2. buildPBLSystemPrompt — Ⅳ few-shot + 성과분석 측정 지표 섹션 포함, diffusion 부재
+ * 3. pbl-types 상수/타입 export
  */
 
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -16,7 +20,7 @@ import sampleFixture from '../__fixtures__/sample-llm-response.json';
 import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
 
 // ============================================================================
-// 1. fixture safeParse — pblContentSchema (Ⅴ장 포함)
+// 1. fixture safeParse — pblContentSchema
 // ============================================================================
 
 describe('pblContentSchema — fixture safeParse', () => {
@@ -25,27 +29,15 @@ describe('pblContentSchema — fixture safeParse', () => {
     expect(result.success).toBe(true);
   });
 
-  it('outcome_analysis.outcome_metrics 필드가 올바르게 파싱된다', () => {
+  it('operation_plan.outcome_metrics 필드가 올바르게 파싱된다', () => {
     const result = pblContentSchema.safeParse(sampleFixture);
     expect(result.success).toBe(true);
     if (result.success) {
-      const metrics = result.data.outcome_analysis.outcome_metrics;
+      const metrics = result.data.operation_plan.outcome_metrics;
       expect(Array.isArray(metrics.selected_goals)).toBe(true);
       expect(metrics.selected_goals.length).toBeGreaterThanOrEqual(1);
       expect(typeof metrics.quantitative).toBe('string');
       expect(typeof metrics.qualitative).toBe('string');
-    }
-  });
-
-  it('outcome_analysis.diffusion_strategy 필드가 올바르게 파싱된다', () => {
-    const result = pblContentSchema.safeParse(sampleFixture);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      const strategy = result.data.outcome_analysis.diffusion_strategy;
-      expect(typeof strategy.internalization).toBe('string');
-      expect(strategy.internalization.trim().length).toBeGreaterThan(0);
-      expect(typeof strategy.company_wide_diffusion).toBe('string');
-      expect(strategy.company_wide_diffusion.trim().length).toBeGreaterThan(0);
     }
   });
 
@@ -55,9 +47,17 @@ describe('pblContentSchema — fixture safeParse', () => {
     if (result.success) {
       const plan = result.data.operation_plan;
       expect(typeof plan.training_goal).toBe('string');
+      expect(plan.outcome_metrics).toBeDefined();
       expect(Array.isArray(plan.ai_tool_usage_plan)).toBe(true);
       expect(plan.ai_tool_usage_plan.length).toBeGreaterThanOrEqual(3);
     }
+  });
+
+  it('최상위 키는 operation_plan 하나뿐이다 (outcome_analysis 제거)', () => {
+    const result = pblContentSchema.safeParse(sampleFixture);
+    expect(result.success).toBe(true);
+    expect(Object.keys(sampleFixture)).toEqual(['operation_plan']);
+    expect(sampleFixture).not.toHaveProperty('outcome_analysis');
   });
 
   it('result_evaluation null 배열 길이가 고정값(5/3/5/4)을 만족한다', () => {
@@ -76,8 +76,7 @@ describe('pblContentSchema — fixture safeParse', () => {
     const result = pblContentSchema.safeParse(sampleFixture);
     expect(result.success).toBe(true);
     if (result.success) {
-      const contents =
-        result.data.operation_plan.training_plan.subject_profile.training_contents;
+      const contents = result.data.operation_plan.training_plan.subject_profile.training_contents;
       for (const row of contents) {
         const sum = row.instructor_hours.external + row.instructor_hours.internal;
         expect(Math.abs(sum - row.training_hours)).toBeLessThan(1e-6);
@@ -87,55 +86,48 @@ describe('pblContentSchema — fixture safeParse', () => {
 });
 
 // ============================================================================
-// 2. Ⅴ장 스키마 거부 케이스 — 필수 필드 누락 시 실패
+// 2. outcome_metrics 스키마 거부 케이스 — 필수 필드 누락 시 실패
 // ============================================================================
 
-describe('pblContentSchema — Ⅴ장 거부 케이스', () => {
+describe('pblContentSchema — outcome_metrics 거부 케이스', () => {
   function makeValidBase() {
     return JSON.parse(JSON.stringify(sampleFixture));
   }
 
-  it('outcome_analysis 자체가 없으면 실패한다', () => {
+  it('operation_plan.outcome_metrics 자체가 없으면 실패한다', () => {
     const data = makeValidBase();
-    delete data.outcome_analysis;
+    delete data.operation_plan.outcome_metrics;
     const result = pblContentSchema.safeParse(data);
     expect(result.success).toBe(false);
   });
 
   it('outcome_metrics.selected_goals 빈 배열이면 실패한다', () => {
     const data = makeValidBase();
-    data.outcome_analysis.outcome_metrics.selected_goals = [];
+    data.operation_plan.outcome_metrics.selected_goals = [];
     const result = pblContentSchema.safeParse(data);
     expect(result.success).toBe(false);
   });
 
   it('outcome_metrics.quantitative 빈 문자열이면 실패한다', () => {
     const data = makeValidBase();
-    data.outcome_analysis.outcome_metrics.quantitative = '  ';
-    const result = pblContentSchema.safeParse(data);
-    expect(result.success).toBe(false);
-  });
-
-  it('diffusion_strategy.internalization 빈 문자열이면 실패한다', () => {
-    const data = makeValidBase();
-    data.outcome_analysis.diffusion_strategy.internalization = '';
+    data.operation_plan.outcome_metrics.quantitative = '  ';
     const result = pblContentSchema.safeParse(data);
     expect(result.success).toBe(false);
   });
 
   it('selected_goals에 허용값 이외 문자열이 포함되면 실패한다', () => {
     const data = makeValidBase();
-    data.outcome_analysis.outcome_metrics.selected_goals = ['존재하지않는카테고리'];
+    data.operation_plan.outcome_metrics.selected_goals = ['존재하지않는카테고리'];
     const result = pblContentSchema.safeParse(data);
     expect(result.success).toBe(false);
   });
 });
 
 // ============================================================================
-// 3. buildPBLSystemPrompt — Ⅳ few-shot + Ⅴ장 섹션 포함 여부
+// 3. buildPBLSystemPrompt — Ⅳ few-shot + 성과분석 측정 지표 섹션
 // ============================================================================
 
-describe('buildPBLSystemPrompt — Ⅳ·Ⅴ장 재설계', () => {
+describe('buildPBLSystemPrompt — Ⅳ장 재설계 (성과분석 측정 지표 포함)', () => {
   let prompt: string;
 
   beforeAll(() => {
@@ -152,18 +144,12 @@ describe('buildPBLSystemPrompt — Ⅳ·Ⅴ장 재설계', () => {
     expect(prompt).toContain('total_sum_hours');
   });
 
-  it('Ⅴ-1 섹션(outcome_metrics) 설계 원칙이 포함된다', () => {
+  it('성과분석 측정 지표(outcome_metrics) 설계 원칙이 포함된다', () => {
     expect(prompt).toContain('outcome_metrics');
     expect(prompt).toContain('selected_goals');
   });
 
-  it('Ⅴ-2 섹션(diffusion_strategy) 설계 원칙이 포함된다', () => {
-    expect(prompt).toContain('diffusion_strategy');
-    expect(prompt).toContain('internalization');
-    expect(prompt).toContain('company_wide_diffusion');
-  });
-
-  it('Ⅴ장 few-shot 예시(정량/정성 지표)가 포함된다', () => {
+  it('정량/정성 지표 few-shot 예시가 포함된다', () => {
     expect(prompt).toContain('quantitative');
     expect(prompt).toContain('qualitative');
   });
@@ -172,12 +158,16 @@ describe('buildPBLSystemPrompt — Ⅳ·Ⅴ장 재설계', () => {
     expect(prompt).toContain('LLM 생성 제외');
   });
 
-  it('outcome_analysis 최상위 키가 출력 JSON 스키마에 포함된다', () => {
-    expect(prompt).toContain('outcome_analysis');
+  it('outcome_metrics가 operation_plan 스키마 안에 위치한다 (별도 outcome_analysis 래퍼 없음)', () => {
+    expect(prompt).toContain('operation_plan');
+    expect(prompt).toContain('outcome_metrics');
+    expect(prompt).not.toContain('outcome_analysis');
   });
 
-  it('Ⅴ-2 내재화 방안 few-shot 예시가 포함된다', () => {
-    expect(prompt).toContain('멘토-멘티');
+  it('삭제된 성과 확산 전략(diffusion_strategy) 잔재가 없다', () => {
+    expect(prompt).not.toContain('diffusion_strategy');
+    expect(prompt).not.toContain('company_wide_diffusion');
+    expect(prompt).not.toContain('internalization');
   });
 });
 
@@ -197,15 +187,15 @@ describe('TRAINING_GOAL_CATEGORIES 상수', () => {
 });
 
 // ============================================================================
-// 5. buildPBLUserPrompt — Ⅴ장 생성 요청 포함
+// 5. buildPBLUserPrompt — Ⅳ장 생성 요청 포함
 // ============================================================================
 
-describe('buildPBLUserPrompt — Ⅴ장 생성 요청 포함', () => {
+describe('buildPBLUserPrompt — Ⅳ장 생성 요청 포함', () => {
   // V2 (PBLInterviewStrict, flat camelCase) 정본 fixture 사용.
   const fakeInterview = PBL_INTERVIEW_SAMPLE as unknown as Record<string, unknown>;
 
-  it('프롬프트에 Ⅴ장 생성 요청 문구가 포함된다', () => {
+  it('프롬프트에 Ⅳ장 생성 요청 문구가 포함된다', () => {
     const result = buildPBLUserPrompt(fakeInterview, {}, null, '요약');
-    expect(result).toContain('Ⅴ장');
+    expect(result).toContain('Ⅳ장');
   });
 });

@@ -26,16 +26,18 @@ export function StepExpectations({
   const patch = (next: Partial<PBLTrainingEnv>) => onChange({ ...value, ...next });
 
   const targetCharacteristics = value.targetCharacteristics ?? { career: '', level: '' };
-  const aiInfraDetail =
-    value.aiInfraDetail ??
-    { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 };
+  const aiInfraDetail = value.aiInfraDetail ?? {
+    toolCapacity: 'AVAILABLE' as const,
+    networkStatus: 'GOOD' as const,
+    pcCount: 0,
+  };
 
   return (
     <FormSection
-      number="Ⅱ-2-b"
+      number="Ⅱ-3-b"
       title="기대효과·요구분석"
       label="[인터뷰 입력]"
-      description="양식 Ⅱ-2 의 대상자 특성·AI 인프라 세부·요구분석·기대효과 5 영역을 작성합니다."
+      description="양식 Ⅱ-3 의 대상자 특성·AI 인프라 세부·요구분석·기대효과 5 영역을 작성합니다."
     >
       <div className="space-y-6">
         {/* 1. 대상자 특성 */}
@@ -82,14 +84,17 @@ export function StepExpectations({
           <h3 className="text-sm font-semibold text-foreground">AI 활용 가능 인프라</h3>
           <div className="grid gap-3 sm:grid-cols-3">
             <fieldset>
-              <legend className="mb-1 block text-sm text-muted-foreground">AI 도구 사용 가능 환경</legend>
+              <legend className="mb-1 block text-sm text-muted-foreground">
+                AI 도구 사용 가능 환경
+              </legend>
               <select
                 value={aiInfraDetail.toolCapacity}
                 onChange={(e) =>
                   patch({
                     aiInfraDetail: {
                       ...aiInfraDetail,
-                      toolCapacity: e.target.value as PBLTrainingEnv['aiInfraDetail']['toolCapacity'],
+                      toolCapacity: e.target
+                        .value as PBLTrainingEnv['aiInfraDetail']['toolCapacity'],
                     },
                   })
                 }
@@ -110,7 +115,8 @@ export function StepExpectations({
                   patch({
                     aiInfraDetail: {
                       ...aiInfraDetail,
-                      networkStatus: e.target.value as PBLTrainingEnv['aiInfraDetail']['networkStatus'],
+                      networkStatus: e.target
+                        .value as PBLTrainingEnv['aiInfraDetail']['networkStatus'],
                     },
                   })
                 }
@@ -187,14 +193,13 @@ export function StepExpectations({
       </div>
 
       <ExampleAccordion
+        guideLabel="작성 가이드"
         guide={
-          <ul className="list-disc space-y-1 pl-4">
-            <li>대상자 특성은 양식 P-05 row 7 의 (업무 경력) (수준) 영역에 그대로 매핑됩니다.</li>
+          <ul className="list-none space-y-1">
             <li>
-              AI 인프라 세부는 row 8 의 AI 도구 사용 가능 환경 (가능/제한적/불가능) · 네트워크
-              환경 (양호/보통/개선필요) · PC 보유 수 와 1:1 정합.
+              3. ‘훈련을 통한 기대효과’는 업무수행 시 애로사항(As-is)과 해당 업무를 우수하게
+              수행하기 위해 요구되는 수준(To-be)을 작성(gap 분석)하고, 이를 훈련 목표 및 내용에 연계
             </li>
-            <li>요구분석·기대효과는 row 9·11 자유 서술 영역. 3~5 줄 권장.</li>
           </ul>
         }
       />

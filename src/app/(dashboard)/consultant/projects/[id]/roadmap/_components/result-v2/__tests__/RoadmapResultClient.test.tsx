@@ -34,7 +34,11 @@ vi.mock('@/components/ui/alert-dialog', async () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require('react');
 
-  function AlertDialog({ children, open, onOpenChange }: {
+  function AlertDialog({
+    children,
+    open,
+    onOpenChange,
+  }: {
     children: React.ReactNode;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -48,21 +52,34 @@ vi.mock('@/components/ui/alert-dialog', async () => {
       <div data-testid="alert-dialog">
         {React.Children.map(children, (child: React.ReactElement) =>
           React.isValidElement(child)
-            ? React.cloneElement(child as React.ReactElement<{ isOpen: boolean; setOpen: (v: boolean) => void; onOpenChange?: (v: boolean) => void }>, {
-                isOpen: internalOpen,
-                setOpen: (v: boolean) => {
-                  setInternalOpen(v);
-                  onOpenChange?.(v);
-                },
-                onOpenChange,
-              })
-            : child,
+            ? React.cloneElement(
+                child as React.ReactElement<{
+                  isOpen: boolean;
+                  setOpen: (v: boolean) => void;
+                  onOpenChange?: (v: boolean) => void;
+                }>,
+                {
+                  isOpen: internalOpen,
+                  setOpen: (v: boolean) => {
+                    setInternalOpen(v);
+                    onOpenChange?.(v);
+                  },
+                  onOpenChange,
+                }
+              )
+            : child
         )}
       </div>
     );
   }
 
-  function AlertDialogTrigger({ children, asChild, isOpen: _isOpen, setOpen, ...props }: {
+  function AlertDialogTrigger({
+    children,
+    asChild,
+    isOpen: _isOpen,
+    setOpen,
+    ...props
+  }: {
     children: React.ReactNode;
     asChild?: boolean;
     isOpen?: boolean;
@@ -74,10 +91,20 @@ vi.mock('@/components/ui/alert-dialog', async () => {
         onClick: () => setOpen?.(true),
       });
     }
-    return <button onClick={() => setOpen?.(true)} {...props}>{children}</button>;
+    return (
+      <button onClick={() => setOpen?.(true)} {...props}>
+        {children}
+      </button>
+    );
   }
 
-  function AlertDialogContent({ children, isOpen, setOpen, onOpenChange, ...props }: {
+  function AlertDialogContent({
+    children,
+    isOpen,
+    setOpen,
+    onOpenChange,
+    ...props
+  }: {
     children: React.ReactNode;
     isOpen?: boolean;
     setOpen?: (v: boolean) => void;
@@ -89,8 +116,14 @@ vi.mock('@/components/ui/alert-dialog', async () => {
       <div role="alertdialog" {...props}>
         {React.Children.map(children, (child: React.ReactElement) =>
           React.isValidElement(child)
-            ? React.cloneElement(child as React.ReactElement<{ setOpen: (v: boolean) => void; onOpenChange?: (v: boolean) => void }>, { setOpen, onOpenChange })
-            : child,
+            ? React.cloneElement(
+                child as React.ReactElement<{
+                  setOpen: (v: boolean) => void;
+                  onOpenChange?: (v: boolean) => void;
+                }>,
+                { setOpen, onOpenChange }
+              )
+            : child
         )}
       </div>
     );
@@ -102,10 +135,21 @@ vi.mock('@/components/ui/alert-dialog', async () => {
   function AlertDialogTitle({ children }: { children: React.ReactNode }) {
     return <h2>{children}</h2>;
   }
-  function AlertDialogDescription({ children, asChild: _asChild }: { children: React.ReactNode; asChild?: boolean }) {
+  function AlertDialogDescription({
+    children,
+    asChild: _asChild,
+  }: {
+    children: React.ReactNode;
+    asChild?: boolean;
+  }) {
     return <div>{children}</div>;
   }
-  function AlertDialogFooter({ children, setOpen, onOpenChange, ...props }: {
+  function AlertDialogFooter({
+    children,
+    setOpen,
+    onOpenChange,
+    ...props
+  }: {
     children: React.ReactNode;
     setOpen?: (v: boolean) => void;
     onOpenChange?: (v: boolean) => void;
@@ -115,13 +159,25 @@ vi.mock('@/components/ui/alert-dialog', async () => {
       <div {...props}>
         {React.Children.map(children, (child: React.ReactElement) =>
           React.isValidElement(child)
-            ? React.cloneElement(child as React.ReactElement<{ setOpen: (v: boolean) => void; onOpenChange?: (v: boolean) => void }>, { setOpen, onOpenChange })
-            : child,
+            ? React.cloneElement(
+                child as React.ReactElement<{
+                  setOpen: (v: boolean) => void;
+                  onOpenChange?: (v: boolean) => void;
+                }>,
+                { setOpen, onOpenChange }
+              )
+            : child
         )}
       </div>
     );
   }
-  function AlertDialogCancel({ children, setOpen, onOpenChange, disabled, ...props }: {
+  function AlertDialogCancel({
+    children,
+    setOpen,
+    onOpenChange,
+    disabled,
+    ...props
+  }: {
     children: React.ReactNode;
     setOpen?: (v: boolean) => void;
     onOpenChange?: (v: boolean) => void;
@@ -141,7 +197,15 @@ vi.mock('@/components/ui/alert-dialog', async () => {
       </button>
     );
   }
-  function AlertDialogAction({ children, onClick, disabled, setOpen: _setOpen, onOpenChange: _onOpenChange, variant: _variant, ...props }: {
+  function AlertDialogAction({
+    children,
+    onClick,
+    disabled,
+    setOpen: _setOpen,
+    onOpenChange: _onOpenChange,
+    variant: _variant,
+    ...props
+  }: {
     children: React.ReactNode;
     onClick?: (e: React.MouseEvent) => void;
     disabled?: boolean;
@@ -186,16 +250,12 @@ const baseInterview: Partial<ResultInterviewSnapshot> = {
     outcomes: '',
   },
   taskAnalysis: [],
-  taskAnalysisNote: '',
   targetTask: {
     name: '',
     reason: '',
     expectedAsIs: '',
     expectedToBe: '',
   },
-  competencies: [],
-  ncsUsed: false,
-  ncsDerivationMethod: '',
 };
 
 function makeVersion(overrides: Partial<RoadmapVersionUI> = {}): RoadmapVersionUI {
@@ -210,13 +270,6 @@ function makeVersion(overrides: Partial<RoadmapVersionUI> = {}): RoadmapVersionU
       selected_tasks: '',
       main_content: '',
     },
-    competencies: [],
-    ncs_used: false,
-    ncs_methodology: '',
-    ncs_derivation_method: '',
-    training_structure: [],
-    training_structure_method: '',
-    annual_plan: { items: [], usage_plan: '' },
     course_specs: [],
     revision_prompt: null,
     is_shared: false,
@@ -243,10 +296,10 @@ describe('RoadmapResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(
-      screen.getByRole('heading', { name: /AI훈련로드맵 결과/, level: 1 }),
+      screen.getByRole('heading', { name: /AI훈련로드맵 결과/, level: 1 })
     ).toBeInTheDocument();
     expect(screen.getByLabelText('PDF 다운로드')).toBeInTheDocument();
     expect(screen.getByLabelText('Excel 다운로드')).toBeInTheDocument();
@@ -265,7 +318,7 @@ describe('RoadmapResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByRole('tab', { name: 'Ⅰ. 개요' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Ⅱ. 요구분석' })).toBeInTheDocument();
@@ -284,11 +337,9 @@ describe('RoadmapResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
-    expect(
-      screen.getByText(/아직 생성된 로드맵이 없습니다/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/아직 생성된 로드맵이 없습니다/)).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Ⅰ. 개요' })).toBeNull();
   });
 
@@ -307,7 +358,7 @@ describe('RoadmapResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={onGenerate}
         onDownload={vi.fn()}
-      />,
+      />
     );
     fireEvent.click(screen.getByRole('button', { name: /새 버전 생성/ }));
     fireEvent.click(screen.getByRole('button', { name: '생성 시작' }));
@@ -328,11 +379,9 @@ describe('RoadmapResultClient — CONSULTANT role', () => {
         onDownload={vi.fn()}
         isGenerating
         companyName="테스트기업"
-      />,
+      />
     );
-    expect(
-      screen.getByRole('heading', { name: 'AI 로드맵 생성 중' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'AI 로드맵 생성 중' })).toBeInTheDocument();
   });
 
   it('VersionStatusBadge 가 선택 버전 상태 + 번호를 표시 (DRAFT v3)', () => {
@@ -350,7 +399,7 @@ describe('RoadmapResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     const badgeCandidates = screen.getAllByText(/v3/);
     expect(badgeCandidates.length).toBeGreaterThan(0);
@@ -368,7 +417,7 @@ describe('RoadmapResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     const text = container.textContent ?? '';
     expect(text).not.toContain('결과물 표지');
@@ -389,7 +438,7 @@ describe('RoadmapResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={onDownload}
-      />,
+      />
     );
     await act(async () => {
       fireEvent.click(screen.getByLabelText('PDF 다운로드'));
@@ -415,7 +464,7 @@ describe('RoadmapResultClient — OPS role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     // "새 버전 생성" 아코디언 트리거 버튼이 존재하지 않아야 함
     expect(screen.queryByRole('button', { name: /새 버전 생성/ })).toBeNull();
@@ -433,7 +482,7 @@ describe('RoadmapResultClient — OPS role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     // InlineEditField 의 편집 아이콘(연필 버튼) 이 Ops 에는 전혀 없어야 함
     const editButtons = container.querySelectorAll('button[aria-label*="편집"]');
@@ -452,7 +501,7 @@ describe('RoadmapResultClient — OPS role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByTestId('share-toggle')).toBeNull();
 
@@ -467,7 +516,7 @@ describe('RoadmapResultClient — OPS role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByTestId('share-toggle')).toBeInTheDocument();
   });
@@ -484,7 +533,7 @@ describe('RoadmapResultClient — OPS role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByTestId('share-toggle')).toBeNull();
   });
@@ -501,7 +550,7 @@ describe('RoadmapResultClient — OPS role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByTestId('finalize-roadmap-button')).toBeNull();
   });
@@ -527,7 +576,7 @@ describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)',
         onEdit={vi.fn()}
         onGenerate={onGenerate}
         onDownload={vi.fn()}
-      />,
+      />
     );
     const btn = screen.getByTestId('empty-state-generate-roadmap');
     expect(btn).toBeInTheDocument();
@@ -553,7 +602,7 @@ describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)',
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
         onFinalize={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByTestId('finalize-roadmap-button')).toBeInTheDocument();
   });
@@ -570,7 +619,7 @@ describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)',
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     const heading = screen.getByTestId('selected-version-heading');
     expect(heading).toBeInTheDocument();
@@ -590,7 +639,7 @@ describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)',
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
         onFinalize={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByTestId('finalize-roadmap-button')).toBeNull();
   });
@@ -608,7 +657,7 @@ describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)',
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByTestId('final-edit-warning-banner')).toBeInTheDocument();
   });
@@ -625,7 +674,7 @@ describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)',
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByTestId('final-edit-warning-banner')).not.toBeInTheDocument();
   });
@@ -640,7 +689,7 @@ describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)',
         interview={baseInterview}
         onSelectVersion={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByTestId('final-edit-warning-banner')).not.toBeInTheDocument();
   });
@@ -666,17 +715,12 @@ describe('RoadmapResultClient — 인터뷰 미완료 가드 (#002)', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
-    expect(
-      screen.getByText(/현장 인터뷰를 먼저 완료해주세요/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/현장 인터뷰를 먼저 완료해주세요/)).toBeInTheDocument();
     const cta = screen.getByRole('link', { name: /인터뷰 입력하러 가기/ });
     expect(cta).toBeInTheDocument();
-    expect(cta).toHaveAttribute(
-      'href',
-      '/consultant/projects/proj-empty-interview/interview',
-    );
+    expect(cta).toHaveAttribute('href', '/consultant/projects/proj-empty-interview/interview');
   });
 
   it('interview 가 빈 객체일 때 "AI 로드맵 생성" 버튼이 disabled', () => {
@@ -691,7 +735,7 @@ describe('RoadmapResultClient — 인터뷰 미완료 가드 (#002)', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByTestId('empty-state-generate-roadmap')).toBeDisabled();
   });
@@ -710,14 +754,10 @@ describe('RoadmapResultClient — 인터뷰 미완료 가드 (#002)', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
-    expect(
-      screen.queryByText(/현장 인터뷰를 먼저 완료해주세요/),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /인터뷰 입력하러 가기/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/현장 인터뷰를 먼저 완료해주세요/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /인터뷰 입력하러 가기/ })).not.toBeInTheDocument();
     expect(screen.getByTestId('empty-state-generate-roadmap')).toBeEnabled();
   });
 });
@@ -743,7 +783,7 @@ describe('RoadmapResultClient — 자가진단/status 가드 (#013)', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByText(/자가진단 결과가 없습니다/)).toBeInTheDocument();
     expect(screen.getByTestId('empty-state-generate-roadmap')).toBeDisabled();
@@ -763,11 +803,9 @@ describe('RoadmapResultClient — 자가진단/status 가드 (#013)', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
-    expect(
-      screen.getByText(/인터뷰는 작성됐지만 아직 최종 제출 전입니다/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/인터뷰는 작성됐지만 아직 최종 제출 전입니다/)).toBeInTheDocument();
     expect(screen.getByTestId('empty-state-generate-roadmap')).toBeDisabled();
   });
 });
@@ -794,16 +832,14 @@ describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
         onFinalize={onFinalize}
-      />,
+      />
     );
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('finalize-roadmap-button'));
     });
 
-    expect(
-      screen.getByText('로드맵을 최종 확정하시겠습니까?'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('로드맵을 최종 확정하시겠습니까?')).toBeInTheDocument();
     expect(onFinalize).not.toHaveBeenCalled();
   });
 
@@ -820,7 +856,7 @@ describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
         onFinalize={vi.fn()}
-      />,
+      />
     );
 
     await act(async () => {
@@ -832,7 +868,7 @@ describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
     const dialog = screen.getByRole('alertdialog');
     const text = dialog.textContent ?? '';
     expect(text).toMatch(
-      /확정하면 프로젝트 상태가 ['‘]최종 확정['’]으로 바뀌고, 이전 확정본은 자동 아카이브됩니다\./,
+      /확정하면 프로젝트 상태가 ['‘]최종 확정['’]으로 바뀌고, 이전 확정본은 자동 아카이브됩니다\./
     );
     expect(text).toContain('확정 후에도 항목을 직접 수정할 수 있습니다(같은 버전에 반영).');
   });
@@ -851,25 +887,21 @@ describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
         onFinalize={onFinalize}
-      />,
+      />
     );
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('finalize-roadmap-button'));
     });
     // 다이얼로그 노출 확인
-    expect(
-      screen.getByText('로드맵을 최종 확정하시겠습니까?'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('로드맵을 최종 확정하시겠습니까?')).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: '취소' }));
     });
 
     await waitFor(() =>
-      expect(
-        screen.queryByText('로드맵을 최종 확정하시겠습니까?'),
-      ).not.toBeInTheDocument(),
+      expect(screen.queryByText('로드맵을 최종 확정하시겠습니까?')).not.toBeInTheDocument()
     );
     expect(onFinalize).not.toHaveBeenCalled();
   });
@@ -889,7 +921,7 @@ describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
         onFinalize={onFinalize}
-      />,
+      />
     );
 
     // 트리거 버튼 (캘린더의 "최종 확정") 클릭 → 다이얼로그 오픈
@@ -899,9 +931,9 @@ describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
 
     // 다이얼로그 내부의 "최종 확정" 버튼 (alertdialog role 안) 클릭
     const dialog = screen.getByRole('alertdialog');
-    const confirmBtn = Array.from(
-      dialog.querySelectorAll('button'),
-    ).find((b) => b.textContent === '최종 확정');
+    const confirmBtn = Array.from(dialog.querySelectorAll('button')).find(
+      (b) => b.textContent === '최종 확정'
+    );
     expect(confirmBtn).toBeDefined();
 
     await act(async () => {
@@ -914,9 +946,7 @@ describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
     });
     // 호출 후 다이얼로그 닫힘
     await waitFor(() =>
-      expect(
-        screen.queryByText('로드맵을 최종 확정하시겠습니까?'),
-      ).not.toBeInTheDocument(),
+      expect(screen.queryByText('로드맵을 최종 확정하시겠습니까?')).not.toBeInTheDocument()
     );
   });
 
@@ -935,7 +965,7 @@ describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
         onFinalize={onFinalize}
-      />,
+      />
     );
 
     await act(async () => {
@@ -971,7 +1001,7 @@ describe('RoadmapResultClient — 다운로드 진행 중 + 새 버전 생성 �
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled();
   });
@@ -979,7 +1009,10 @@ describe('RoadmapResultClient — 다운로드 진행 중 + 새 버전 생성 �
   it('HWPX 다운로드 진행 중에는 + 새 버전 생성 토글이 disabled 상태가 된다', async () => {
     let resolveDownload: () => void = () => {};
     const slowDownload = vi.fn(
-      () => new Promise<void>((r) => { resolveDownload = () => r(); }),
+      () =>
+        new Promise<void>((r) => {
+          resolveDownload = () => r();
+        })
     );
     render(
       <RoadmapResultClient
@@ -994,7 +1027,7 @@ describe('RoadmapResultClient — 다운로드 진행 중 + 새 버전 생성 �
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={slowDownload}
-      />,
+      />
     );
 
     // 다운로드 시작 전: 토글 활성화
@@ -1012,15 +1045,16 @@ describe('RoadmapResultClient — 다운로드 진행 중 + 새 버전 생성 �
     await act(async () => {
       resolveDownload();
     });
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled(),
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled());
   });
 
   it('PDF·XLSX 다운로드 진행 중에도 + 새 버전 생성 토글이 disabled 가 된다', async () => {
     let resolveDownload: () => void = () => {};
     const slowDownload = vi.fn(
-      () => new Promise<void>((r) => { resolveDownload = () => r(); }),
+      () =>
+        new Promise<void>((r) => {
+          resolveDownload = () => r();
+        })
     );
     render(
       <RoadmapResultClient
@@ -1035,7 +1069,7 @@ describe('RoadmapResultClient — 다운로드 진행 중 + 새 버전 생성 �
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={slowDownload}
-      />,
+      />
     );
 
     await act(async () => {
@@ -1046,9 +1080,7 @@ describe('RoadmapResultClient — 다운로드 진행 중 + 새 버전 생성 �
     await act(async () => {
       resolveDownload();
     });
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled(),
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled());
   });
 });
 
@@ -1065,10 +1097,7 @@ describe('RoadmapResultClient — ?regenerate=open scroll timing (M-2)', () => {
 
     // JSDOM 은 scrollIntoView 미정의 → Element.prototype 에 직접 정의.
     scrollIntoViewSpy = vi.fn();
-    originalScrollIntoView = Object.getOwnPropertyDescriptor(
-      Element.prototype,
-      'scrollIntoView',
-    );
+    originalScrollIntoView = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
     Object.defineProperty(Element.prototype, 'scrollIntoView', {
       configurable: true,
       writable: true,
@@ -1082,11 +1111,7 @@ describe('RoadmapResultClient — ?regenerate=open scroll timing (M-2)', () => {
   afterEach(() => {
     searchParamsMock.mockReturnValue(new URLSearchParams());
     if (originalScrollIntoView) {
-      Object.defineProperty(
-        Element.prototype,
-        'scrollIntoView',
-        originalScrollIntoView,
-      );
+      Object.defineProperty(Element.prototype, 'scrollIntoView', originalScrollIntoView);
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (Element.prototype as any).scrollIntoView;
@@ -1113,7 +1138,7 @@ describe('RoadmapResultClient — ?regenerate=open scroll timing (M-2)', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
 
     // rAF 콜백 보류 상태 → scrollIntoView · router.replace 모두 미호출.
@@ -1129,9 +1154,8 @@ describe('RoadmapResultClient — ?regenerate=open scroll timing (M-2)', () => {
       behavior: 'smooth',
       block: 'center',
     });
-    expect(routerReplaceMock).toHaveBeenCalledWith(
-      '/consultant/projects/p1/roadmap',
-      { scroll: false },
-    );
+    expect(routerReplaceMock).toHaveBeenCalledWith('/consultant/projects/p1/roadmap', {
+      scroll: false,
+    });
   });
 });

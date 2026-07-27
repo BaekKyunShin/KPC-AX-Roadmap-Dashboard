@@ -9,7 +9,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { saveRoadmapInterview, uploadInterviewAttachment, removeInterviewAttachment } from './actions';
+import {
+  saveRoadmapInterview,
+  uploadInterviewAttachment,
+  removeInterviewAttachment,
+} from './actions';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
@@ -27,18 +31,28 @@ vi.mock('@/lib/services/file-parser', () => ({
   extractTextFromAttachment: vi.fn(async () => ({ text: '추출된 본문 키워드' })),
 }));
 
-const { pendingCallbacks, flush: flushAfterCallbacks, mockAfter } = vi.hoisted(() => {
+const {
+  pendingCallbacks,
+  flush: flushAfterCallbacks,
+  mockAfter,
+} = vi.hoisted(() => {
   const pending: Promise<unknown>[] = [];
   const after = vi.fn((fn: () => void | Promise<unknown>) => {
     const r = fn();
-    if (r && typeof (r as Promise<unknown>).then === 'function') pending.push(r as Promise<unknown>);
+    if (r && typeof (r as Promise<unknown>).then === 'function')
+      pending.push(r as Promise<unknown>);
   });
-  async function flush() { await Promise.all(pending); pending.length = 0; }
+  async function flush() {
+    await Promise.all(pending);
+    pending.length = 0;
+  }
   return { pendingCallbacks: pending, flush, mockAfter: after };
 });
 vi.mock('next/server', () => ({ after: mockAfter }));
 
-afterEach(() => { pendingCallbacks.length = 0; });
+afterEach(() => {
+  pendingCallbacks.length = 0;
+});
 
 const USER_A = '550e8400-e29b-41d4-a716-446655440001';
 const PROJECT_ID = '550e8400-e29b-41d4-a716-446655440020';
@@ -63,35 +77,25 @@ function validRoadmapData(): RoadmapInterviewInput {
       push_willingness: '적극 지원',
       expected_outcomes: '15% 개선',
     },
-    task_workflow_items: [{
-      id: 't1',
-      job: '생산',
-      task_name: '검사',
-      as_is: '육안',
-      problems: '편차',
-      data_availability: '2년치',
-      ai_necessity: 4,
-    }],
+    task_workflow_items: [
+      {
+        id: 't1',
+        job: '생산',
+        task_name: '검사',
+        as_is: '육안',
+        roadmap_improvement: '편차 → 2년치 검사 데이터로 Vision AI 1차 선별 (필요도 높음)',
+      },
+    ],
     analysis_notes: { text: '', attachment_files: [] },
-    training_targets: [{
-      id: 'tg1',
-      task_name: '검사 자동화',
-      selection_reason: 'AI 필요도 높음',
-      as_is: '육안',
-      to_be: 'AI 1차',
-    }],
-    competency_models: [{
-      id: 'cm1',
-      competency_name: '품질 검사 데이터 해석',
-      competency_definition: '검사 이미지 데이터에서 불량 패턴을 식별하고 대응한다.',
-      knowledge: '이미지 분류 기초, QMS 지표',
-      skill: '이미지 레이블링, 지표 모니터링',
-      attitude: '데이터 기반 의사결정 선호',
-    }],
-    ncs_usage: {
-      uses_ncs: false,
-      competency_derivation_method: '현장 인터뷰 + 업계 벤치마킹 기반 역량 도출',
-    },
+    training_targets: [
+      {
+        id: 'tg1',
+        task_name: '검사 자동화',
+        selection_reason: 'AI 필요도 높음',
+        as_is: '육안',
+        to_be: 'AI 1차',
+      },
+    ],
     notes: '',
   };
 }
@@ -147,7 +151,14 @@ describe('saveRoadmapInterview', () => {
   it('Zod 검증 실패 (필수 필드 빈 값) → error', async () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
-      data: { id: PROJECT_ID, status: 'ASSIGNED', track: 'ROADMAP', assigned_consultant_id: USER_A, company_name: '테스트', is_test_mode: false },
+      data: {
+        id: PROJECT_ID,
+        status: 'ASSIGNED',
+        track: 'ROADMAP',
+        assigned_consultant_id: USER_A,
+        company_name: '테스트',
+        is_test_mode: false,
+      },
       error: null,
     });
 
@@ -161,7 +172,14 @@ describe('saveRoadmapInterview', () => {
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
-      data: { id: PROJECT_ID, status: 'ASSIGNED', track: 'ROADMAP', assigned_consultant_id: USER_A, company_name: '테스트', is_test_mode: false },
+      data: {
+        id: PROJECT_ID,
+        status: 'ASSIGNED',
+        track: 'ROADMAP',
+        assigned_consultant_id: USER_A,
+        company_name: '테스트',
+        is_test_mode: false,
+      },
       error: null,
     });
     adminMock.addResult({ data: null, error: null }); // existing interview maybeSingle → null
@@ -173,7 +191,11 @@ describe('saveRoadmapInterview', () => {
 
     expect(r.success).toBe(true);
     expect(createAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'INTERVIEW_CREATE', targetType: 'interview', targetId: PROJECT_ID }),
+      expect.objectContaining({
+        action: 'INTERVIEW_CREATE',
+        targetType: 'interview',
+        targetId: PROJECT_ID,
+      })
     );
   });
 
@@ -181,14 +203,25 @@ describe('saveRoadmapInterview', () => {
   it('시작/종료 시간을 company_details.roadmap_interview_time JSONB 객체로 저장하고 interview_time 컬럼에는 시작 시간만 저장한다', async () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
-      data: { id: PROJECT_ID, status: 'ASSIGNED', track: 'ROADMAP', assigned_consultant_id: USER_A, company_name: '테스트', is_test_mode: false },
+      data: {
+        id: PROJECT_ID,
+        status: 'ASSIGNED',
+        track: 'ROADMAP',
+        assigned_consultant_id: USER_A,
+        company_name: '테스트',
+        is_test_mode: false,
+      },
       error: null,
     });
     adminMock.addResult({ data: null, error: null }); // existing maybeSingle → null
     adminMock.addResult({ data: null, error: null }); // insert → ok
     adminMock.addResult({ data: null, error: null }); // project status update → ok
 
-    const data = { ...validRoadmapData(), interview_start_time: '14:00', interview_end_time: '16:00' };
+    const data = {
+      ...validRoadmapData(),
+      interview_start_time: '14:00',
+      interview_end_time: '16:00',
+    };
     const r = await saveRoadmapInterview(PROJECT_ID, data);
     await flushAfterCallbacks();
     expect(r.success).toBe(true);
@@ -207,7 +240,14 @@ describe('saveRoadmapInterview', () => {
   it('시작 시간만 입력하고 종료 시간이 없으면 interview_time = 시작 + JSONB end = 빈 문자열', async () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
-      data: { id: PROJECT_ID, status: 'ASSIGNED', track: 'ROADMAP', assigned_consultant_id: USER_A, company_name: '테스트', is_test_mode: false },
+      data: {
+        id: PROJECT_ID,
+        status: 'ASSIGNED',
+        track: 'ROADMAP',
+        assigned_consultant_id: USER_A,
+        company_name: '테스트',
+        is_test_mode: false,
+      },
       error: null,
     });
     adminMock.addResult({ data: null, error: null });
@@ -271,7 +311,10 @@ describe('saveRoadmapInterview', () => {
     });
 
     it('배정되지 않은 프로젝트 → error', async () => {
-      serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+      serverMock.addResult({
+        data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+        error: null,
+      });
       // requireConsultantProjectAccess 의 single() 결과 — 빈 결과
       serverMock.addResult({ data: null, error: { message: 'not found' } });
 
@@ -283,7 +326,10 @@ describe('saveRoadmapInterview', () => {
     });
 
     it('FormData 에 file 이 없으면 → error', async () => {
-      serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+      serverMock.addResult({
+        data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+        error: null,
+      });
       serverMock.addResult({ data: { assigned_consultant_id: USER_A }, error: null });
 
       const fd = new FormData();
@@ -293,7 +339,10 @@ describe('saveRoadmapInterview', () => {
     });
 
     it('파일 크기 0 → error', async () => {
-      serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+      serverMock.addResult({
+        data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+        error: null,
+      });
       serverMock.addResult({ data: { assigned_consultant_id: USER_A }, error: null });
 
       const fd = new FormData();
@@ -304,7 +353,10 @@ describe('saveRoadmapInterview', () => {
     });
 
     it('10MB 초과 → error', async () => {
-      serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+      serverMock.addResult({
+        data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+        error: null,
+      });
       serverMock.addResult({ data: { assigned_consultant_id: USER_A }, error: null });
 
       const fd = new FormData();
@@ -316,7 +368,10 @@ describe('saveRoadmapInterview', () => {
     });
 
     it('허용되지 않은 MIME (svg) → error', async () => {
-      serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+      serverMock.addResult({
+        data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+        error: null,
+      });
       serverMock.addResult({ data: { assigned_consultant_id: USER_A }, error: null });
 
       const fd = new FormData();
@@ -327,7 +382,10 @@ describe('saveRoadmapInterview', () => {
     });
 
     it('정상 PDF 업로드 → Storage 업로드 + extracted_text 포함 메타 반환', async () => {
-      serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+      serverMock.addResult({
+        data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+        error: null,
+      });
       serverMock.addResult({ data: { assigned_consultant_id: USER_A }, error: null });
 
       const fd = new FormData();
@@ -351,7 +409,10 @@ describe('saveRoadmapInterview', () => {
         parseError: '파싱 실패: 손상된 PDF',
       });
 
-      serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+      serverMock.addResult({
+        data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+        error: null,
+      });
       serverMock.addResult({ data: { assigned_consultant_id: USER_A }, error: null });
 
       const fd = new FormData();
@@ -376,7 +437,10 @@ describe('saveRoadmapInterview', () => {
     });
 
     it('storagePath 가 projectId 로 시작하지 않으면 → error', async () => {
-      serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+      serverMock.addResult({
+        data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+        error: null,
+      });
       serverMock.addResult({ data: { assigned_consultant_id: USER_A }, error: null });
 
       const r = await removeInterviewAttachment(PROJECT_ID, 'other-project/file.pdf');
@@ -385,7 +449,10 @@ describe('saveRoadmapInterview', () => {
     });
 
     it('정상 삭제 → success', async () => {
-      serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+      serverMock.addResult({
+        data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+        error: null,
+      });
       serverMock.addResult({ data: { assigned_consultant_id: USER_A }, error: null });
 
       const r = await removeInterviewAttachment(PROJECT_ID, `${PROJECT_ID}/file.pdf`);
@@ -396,7 +463,14 @@ describe('saveRoadmapInterview', () => {
   it('자동저장: 완화된 스키마 + 상태 전환 없음', async () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
-      data: { id: PROJECT_ID, status: 'ASSIGNED', track: 'ROADMAP', assigned_consultant_id: USER_A, company_name: '테스트', is_test_mode: false },
+      data: {
+        id: PROJECT_ID,
+        status: 'ASSIGNED',
+        track: 'ROADMAP',
+        assigned_consultant_id: USER_A,
+        company_name: '테스트',
+        is_test_mode: false,
+      },
       error: null,
     });
     adminMock.addResult({ data: null, error: null });
@@ -405,7 +479,12 @@ describe('saveRoadmapInterview', () => {
     const minimal = {
       interview_date: '',
       participants: [{ id: 'p1', name: '' }],
-      company_requirements: { company_status: '', main_problems: '', push_willingness: '', expected_outcomes: '' },
+      company_requirements: {
+        company_status: '',
+        main_problems: '',
+        push_willingness: '',
+        expected_outcomes: '',
+      },
       task_workflow_items: [],
       training_targets: [],
     };

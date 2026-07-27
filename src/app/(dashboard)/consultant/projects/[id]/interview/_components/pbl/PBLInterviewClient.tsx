@@ -17,13 +17,11 @@ import {
   PBLInterviewStrictSchema,
   type PBLInterviewStrict,
   type PBLOverview,
-  type PBLActivityRow,
+  type PBLPerformanceActivity,
   type PBLProblemDefinitionSheet,
-  type PBLPriority,
   type PBLTarget,
-  type PBLAiLevelAssessment,
 } from '@/lib/schemas/interview-pbl';
-import type { SttInsights } from '@/lib/schemas/interview-roadmap';
+import type { SttInsights, RoadmapTaskAnalysisItem } from '@/lib/schemas/interview-roadmap';
 
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import InterviewStepper from '../InterviewStepper';
@@ -33,14 +31,17 @@ import { StepCourseNecessity } from './StepCourseNecessity';
 import { StepTrainingEnv } from './StepTrainingEnv';
 import { StepExpectations } from './StepExpectations';
 import { StepHrdReportPdf } from './StepHrdReportPdf';
-import { StepActivities } from './StepActivities';
+import { StepPerformanceActivities } from './StepPerformanceActivities';
 import { StepProblems, type StepProblemsValue } from './StepProblems';
-import { StepTargetAndLevel, type StepTargetAndLevelValue } from './StepTargetAndLevel';
+import { StepTarget } from './StepTarget';
 import { StepSttAttach } from '@/components/interview/StepSttAttach';
 
 // ============================================================================
 // 10 스텝 정의 — 양식 2:1 정합 9개 + STT 첨부 1개 (선택)
 // ----------------------------------------------------------------------------
+// V2: Ⅲ-2-나 문제 우선순위·Ⅲ-4 AI역량 진단은 제거됐다(AI역량은 로드맵 연동).
+// Ⅲ-1 수행활동은 정본 표(4역할·날짜만)가 로드맵 Ⅰ-2(2역할·일시)와 달라 로드맵 연동을
+// 폐기하고 **PBL 자체 입력**으로 복원했다.
 // id 는 양식 섹션 의미를 그대로 노출 (camelCase 단일 단어). UI 텍스트는 shortName
 // / name. required 는 strict 제출 시 빈 값 금지 여부.
 // ============================================================================
@@ -52,9 +53,9 @@ export type PBLStepId =
   | 'expectations'
   | 'hrdReport'
   | 'courseNecessity'
-  | 'activities'
+  | 'performanceActivities'
   | 'problems'
-  | 'targetAndLevel'
+  | 'target'
   | 'sttAttach';
 
 interface StepDef {
@@ -68,55 +69,53 @@ interface StepDef {
   required: boolean;
 }
 
+// b-2 정합: Ⅱ절 번호를 정본 좌표(hrdReport=Ⅱ-1-가·courseNecessity=Ⅱ-1-다·
+// trainingEnv=Ⅱ-3-a·expectations=Ⅱ-3-b)로 맞추고, 스텝 순서를 번호 오름차순으로
+// 재정렬. companyIssues=Ⅱ-1(기업 현황 분석 본체). 번호·순서는 표시 문자열이라
+// 데이터·HWPX 산출물에 영향 없음(stepId 기반 저장).
 export const PBL_STEPS: ReadonlyArray<StepDef> = [
   { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요', required: true },
-  { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈', required: true },
-  // Phase E: Step 3a 훈련환경 (기본 6 영역) — stepperLabel 5자 단축
+  { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1', name: '기업 경영 이슈', required: true },
+  // Ⅱ-1 계열(기업 현황 분석): HRD이음 결과 → 과정 개발 필요성
   {
     id: 3,
-    stepId: 'trainingEnv',
-    shortName: 'Ⅱ-2-a',
-    name: '훈련환경 분석',
-    stepperLabel: '훈련환경',
-    required: true,
-  },
-  // Phase E: Step 3b 기대효과·요구분석 (5 신규 영역, 양식 P-05 row 6~11 정합)
-  { id: 4, stepId: 'expectations', shortName: 'Ⅱ-2-b', name: '기대효과·요구분석', required: true },
-  // Stepper 라벨 22자 → 8자 단축 (페이지 헤더는 풀텍스트 유지)
-  {
-    id: 5,
     stepId: 'hrdReport',
-    shortName: 'Ⅱ-3-가',
+    shortName: 'Ⅱ-1-가',
     name: '기업HRD이음컨설팅 결과 (PDF 첨부)',
     stepperLabel: 'HRD이음 결과',
     required: false,
   },
-  // Stepper 라벨 13자 → 8자 단축 (사용자 보고 — '과정 개발 필요성', 말줄임 사라지도록)
   {
-    id: 6,
+    id: 4,
     stepId: 'courseNecessity',
-    shortName: 'Ⅱ-3-나',
+    shortName: 'Ⅱ-1-다',
     name: 'AI훈련과정 개발 필요성',
     stepperLabel: '과정 개발 필요성',
     required: true,
   },
-  { id: 7, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동', required: true },
-  // Stepper 라벨 10자 → 7자 단축
+  // Ⅱ-3 계열(기업 훈련환경 분석): 훈련환경(a) → 기대효과·요구분석(b, 표 후반부)
   {
-    id: 8,
-    stepId: 'problems',
-    shortName: 'Ⅲ-2',
-    name: '문제 도출·우선순위',
-    stepperLabel: '문제·우선순위',
+    id: 5,
+    stepId: 'trainingEnv',
+    shortName: 'Ⅱ-3-a',
+    name: '훈련환경 분석',
+    stepperLabel: '훈련환경',
     required: true,
   },
+  { id: 6, stepId: 'expectations', shortName: 'Ⅱ-3-b', name: '기대효과·요구분석', required: true },
+  // Ⅲ-1 수행활동 — PBL 자체 입력(정본 4역할·수행 일자). 로드맵 Ⅰ-2 와 별개 표.
   {
-    id: 9,
-    stepId: 'targetAndLevel',
-    shortName: 'Ⅲ-3·Ⅲ-4',
-    name: '훈련대상·AI수준',
+    id: 7,
+    stepId: 'performanceActivities',
+    shortName: 'Ⅲ-1',
+    name: '훈련과제 도출 수행활동',
+    stepperLabel: '수행활동',
     required: true,
   },
+  // V2: Ⅲ-2-나 우선순위 제거 → 문제 정의서 단일 세트만.
+  { id: 8, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 정의서', required: true },
+  // V2: Ⅲ-4 AI역량 제거 → Ⅲ-3 훈련대상 업무(로드맵 과업 연동)만.
+  { id: 9, stepId: 'target', shortName: 'Ⅲ-3', name: '훈련대상 업무', required: true },
   // Stepper 라벨 10자 → 6자 단축
   {
     id: 10,
@@ -135,13 +134,22 @@ export const PBL_STEPS: ReadonlyArray<StepDef> = [
 export interface PBLInterviewClientProps {
   projectId: string;
   initial: Partial<PBLInterviewStrict>;
+  /**
+   * 선행 로드맵 과업 목록 (Ⅲ-3-가 읽기 전용 4열). 미연계 시 빈 배열.
+   * 실제 데이터 로드는 후속 커밋 — 현 커밋은 빈 배열만 plumbing.
+   */
+  roadmapTasks?: RoadmapTaskAnalysisItem[];
 }
 
 // ============================================================================
 // 본 컴포넌트
 // ============================================================================
 
-export function PBLInterviewClient({ projectId, initial }: PBLInterviewClientProps) {
+export function PBLInterviewClient({
+  projectId,
+  initial,
+  roadmapTasks = [],
+}: PBLInterviewClientProps) {
   const router = useRouter();
   const [data, setData] = useState<Partial<PBLInterviewStrict>>(initial);
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -190,19 +198,16 @@ export function PBLInterviewClient({ projectId, initial }: PBLInterviewClientPro
 
   const updateTasks = useCallback(
     (patch: {
-      activities?: PBLActivityRow[];
+      performanceActivities?: PBLPerformanceActivity[];
       problemDefinitionSheet?: PBLProblemDefinitionSheet;
-      priority?: PBLPriority;
       target?: PBLTarget;
-      currentAiLevel?: PBLAiLevelAssessment;
-      expectedAiLevel?: PBLAiLevelAssessment;
     }) => {
       setData((prev) => ({ ...prev, ...patch }));
     },
     []
   );
 
-  // STT 인사이트(선택) — 10번째 Step. PBL 스키마는 camelCase 그대로 pbl_data JSONB
+  // STT 인사이트(선택) — 마지막 Step. PBL 스키마는 camelCase 그대로 pbl_data JSONB
   // 에 저장되므로 별도 converter 매핑 불필요. mapPBLInterviewToDb 가 통째 보존.
   const updateSttInsights = useCallback((next: SttInsights | undefined) => {
     setData((prev) => ({ ...prev, sttInsights: next }));
@@ -333,8 +338,6 @@ export function PBLInterviewClient({ projectId, initial }: PBLInterviewClientPro
   }, [data, projectId, router]);
 
   // ---- Step 본문 렌더 -----------------------------------------------------
-  // Task 2.4-a: 3 간단 Step (overview / companyIssues / courseNecessity) 만
-  // 실제 컴포넌트 연결. 나머지 6 Step 은 placeholder — Task 2.4-b/c 에서 대체.
 
   function renderStep() {
     switch (currentStepId) {
@@ -423,11 +426,11 @@ export function PBLInterviewClient({ projectId, initial }: PBLInterviewClientPro
             onChange={(next) => updateAnalysis({ hrdReportPdf: next })}
           />
         );
-      case 'activities':
+      case 'performanceActivities':
         return (
-          <StepActivities
-            value={data.activities ?? []}
-            onChange={(next) => updateTasks({ activities: next })}
+          <StepPerformanceActivities
+            value={data.performanceActivities ?? []}
+            onChange={(next) => updateTasks({ performanceActivities: next })}
           />
         );
       case 'problems': {
@@ -438,52 +441,24 @@ export function PBLInterviewClient({ projectId, initial }: PBLInterviewClientPro
             scope: '',
             constraints: '',
           },
-          priority: data.priority ?? { items: [], method: '' },
         };
         return (
           <StepProblems
             value={problemsValue}
             onChange={(next) =>
-              updateTasks({
-                problemDefinitionSheet: next.problemDefinitionSheet,
-                priority: next.priority,
-              })
+              updateTasks({ problemDefinitionSheet: next.problemDefinitionSheet })
             }
           />
         );
       }
-      case 'targetAndLevel': {
-        const targetValue: StepTargetAndLevelValue = {
-          target: data.target ?? {
-            name: '',
-            code: '',
-            scope: '',
-            necessity: '',
-            necessity_score: 3,
-            details: [],
-          },
-          currentAiLevel: data.currentAiLevel ?? {
-            level: 'BASIC',
-            note: '',
-          },
-          expectedAiLevel: data.expectedAiLevel ?? {
-            level: 'USER',
-            note: '',
-          },
-        };
+      case 'target':
         return (
-          <StepTargetAndLevel
-            value={targetValue}
-            onChange={(next) =>
-              updateTasks({
-                target: next.target,
-                currentAiLevel: next.currentAiLevel,
-                expectedAiLevel: next.expectedAiLevel,
-              })
-            }
+          <StepTarget
+            value={data.target ?? { taskSelections: [], necessity: '', details: [] }}
+            onChange={(next) => updateTasks({ target: next })}
+            roadmapTasks={roadmapTasks}
           />
         );
-      }
       case 'sttAttach':
         return (
           <StepSttAttach

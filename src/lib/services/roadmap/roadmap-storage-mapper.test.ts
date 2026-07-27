@@ -1,495 +1,176 @@
 /**
- * roadmap-storage-mapper.ts 테스트
- * - toRoadmapVersionColumns: 신규 RoadmapResult → DB legacy 컬럼
- * - fromRoadmapVersionColumns: DB legacy 컬럼 → 신규 RoadmapResult
- *   (신규 필드 + legacy 역량별 NCS 승격 + 방어 코딩)
+ * roadmap-storage-mapper.ts 테스트 — 산인공 양식 v2 (2026-07-13 개정)
+ *
+ * 운영 DB 에 v1 구조로 저장된 FINAL 확정본이 실재하므로(2026-07 기준 9건),
+ * 읽기 경로는 반드시 하위호환되어야 한다:
+ *   - v1 orphan 키(competencies·annual_plan·ncs·training_structure)는 조용히 무시
+ *   - v1 course_specs 의 `format` → v2 `training_method` 로 승격
+ *   - v2 신규 필드(training_period·training_level)는 없으면 기본값으로 backfill
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import {
-  toRoadmapVersionColumns,
-  fromRoadmapVersionColumns,
-} from './roadmap-storage-mapper';
-import type { RoadmapResult } from './roadmap-types';
+import { describe, it, expect } from 'vitest';
+import { toRoadmapVersionColumns, fromRoadmapVersionColumns } from './roadmap-storage-mapper';
+import type { RoadmapCourseSpec, RoadmapResult } from './roadmap-types';
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────
 
-function makeFullResult(): RoadmapResult {
+function makeSpec(overrides: Partial<RoadmapCourseSpec> = {}): RoadmapCourseSpec {
   return {
-    diagnosis_summary: '진단 요약',
-    setup_necessity: '수립 필요성',
-    outcome_summary: {
-      ai_competency_level: 'INTERMEDIATE',
-      selected_tasks: '품질검사 자동화',
-      main_content: '3단계 AI 인력 양성',
-    },
-    competencies: [
-      {
-        name: '역량1',
-        definition: '정의',
-        knowledge: ['K'],
-        skills: ['S'],
-        attitudes: ['A'],
-      },
-    ],
-    ncs_used: false,
-    ncs_methodology: '',
-    ncs_derivation_method: '현업 인터뷰 기반 도출',
-    training_structure: [
-      {
-        competency_name: '역량1',
-        level: 'BEGINNER',
-        content: 'c',
-        target_audience: 't',
-        method: '집체',
-        goal: 'g',
-      },
-    ],
-    training_structure_method: '역량 기준 3수준 체계 수립',
-    annual_plan: {
-      items: [
-        {
-          competency_name: '역량1',
-          course_name: '과정1',
-          format: '집체',
-          hours: 16,
-          notes: '비고',
-        },
-      ],
-      usage_plan: '활용방안',
-    },
-    course_specs: [
-      {
-        course_name: '과정1',
-        format: '집체',
-        recommended_program: 'K-Digital Training',
-        goal: '목표',
-        main_content: '내용',
-        target_audience: '전 직원',
-        subjects: [{ name: '과목1', details: '상세', hours: 8 }],
-      },
-    ],
+    training_period: '2026년 상반기',
+    training_level: 'INTERMEDIATE',
+    course_name: '과정A',
+    training_method: '집체',
+    recommended_program: '일반직무훈련',
+    goal: '목표',
+    main_content: '주요내용',
+    target_audience: '대상',
+    subjects: [{ name: '교과목1', details: '세부', hours: 4 }],
+    ...overrides,
   };
 }
 
-// ─── toRoadmapVersionColumns ─────────────────────────────────────────────
+function makeResult(overrides: Partial<RoadmapResult> = {}): RoadmapResult {
+  return {
+    diagnosis_summary: '진단 요약',
+    setup_necessity: '수립 배경',
+    outcome_summary: {
+      ai_competency_level: 'INTERMEDIATE',
+      selected_tasks: '선정 과업',
+      main_content: '수립 주요내용',
+    },
+    course_specs: [makeSpec()],
+    ...overrides,
+  };
+}
 
-describe('toRoadmapVersionColumns', () => {
-  it('신규 RoadmapResult를 legacy 컬럼에 올바르게 매핑한다 (신규 필드 포함)', () => {
-    const result = makeFullResult();
-    const cols = toRoadmapVersionColumns(result);
+describe('toRoadmapVersionColumns — v2 저장', () => {
+  it('삭제된 v1 필드 없이 legacy 컬럼 3종에 매핑한다', () => {
+    const cols = toRoadmapVersionColumns(makeResult());
 
     expect(cols.diagnosis_summary).toBe('진단 요약');
-    expect(cols.roadmap_matrix).toEqual(result.training_structure);
-    expect(cols.pbl_course.competencies).toEqual(result.competencies);
-    expect(cols.pbl_course.annual_plan).toEqual(result.annual_plan);
-    expect(cols.pbl_course.setup_necessity).toBe('수립 필요성');
-    expect(cols.pbl_course.outcome_summary).toEqual(result.outcome_summary);
-    expect(cols.pbl_course.training_structure_method).toBe('역량 기준 3수준 체계 수립');
-    expect(cols.pbl_course.ncs).toEqual({
-      used: false,
-      methodology: '',
-      derivation_method: '현업 인터뷰 기반 도출',
-    });
-    expect(cols.courses).toEqual(result.course_specs);
+    expect(cols.pbl_course.setup_necessity).toBe('수립 배경');
+    expect(cols.pbl_course.outcome_summary.ai_competency_level).toBe('INTERMEDIATE');
+    expect(cols.courses).toHaveLength(1);
+    expect(cols.courses[0].training_period).toBe('2026년 상반기');
+    expect(cols.courses[0].training_level).toBe('INTERMEDIATE');
+    expect(cols.courses[0].training_method).toBe('집체');
   });
 
-  it('빈 배열 필드도 안전하게 매핑한다', () => {
-    const cols = toRoadmapVersionColumns({
-      diagnosis_summary: '',
-      setup_necessity: '',
-      outcome_summary: { ai_competency_level: 'BEGINNER', selected_tasks: '', main_content: '' },
-      competencies: [],
-      ncs_used: false,
-      ncs_methodology: '',
-      ncs_derivation_method: '',
-      training_structure: [],
-      training_structure_method: '',
-      annual_plan: { items: [], usage_plan: '' },
-      course_specs: [],
-    });
-
+  it('미사용이 된 roadmap_matrix 컬럼은 빈 배열로 저장한다', () => {
+    const cols = toRoadmapVersionColumns(makeResult());
     expect(cols.roadmap_matrix).toEqual([]);
-    expect(cols.pbl_course.competencies).toEqual([]);
-    expect(cols.pbl_course.annual_plan).toEqual({ items: [], usage_plan: '' });
-    expect(cols.pbl_course.setup_necessity).toBe('');
-    expect(cols.pbl_course.ncs).toEqual({ used: false, methodology: '', derivation_method: '' });
-    expect(cols.courses).toEqual([]);
   });
 });
 
-// ─── fromRoadmapVersionColumns ───────────────────────────────────────────
-
-describe('fromRoadmapVersionColumns', () => {
-  it('정상 legacy 컬럼 → RoadmapResult 복원 (round-trip, 신규 필드 포함)', () => {
-    const original = makeFullResult();
-    const cols = toRoadmapVersionColumns(original);
-    const restored = fromRoadmapVersionColumns(cols);
-
-    expect(restored).toEqual(original);
-  });
-
-  it('빈 row (모두 null) → 빈 RoadmapResult', () => {
-    const restored = fromRoadmapVersionColumns({
-      diagnosis_summary: null,
-      roadmap_matrix: null,
-      pbl_course: null,
-      courses: null,
-    });
-
-    expect(restored).toEqual({
-      diagnosis_summary: '',
-      setup_necessity: '',
-      outcome_summary: { ai_competency_level: 'BEGINNER', selected_tasks: '', main_content: '' },
-      competencies: [],
-      ncs_used: false,
-      ncs_methodology: '',
-      ncs_derivation_method: '',
-      training_structure: [],
-      training_structure_method: '',
-      annual_plan: { items: [], usage_plan: '' },
-      course_specs: [],
-    });
-  });
-
-  it('필드 누락 → 빈 배열/빈 문자열로 대체', () => {
-    const restored = fromRoadmapVersionColumns({});
-    expect(restored.diagnosis_summary).toBe('');
-    expect(restored.competencies).toEqual([]);
-    expect(restored.training_structure).toEqual([]);
-    expect(restored.annual_plan).toEqual({ items: [], usage_plan: '' });
-    expect(restored.course_specs).toEqual([]);
-    expect(restored.ncs_used).toBe(false);
-    expect(restored.setup_necessity).toBe('');
-  });
-
-  it('pbl_course가 객체지만 competencies 필드 없으면 빈 배열', () => {
-    const restored = fromRoadmapVersionColumns({
-      diagnosis_summary: '요약',
-      roadmap_matrix: [],
-      pbl_course: { annual_plan: { items: [], usage_plan: '활용' } },
-      courses: [],
-    });
-
-    expect(restored.competencies).toEqual([]);
-    expect(restored.annual_plan.usage_plan).toBe('활용');
-  });
-
-  it('pbl_course가 legacy 구조 (예전 PBLCourse 객체) → competencies/annual_plan 빈값', () => {
-    const legacyPbl = {
-      selected_course_name: '기존 과정',
-      course_name: 'PBL',
-      total_hours: 16,
-    };
-    const restored = fromRoadmapVersionColumns({
-      diagnosis_summary: '요약',
-      roadmap_matrix: [],
-      pbl_course: legacyPbl,
-      courses: [],
-    });
-
-    expect(restored.competencies).toEqual([]);
-    expect(restored.annual_plan.items).toEqual([]);
-    expect(restored.annual_plan.usage_plan).toBe('');
-  });
-
-  it('roadmap_matrix가 legacy RoadmapRow[]이면 type guard로 필터링되어 빈 배열', () => {
-    const legacyMatrix = [
-      { task_id: 't1', task_name: '업무', beginner: [], intermediate: [], advanced: [] },
-      { task_id: 't2', task_name: '업무2', beginner: [], intermediate: [], advanced: [] },
-    ];
-    const restored = fromRoadmapVersionColumns({
-      roadmap_matrix: legacyMatrix as unknown,
-    });
-
-    expect(restored.training_structure).toHaveLength(0);
-  });
-
-  it('roadmap_matrix가 null이면 빈 배열', () => {
-    const restored = fromRoadmapVersionColumns({ roadmap_matrix: null });
-    expect(restored.training_structure).toEqual([]);
-  });
-
-  it('roadmap_matrix가 객체(비배열)이면 빈 배열', () => {
-    const restored = fromRoadmapVersionColumns({ roadmap_matrix: {} });
-    expect(restored.training_structure).toEqual([]);
-  });
-
-  it('courses가 null이면 빈 배열', () => {
-    const restored = fromRoadmapVersionColumns({ courses: null });
-    expect(restored.course_specs).toEqual([]);
-  });
-
-  it('annual_plan.items가 배열 아님 → 빈 배열', () => {
-    const restored = fromRoadmapVersionColumns({
-      pbl_course: { annual_plan: { items: 'wrong', usage_plan: 'x' } },
-    });
-    expect(restored.annual_plan.items).toEqual([]);
-    expect(restored.annual_plan.usage_plan).toBe('x');
-  });
-
-  it('annual_plan.usage_plan이 string 아님 → 빈 문자열', () => {
-    const restored = fromRoadmapVersionColumns({
-      pbl_course: { annual_plan: { items: [], usage_plan: 123 } },
-    });
-    expect(restored.annual_plan.usage_plan).toBe('');
-  });
-
-  it('diagnosis_summary가 숫자 등 비문자열 → 빈 문자열', () => {
-    const restored = fromRoadmapVersionColumns({
-      diagnosis_summary: 42 as unknown as string,
-    });
-    expect(restored.diagnosis_summary).toBe('');
-  });
-
-  it('outcome_summary.ai_competency_level 잘못된 enum → BEGINNER fallback', () => {
-    const restored = fromRoadmapVersionColumns({
-      pbl_course: {
-        outcome_summary: { ai_competency_level: 'EXPERT', selected_tasks: 'X', main_content: 'Y' },
-      },
-    });
-    expect(restored.outcome_summary.ai_competency_level).toBe('BEGINNER');
-    expect(restored.outcome_summary.selected_tasks).toBe('X');
-  });
-});
-
-describe('fromRoadmapVersionColumns — legacy 역량별 NCS 승격', () => {
-  it('legacy 역량이 ncs_used=true + ncs_methodology 보유 → 루트로 승격 + 역량 필드 제거', () => {
-    const legacyPbl = {
-      competencies: [
-        {
-          name: '역량A',
-          definition: '정의A',
-          knowledge: [],
-          skills: [],
-          attitudes: [],
-          ncs_used: true,
-          ncs_methodology: 'NCS 빅데이터 분석 세분류 활용',
-        },
-      ],
-      annual_plan: { items: [], usage_plan: '' },
-    };
-    const restored = fromRoadmapVersionColumns({ pbl_course: legacyPbl });
-    expect(restored.ncs_used).toBe(true);
-    expect(restored.ncs_methodology).toBe('NCS 빅데이터 분석 세분류 활용');
-    // 역량에는 ncs_* 필드가 없어야 함
-    expect(restored.competencies[0]).not.toHaveProperty('ncs_used');
-    expect(restored.competencies[0]).not.toHaveProperty('ncs_methodology');
-  });
-
-  it('legacy 역량이 ncs_used=false + ncs_derivation_method 보유 → 루트로 승격', () => {
-    const legacyPbl = {
-      competencies: [
-        {
-          name: '역량B',
-          definition: '정의B',
-          knowledge: [],
-          skills: [],
-          attitudes: [],
-          ncs_used: false,
-          ncs_derivation_method: '전문가 인터뷰 기반',
-        },
-      ],
-      annual_plan: { items: [], usage_plan: '' },
-    };
-    const restored = fromRoadmapVersionColumns({ pbl_course: legacyPbl });
-    expect(restored.ncs_used).toBe(false);
-    expect(restored.ncs_derivation_method).toBe('전문가 인터뷰 기반');
-  });
-
-  it('legacy 여러 역량에 서로 다른 NCS 값 → 첫 값만 승격 + warn 로그', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const legacyPbl = {
-      competencies: [
-        {
-          name: 'A',
-          definition: 'a',
-          knowledge: [],
-          skills: [],
-          attitudes: [],
-          ncs_used: true,
-          ncs_methodology: '방법1',
-        },
-        {
-          name: 'B',
-          definition: 'b',
-          knowledge: [],
-          skills: [],
-          attitudes: [],
-          ncs_used: true,
-          ncs_methodology: '방법2',
-        },
-      ],
-      annual_plan: { items: [], usage_plan: '' },
-    };
-    const restored = fromRoadmapVersionColumns({ pbl_course: legacyPbl });
-    expect(restored.ncs_methodology).toBe('방법1');
-    expect(warnSpy).toHaveBeenCalled();
-    warnSpy.mockRestore();
-  });
-
-  it('루트 ncs가 존재하면 legacy 역량 승격보다 우선', () => {
-    const pbl = {
-      competencies: [
-        {
-          name: 'A',
-          definition: 'a',
-          knowledge: [],
-          skills: [],
-          attitudes: [],
-          ncs_used: false,
-          ncs_derivation_method: '레거시',
-        },
-      ],
-      annual_plan: { items: [], usage_plan: '' },
-      ncs: { used: true, methodology: '루트 방법', derivation_method: '' },
-    };
-    const restored = fromRoadmapVersionColumns({ pbl_course: pbl });
-    expect(restored.ncs_used).toBe(true);
-    expect(restored.ncs_methodology).toBe('루트 방법');
-  });
-
-  it('competencies 배열에 유효하지 않은 항목(null, string)이 포함되면 필터링된다', () => {
-    // isCompetency: !v || typeof v !== 'object' → false 반환 분기 커버
-    const pbl = {
-      competencies: [
-        null, // !v → false 반환
-        'invalid', // typeof !== 'object' → false 반환
-        { name: '역량1', definition: '정의', knowledge: [], skills: [], attitudes: [] }, // 유효
-      ],
-      annual_plan: { items: [], usage_plan: '' },
-    };
-    const restored = fromRoadmapVersionColumns({ pbl_course: pbl });
-    expect(restored.competencies).toHaveLength(1);
-    expect(restored.competencies[0].name).toBe('역량1');
-  });
-
-  it('knowledge/skills/attitudes가 배열이 아니면 빈 배열로 초기화된다', () => {
-    // sanitizeCompetency: Array.isArray 조건 false → [] 분기 커버 (id 18-20)
-    const pbl = {
-      competencies: [
-        {
-          name: '역량1',
-          definition: '정의',
-          knowledge: 'not-array', // 배열이 아님
-          skills: null,           // 배열이 아님
-          attitudes: 42,          // 배열이 아님
-        },
-      ],
-      annual_plan: { items: [], usage_plan: '' },
-    };
-    const restored = fromRoadmapVersionColumns({ pbl_course: pbl });
-    expect(restored.competencies[0].knowledge).toEqual([]);
-    expect(restored.competencies[0].skills).toEqual([]);
-    expect(restored.competencies[0].attitudes).toEqual([]);
-  });
-
-  it('training_structure 배열에 유효하지 않은 항목이 포함되면 필터링된다', () => {
-    // isStructureItem: !v || typeof v !== 'object' → false 반환 분기 커버 (id 21)
-    const pbl = {
-      competencies: [],
-      annual_plan: { items: [], usage_plan: '' },
-    };
-    const restored = fromRoadmapVersionColumns({
-      pbl_course: pbl,
-      roadmap_matrix: [
-        null, // 필터됨
-        { competency_name: '역량1', level: 'BEGINNER', content: '', target_audience: '', method: '', goal: '' },
-      ],
-    });
-    expect(restored.training_structure).toHaveLength(1);
-  });
-
-  it('annual_plan items에 유효하지 않은 항목이 포함되면 필터링된다', () => {
-    // isAnnualPlanItem: !v || typeof v !== 'object' → false 반환 분기 커버 (id 24)
-    const pbl = {
-      competencies: [],
+describe('fromRoadmapVersionColumns — v1 legacy row 하위호환', () => {
+  const legacyRow = {
+    diagnosis_summary: '진단',
+    // v1 orphan: 훈련체계도
+    roadmap_matrix: [{ competency_name: '데이터분석', level: 'BEGINNER', content: 'c' }],
+    pbl_course: {
+      // v1 orphan: 역량 모델링 · 연간계획 · NCS
+      competencies: [{ name: '데이터분석', definition: '정의' }],
       annual_plan: {
-        items: [
-          null, // 필터됨
-          { competency_name: '역량1', course_name: '과정1', format: '집체', hours: 8, notes: '' },
-        ],
-        usage_plan: '',
+        items: [{ competency_name: '데이터분석', course_name: '과정A' }],
+        usage_plan: '활용',
       },
-    };
-    const restored = fromRoadmapVersionColumns({ pbl_course: pbl });
-    expect(restored.annual_plan.items).toHaveLength(1);
+      ncs: { used: true, methodology: 'NCS 활용', derivation_method: '' },
+      // v2 에서도 유지되는 필드
+      setup_necessity: '수립 배경',
+      outcome_summary: {
+        ai_competency_level: 'ADVANCED',
+        selected_tasks: '선정 과업',
+        main_content: '요약',
+      },
+    },
+    // v1 course_specs: format 보유, training_period·training_level 없음
+    courses: [
+      {
+        course_name: '과정A',
+        format: '집체',
+        recommended_program: '일반직무훈련',
+        goal: '목표',
+        main_content: '주요내용',
+        target_audience: '대상',
+        subjects: [{ name: '교과목1', details: '세부', hours: 4 }],
+      },
+    ],
+  };
+
+  it('v1 orphan 키(competencies·annual_plan·ncs)를 무시하고 파싱한다', () => {
+    const result = fromRoadmapVersionColumns(legacyRow);
+
+    expect(result.diagnosis_summary).toBe('진단');
+    expect(result.setup_necessity).toBe('수립 배경');
+    expect(result.outcome_summary.ai_competency_level).toBe('ADVANCED');
+    // orphan 키가 결과 객체에 섞여 나오지 않는다
+    expect(Object.keys(result).sort()).toEqual(
+      ['course_specs', 'diagnosis_summary', 'outcome_summary', 'setup_necessity'].sort()
+    );
   });
 
-  it('course_specs에 유효하지 않은 항목이 포함되면 필터링된다', () => {
-    // isCourseSpec: !v || typeof v !== 'object' → false 반환 분기 커버 (id 27)
-    const pbl = {
-      competencies: [],
-      annual_plan: { items: [], usage_plan: '' },
-    };
-    const restored = fromRoadmapVersionColumns({
-      pbl_course: pbl,
-      courses: [
-        null, // 필터됨
-        { course_name: '과정1', subjects: [], format: '집체', recommended_program: '', goal: '', main_content: '', target_audience: '' },
-      ],
-    });
-    expect(restored.course_specs).toHaveLength(1);
+  it('v1 course_specs 의 format 을 training_method 로 승격한다', () => {
+    const result = fromRoadmapVersionColumns(legacyRow);
+    expect(result.course_specs[0].training_method).toBe('집체');
   });
 
-  it('NCS legacy 역량들이 divergent(불일치)이면 경고를 출력하고 첫 값을 사용한다', () => {
-    // Lines 196-206: divergent true → firstUsed !== c.ncs_used 분기 커버 (id 41, 45)
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const pbl = {
-      competencies: [
-        { name: 'A', definition: 'a', knowledge: [], skills: [], attitudes: [], ncs_used: true, ncs_methodology: '방법1' },
-        { name: 'B', definition: 'b', knowledge: [], skills: [], attitudes: [], ncs_used: false, ncs_methodology: '방법2' }, // divergent
-      ],
-      annual_plan: { items: [], usage_plan: '' },
-    };
-    const restored = fromRoadmapVersionColumns({ pbl_course: pbl });
-    // 첫 번째 값(true) 사용
-    expect(restored.ncs_used).toBe(true);
-    expect(consoleSpy).toHaveBeenCalled();
-    consoleSpy.mockRestore();
-  });
-
-  it('NCS methodology divergent 시 첫 번째 비어있지 않은 값만 루트로 승격한다', () => {
-    // Lines 200-206: firstMethodology !== c.ncs_methodology divergent 분기 커버 (id 48)
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const pbl = {
-      competencies: [
-        { name: 'A', definition: 'a', knowledge: [], skills: [], attitudes: [], ncs_methodology: '방법A' },
-        { name: 'B', definition: 'b', knowledge: [], skills: [], attitudes: [], ncs_methodology: '방법B' }, // 다름
-      ],
-      annual_plan: { items: [], usage_plan: '' },
-    };
-    const restored = fromRoadmapVersionColumns({ pbl_course: pbl });
-    expect(restored.ncs_methodology).toBe('방법A');
-    consoleSpy.mockRestore();
+  it('v2 신규 필드가 없는 v1 row 는 기본값으로 backfill 한다', () => {
+    const result = fromRoadmapVersionColumns(legacyRow);
+    expect(result.course_specs[0].training_period).toBe('');
+    expect(result.course_specs[0].training_level).toBe('BEGINNER');
   });
 });
 
-describe('toRoadmapVersionColumns — undefined 필드 기본값', () => {
-  it('RoadmapResult 필드가 undefined이면 기본값으로 폴백된다', () => {
-    // Lines 61-79: ?? 연산자 오른쪽 피연산자 분기 커버 (id 0-10)
-    const result = {
-      diagnosis_summary: undefined as unknown as string,
-      setup_necessity: undefined as unknown as string,
-      outcome_summary: undefined as unknown as RoadmapResult['outcome_summary'],
-      competencies: undefined as unknown as RoadmapResult['competencies'],
-      ncs_used: undefined as unknown as boolean,
-      ncs_methodology: undefined as unknown as string,
-      ncs_derivation_method: undefined as unknown as string,
-      training_structure: undefined as unknown as RoadmapResult['training_structure'],
-      training_structure_method: undefined as unknown as string,
-      annual_plan: undefined as unknown as RoadmapResult['annual_plan'],
-      course_specs: undefined as unknown as RoadmapResult['course_specs'],
-    };
-    const cols = toRoadmapVersionColumns(result as unknown as Parameters<typeof toRoadmapVersionColumns>[0]);
-    expect(cols.diagnosis_summary).toBe('');
-    expect(cols.roadmap_matrix).toEqual([]);
-    expect(cols.pbl_course.competencies).toEqual([]);
-    expect(cols.pbl_course.setup_necessity).toBe('');
-    expect(cols.pbl_course.training_structure_method).toBe('');
-    expect(cols.pbl_course.ncs.used).toBe(false);
-    expect(cols.pbl_course.ncs.methodology).toBe('');
-    expect(cols.pbl_course.ncs.derivation_method).toBe('');
-    expect(cols.courses).toEqual([]);
+describe('fromRoadmapVersionColumns — v2 row', () => {
+  it('v2 신규 필드가 있으면 그대로 보존한다', () => {
+    const result = fromRoadmapVersionColumns({
+      diagnosis_summary: '진단',
+      roadmap_matrix: [],
+      pbl_course: {
+        setup_necessity: '배경',
+        outcome_summary: {
+          ai_competency_level: 'BEGINNER',
+          selected_tasks: 't',
+          main_content: 'm',
+        },
+      },
+      courses: [makeSpec({ training_period: '2026년 하반기', training_level: 'ADVANCED' })],
+    });
+    expect(result.course_specs[0].training_period).toBe('2026년 하반기');
+    expect(result.course_specs[0].training_level).toBe('ADVANCED');
+    expect(result.course_specs[0].training_method).toBe('집체');
+  });
+
+  it('왕복 변환(to → from)이 값을 보존한다', () => {
+    const original = makeResult({
+      course_specs: [makeSpec(), makeSpec({ course_name: '과정B' })],
+    });
+    const roundTripped = fromRoadmapVersionColumns(toRoadmapVersionColumns(original));
+    expect(roundTripped).toEqual(original);
+  });
+});
+
+describe('fromRoadmapVersionColumns — 방어적 파싱', () => {
+  it('null/누락 row 는 빈 기본값으로 안전 변환한다', () => {
+    const result = fromRoadmapVersionColumns({});
+    expect(result.diagnosis_summary).toBe('');
+    expect(result.setup_necessity).toBe('');
+    expect(result.outcome_summary.ai_competency_level).toBe('BEGINNER');
+    expect(result.course_specs).toEqual([]);
+  });
+
+  it('잘못된 course_specs 원소는 필터링한다', () => {
+    const result = fromRoadmapVersionColumns({
+      courses: [null, { course_name: '과정A', subjects: [] }, 'bad'],
+    });
+    expect(result.course_specs).toHaveLength(1);
+    expect(result.course_specs[0].course_name).toBe('과정A');
+  });
+
+  it('유효하지 않은 training_level 은 BEGINNER 로 폴백한다', () => {
+    const result = fromRoadmapVersionColumns({
+      courses: [{ course_name: 'A', subjects: [], training_level: 'SUPER' }],
+    });
+    expect(result.course_specs[0].training_level).toBe('BEGINNER');
   });
 });

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { bulletize, bulletizeText, parseBullets, splitByUnit } from './list-format';
+import {
+  DETAIL_BULLET,
+  bulletize,
+  bulletizeDetails,
+  bulletizeText,
+  parseBullets,
+  splitByUnit,
+} from './list-format';
 
 describe('bulletize', () => {
   it('항목이 없으면 빈 문자열', () => {
@@ -11,7 +18,7 @@ describe('bulletize', () => {
 
   it('항목마다 `• ` 머리기호 + 줄바꿈으로 결합', () => {
     expect(bulletize(['AI 기초', 'ML 이해', '도구 활용'])).toBe(
-      '• AI 기초\n• ML 이해\n• 도구 활용',
+      '• AI 기초\n• ML 이해\n• 도구 활용'
     );
   });
 
@@ -37,7 +44,7 @@ describe('splitByUnit', () => {
 
   it('쉼표 구분 여러 단원은 단원 앞에 줄바꿈 삽입', () => {
     expect(splitByUnit('1단원: AI 개요, 2단원: 프롬프트 작성, 3단원: 실습')).toBe(
-      '1단원: AI 개요\n2단원: 프롬프트 작성\n3단원: 실습',
+      '1단원: AI 개요\n2단원: 프롬프트 작성\n3단원: 실습'
     );
   });
 
@@ -77,6 +84,10 @@ describe('parseBullets', () => {
     expect(parseBullets('· A\n- B\n* C')).toEqual(['A', 'B', 'C']);
   });
 
+  it('교과목 세부내용 머리기호 ▪ 도 제거 (중복 부여 방지)', () => {
+    expect(parseBullets('▪ A\n▪ B')).toEqual(['A', 'B']);
+  });
+
   it('빈 줄과 공백만 있는 줄은 무시', () => {
     expect(parseBullets('• A\n\n• B\n   \n• C')).toEqual(['A', 'B', 'C']);
   });
@@ -100,9 +111,7 @@ describe('bulletizeText', () => {
   });
 
   it('줄바꿈 텍스트 각 라인에 `• ` 머리기호 prepend', () => {
-    expect(bulletizeText('AI 기초\nML 이해\n도구 활용')).toBe(
-      '• AI 기초\n• ML 이해\n• 도구 활용',
-    );
+    expect(bulletizeText('AI 기초\nML 이해\n도구 활용')).toBe('• AI 기초\n• ML 이해\n• 도구 활용');
   });
 
   it('이미 머리기호가 붙어있어도 중복 prefix 없이 정규화', () => {
@@ -115,5 +124,42 @@ describe('bulletizeText', () => {
 
   it('단일 라인도 머리기호 prepend', () => {
     expect(bulletizeText('AI 기초')).toBe('• AI 기초');
+  });
+});
+
+describe('bulletizeDetails', () => {
+  it('글머리 문자는 HWPX(generate.py) 와 동일한 ▪', () => {
+    expect(DETAIL_BULLET).toBe('▪ ');
+  });
+
+  it('빈 값은 빈 문자열 (셀 fallback 처리는 호출부 책임)', () => {
+    expect(bulletizeDetails('')).toBe('');
+    expect(bulletizeDetails(null)).toBe('');
+    expect(bulletizeDetails(undefined)).toBe('');
+    expect(bulletizeDetails('  \n ')).toBe('');
+  });
+
+  it('줄바꿈 구분 항목마다 ▪ 부여 (LLM 산출 형식)', () => {
+    expect(bulletizeDetails('AI 개념 강의\n데이터 수집 실습\n품질 기준 워크숍')).toBe(
+      '▪ AI 개념 강의\n▪ 데이터 수집 실습\n▪ 품질 기준 워크숍'
+    );
+  });
+
+  it('쉼표로 연결된 레거시 단원 문자열은 단원 경계로 분리 후 ▪ 부여', () => {
+    expect(bulletizeDetails('1단원: AI 개요, 2단원: 프롬프트 작성')).toBe(
+      '▪ 1단원: AI 개요\n▪ 2단원: 프롬프트 작성'
+    );
+  });
+
+  it('이미 ▪ 가 붙은 값에 중복 부여하지 않음', () => {
+    expect(bulletizeDetails('▪ AI 개념\n▪ 실습')).toBe('▪ AI 개념\n▪ 실습');
+  });
+
+  it('다른 머리기호(•·-*)가 섞여 있어도 ▪ 로 정규화', () => {
+    expect(bulletizeDetails('• AI\n- 실습\n* 산출물')).toBe('▪ AI\n▪ 실습\n▪ 산출물');
+  });
+
+  it('단일 라인도 ▪ 부여', () => {
+    expect(bulletizeDetails('AI 개념 강의')).toBe('▪ AI 개념 강의');
   });
 });

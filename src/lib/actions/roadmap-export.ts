@@ -74,7 +74,7 @@ export async function prepareExportData(
       return { success: false, error: '접근 권한이 없습니다.' };
     }
 
-    // DB legacy 컬럼(roadmap_matrix / pbl_course / courses) → 신규 4섹션 매핑
+    // DB legacy 컬럼(roadmap_matrix / pbl_course / courses) → RoadmapResult(v2) 매핑
     const mappedRaw = fromRoadmapVersionColumns({
       diagnosis_summary: roadmap.diagnosis_summary,
       roadmap_matrix: roadmap.roadmap_matrix,
@@ -86,15 +86,14 @@ export async function prepareExportData(
     // DRAFT 편집 중 sanitize 가 해제되어 DB 에 빈 행이 남을 수 있어 보호.
     const mapped = sanitizeRoadmapResult(mappedRaw);
 
+    // 양식 v2 — Ⅲ-1 역량 모델링 / Ⅲ-2 훈련체계도 / Ⅲ-3 연간 훈련계획 표가 삭제되어
+    // PDF·XLSX 로 넘기는 payload 도 명세서(course_specs) 중심으로 축소되었다.
     const exportData: RoadmapExportData = {
       companyName: projectData.company_name,
       projectId: roadmap.project_id,
       versionNumber: roadmap.version_number,
       status: roadmap.status,
       diagnosisSummary: mapped.diagnosis_summary,
-      competencies: mapped.competencies,
-      trainingStructure: mapped.training_structure,
-      annualPlan: mapped.annual_plan,
       courseSpecs: mapped.course_specs,
       createdAt: roadmap.created_at,
       finalizedAt: roadmap.finalized_at,

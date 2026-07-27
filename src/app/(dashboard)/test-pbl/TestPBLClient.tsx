@@ -19,7 +19,9 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
 import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
-import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
+import RoadmapLoadingOverlay, {
+  COMPLETION_DELAY_MS,
+} from '@/components/roadmap/RoadmapLoadingOverlay';
 import { showErrorToast } from '@/lib/utils';
 import { formatZodIssuesForToast } from '@/lib/utils/zod-error-format';
 import { PBL_FIELD_LABELS } from '@/lib/schemas/interview-pbl-labels';
@@ -31,22 +33,17 @@ import { StepCompanyIssues } from '@/app/(dashboard)/consultant/projects/[id]/in
 import { StepTrainingEnv } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTrainingEnv';
 import { StepExpectations } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepExpectations';
 import { StepCourseNecessity } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCourseNecessity';
-import { StepActivities } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepActivities';
 import {
   StepProblems,
   type StepProblemsValue,
 } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepProblems';
-import {
-  StepTargetAndLevel,
-  type StepTargetAndLevelValue,
-} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTargetAndLevel';
+import { StepPerformanceActivities } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPerformanceActivities';
+import { StepTarget } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTarget';
 
 import {
   PBLInterviewStrictSchema,
-  PBL_AI_LEVEL_LABEL,
   type PBLInterviewStrict,
   type PBLOverview,
-  type PBLAILevel,
 } from '@/lib/schemas/interview-pbl';
 import { PBLResultClient } from '@/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/PBLResultClient';
 import type {
@@ -61,11 +58,7 @@ import type { DownloadType } from '@/components/result/DownloadButtonGroup';
 import { showSuccessToast } from '@/lib/utils/toast';
 import { useHwpxDownload } from '@/hooks/useHwpxDownload';
 
-import {
-  generateTestPBL,
-  cancelTestPBLGeneration,
-  exportTestPBLHwpx,
-} from './actions';
+import { generateTestPBL, cancelTestPBLGeneration, exportTestPBLHwpx } from './actions';
 
 // ─── 테스트 모드 스텝 정의 (HRD PDF·STT 업로드는 테스트 불가 → 제외) ──────
 // Phase E: 실제 인터뷰 페이지 (PBLInterviewClient) 의 PBL_STEPS 와 일관성 유지
@@ -77,9 +70,9 @@ type StepId =
   | 'trainingEnv'
   | 'expectations'
   | 'courseNecessity'
-  | 'activities'
+  | 'performanceActivities'
   | 'problems'
-  | 'targetAndLevel';
+  | 'target';
 
 const STEPS: ReadonlyArray<{
   id: number;
@@ -89,14 +82,35 @@ const STEPS: ReadonlyArray<{
   stepperLabel?: string;
 }> = [
   { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요' },
-  { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈' },
-  // PR #92 (main) 의 8단계 + 본 PR 의 5번 stepperLabel '과정 개발 필요성' 단축 결합.
-  { id: 3, stepId: 'trainingEnv', shortName: 'Ⅱ-2-a', name: '훈련환경 분석', stepperLabel: '훈련환경' },
-  { id: 4, stepId: 'expectations', shortName: 'Ⅱ-2-b', name: '기대효과·요구분석' },
-  { id: 5, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', stepperLabel: '과정 개발 필요성' },
-  { id: 6, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동' },
-  { id: 7, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위', stepperLabel: '문제·우선순위' },
-  { id: 8, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·4', name: '훈련대상·AI수준' },
+  { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1', name: '기업 경영 이슈' },
+  // b-2 정합: Ⅱ-1 계열(과정 개발 필요성) → Ⅱ-3 계열(훈련환경·기대효과) 순.
+  // HRD PDF(Ⅱ-1-가)·STT 는 테스트 모드 미지원으로 제외.
+  {
+    id: 3,
+    stepId: 'courseNecessity',
+    shortName: 'Ⅱ-1-다',
+    name: 'AI훈련과정 개발 필요성',
+    stepperLabel: '과정 개발 필요성',
+  },
+  {
+    id: 4,
+    stepId: 'trainingEnv',
+    shortName: 'Ⅱ-3-a',
+    name: '훈련환경 분석',
+    stepperLabel: '훈련환경',
+  },
+  { id: 5, stepId: 'expectations', shortName: 'Ⅱ-3-b', name: '기대효과·요구분석' },
+  // Ⅲ-1 수행활동은 PBL 자체 입력(로드맵 연계 아님)이라 테스트 모드에서도 다룬다.
+  // V2 제거 항목: Ⅲ-2-나 우선순위 · Ⅲ-4 AI역량 진단.
+  {
+    id: 6,
+    stepId: 'performanceActivities',
+    shortName: 'Ⅲ-1',
+    name: '훈련과제 도출 수행활동',
+    stepperLabel: '수행활동',
+  },
+  { id: 7, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 정의서' },
+  { id: 8, stepId: 'target', shortName: 'Ⅲ-3', name: '훈련대상 업무' },
 ];
 
 function emptyOverview(): PBLOverview {
@@ -135,12 +149,8 @@ function emptyInitial(): Partial<PBLInterviewStrict> {
     },
     hrdReportPdf: null,
     courseNecessity: '',
-    activities: [],
     problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
-    priority: { items: [], method: '' },
-    target: { name: '', code: '', scope: '', necessity: '', necessity_score: 3, details: [] },
-    currentAiLevel: { level: 'BASIC', note: '' },
-    expectedAiLevel: { level: 'USER', note: '' },
+    target: { taskSelections: [], necessity: '', details: [] },
   };
 }
 
@@ -185,7 +195,6 @@ export function buildTestPBLExportPayload(args: {
   companyName: string;
 }): PBLExportPayload {
   const { content, interview, companyName } = args;
-  const aiLevel = interview.currentAiLevel?.level as PBLAILevel | undefined;
 
   const env = interview.trainingEnv;
   const envSummary = env
@@ -221,7 +230,8 @@ export function buildTestPBLExportPayload(args: {
       trainingHours: interview.trainingHours,
       traineeCount: 0,
       trainingJob: interview.trainingTarget,
-      aiLevel: aiLevel ? PBL_AI_LEVEL_LABEL[aiLevel] : '',
+      // V2: AI역량 진단 제거 — 로드맵 연동으로만 표출. 빈 문자열 유지.
+      aiLevel: '',
       trainingGoals: [],
     },
     requirements:
@@ -241,9 +251,7 @@ export function buildTestPBLExportPayload(args: {
   };
 }
 
-function toInterviewSnapshot(
-  interview: PBLInterviewStrict,
-): ResultPBLInterviewSnapshot {
+function toInterviewSnapshot(interview: PBLInterviewStrict): ResultPBLInterviewSnapshot {
   return {
     overview: {
       companyName: interview.companyName,
@@ -261,12 +269,10 @@ function toInterviewSnapshot(
       hrdReportPdf: interview.hrdReportPdf,
       courseNecessity: interview.courseNecessity,
     },
-    activities: interview.activities,
+    // Ⅲ-1 수행활동 — PBL 자체 입력 (로드맵 연계 아님)
+    performanceActivities: interview.performanceActivities,
     problemDefinitionSheet: interview.problemDefinitionSheet,
-    priority: interview.priority,
     target: interview.target,
-    currentAiLevel: interview.currentAiLevel,
-    expectedAiLevel: interview.expectedAiLevel,
   };
 }
 
@@ -326,16 +332,13 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
   const isFirstStep = currentStep === 1;
   const isLastStep = currentStep === STEPS.length;
 
-  const update = (patch: Partial<PBLInterviewStrict>) =>
-    setData((prev) => ({ ...prev, ...patch }));
+  const update = (patch: Partial<PBLInterviewStrict>) => setData((prev) => ({ ...prev, ...patch }));
 
   const updateOverview = (patch: Partial<PBLOverview>) => update(patch);
 
   // ── 샘플 데이터 채우기 ───────────────────────────────────────────────────
   const applySample = () => {
-    const sample = JSON.parse(
-      JSON.stringify(PBL_INTERVIEW_SAMPLE),
-    ) as PBLInterviewStrict;
+    const sample = JSON.parse(JSON.stringify(PBL_INTERVIEW_SAMPLE)) as PBLInterviewStrict;
     setData(sample);
     setCurrentStep(1);
   };
@@ -345,7 +348,7 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
       (data.courseName ?? '').trim() !== '' ||
       (data.companyName ?? '').trim() !== '' ||
       (data.companyIssues ?? '').trim() !== '' ||
-      (data.activities ?? []).length > 0 ||
+      (data.target?.necessity ?? '').trim() !== '' ||
       (data.problemDefinitionSheet?.core ?? '').trim() !== '';
     if (hasInput) {
       setSampleConfirmOpen(true);
@@ -358,10 +361,7 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
     const parsed = PBLInterviewStrictSchema.safeParse(data);
     if (!parsed.success) {
       const message = formatZodIssuesForToast(parsed.error, PBL_FIELD_LABELS);
-      showErrorToast(
-        '제출 검증 실패',
-        message || '필수 입력 항목을 확인해주세요.',
-      );
+      showErrorToast('제출 검증 실패', message || '필수 입력 항목을 확인해주세요.');
       return;
     }
 
@@ -442,17 +442,11 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
             <FlaskConical className="h-4 w-4 text-amber-600" />
             <AlertTitle>테스트 결과 — DB 저장되지 않음</AlertTitle>
             <AlertDescription>
-              페이지 이탈 시 결과는 휘발됩니다. 실제 프로젝트에서 PBL 보고서를 생성하려면
-              담당 프로젝트의 인터뷰 화면을 이용하세요.
+              페이지 이탈 시 결과는 휘발됩니다. 실제 프로젝트에서 PBL 보고서를 생성하려면 담당
+              프로젝트의 인터뷰 화면을 이용하세요.
             </AlertDescription>
           </Alert>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleReset}
-            className="ml-4"
-          >
+          <Button type="button" variant="outline" size="sm" onClick={handleReset} className="ml-4">
             처음으로
           </Button>
         </div>
@@ -477,9 +471,7 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
             });
             try {
               if (type === 'PDF') {
-                const { generatePBLPDF } = await import(
-                  '@/lib/services/export/pdf'
-                );
+                const { generatePBLPDF } = await import('@/lib/services/export/pdf');
                 const blob = await generatePBLPDF(payload);
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -493,14 +485,10 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
                 return;
               }
               if (type === 'XLSX') {
-                const { generatePBLXLSX, downloadPBLXLSX } = await import(
-                  '@/lib/services/export/xlsx'
-                );
+                const { generatePBLXLSX, downloadPBLXLSX } =
+                  await import('@/lib/services/export/xlsx');
                 const bytes = await generatePBLXLSX(payload);
-                downloadPBLXLSX(
-                  bytes,
-                  `pbl_test_${companyName}_v1.xlsx`,
-                );
+                downloadPBLXLSX(bytes, `pbl_test_${companyName}_v1.xlsx`);
                 showSuccessToast('Excel 다운로드 완료');
                 return;
               }
@@ -511,9 +499,7 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
               }
             } catch (err) {
               const message =
-                err instanceof Error
-                  ? err.message
-                  : '다운로드 중 오류가 발생했습니다.';
+                err instanceof Error ? err.message : '다운로드 중 오류가 발생했습니다.';
               console.error('[TestPBLClient] 다운로드 예외:', err);
               showErrorToast('다운로드 실패', message);
             }
@@ -604,62 +590,38 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
             onChange={(next) => update({ courseNecessity: next })}
           />
         );
-      case 'activities':
+      case 'performanceActivities':
         return (
-          <StepActivities
-            value={data.activities ?? []}
-            onChange={(next) => update({ activities: next })}
+          <StepPerformanceActivities
+            value={data.performanceActivities ?? []}
+            onChange={(next) => update({ performanceActivities: next })}
           />
         );
       case 'problems': {
         const value: StepProblemsValue = {
-          problemDefinitionSheet:
-            data.problemDefinitionSheet ?? {
-              background: '',
-              core: '',
-              scope: '',
-              constraints: '',
-            },
-          priority: data.priority ?? { items: [], method: '' },
+          problemDefinitionSheet: data.problemDefinitionSheet ?? {
+            background: '',
+            core: '',
+            scope: '',
+            constraints: '',
+          },
         };
         return (
           <StepProblems
             value={value}
-            onChange={(next) =>
-              update({
-                problemDefinitionSheet: next.problemDefinitionSheet,
-                priority: next.priority,
-              })
-            }
+            onChange={(next) => update({ problemDefinitionSheet: next.problemDefinitionSheet })}
           />
         );
       }
-      case 'targetAndLevel': {
-        const value: StepTargetAndLevelValue = {
-          target: data.target ?? {
-            name: '',
-            code: '',
-            scope: '',
-            necessity: '',
-            necessity_score: 3,
-            details: [],
-          },
-          currentAiLevel: data.currentAiLevel ?? { level: 'BASIC', note: '' },
-          expectedAiLevel: data.expectedAiLevel ?? { level: 'USER', note: '' },
-        };
+      case 'target':
         return (
-          <StepTargetAndLevel
-            value={value}
-            onChange={(next) =>
-              update({
-                target: next.target,
-                currentAiLevel: next.currentAiLevel,
-                expectedAiLevel: next.expectedAiLevel,
-              })
-            }
+          <StepTarget
+            value={data.target ?? { taskSelections: [], necessity: '', details: [] }}
+            onChange={(next) => update({ target: next })}
+            /* 테스트 모드는 선행 로드맵 연계 미지원 → 빈 배열. */
+            roadmapTasks={[]}
           />
         );
-      }
       default:
         return null;
     }
@@ -694,8 +656,8 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
           <Info className="h-4 w-4" />
           <AlertTitle>테스트 모드 안내</AlertTitle>
           <AlertDescription>
-            이 화면의 UI/UX는 실제 현장 인터뷰(PBL)와 동일합니다. Ⅱ-3-가 HRD이음 PDF 첨부는
-            테스트 모드에서 지원되지 않습니다.
+            이 화면의 UI/UX는 실제 현장 인터뷰(PBL)와 동일합니다. Ⅱ-1-가 HRD이음 PDF 첨부는 테스트
+            모드에서 지원되지 않습니다.
             <strong className="block mt-2 text-amber-700">
               입력값은 DB에 저장되지 않으며, 페이지를 떠나면 사라집니다.
             </strong>

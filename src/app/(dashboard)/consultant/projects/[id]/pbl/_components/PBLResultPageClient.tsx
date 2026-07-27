@@ -28,12 +28,10 @@ import type { DownloadType } from '@/components/result/DownloadButtonGroup';
 import { handleActionResult, handleSimpleActionResult } from '@/lib/utils/action-result-toast';
 import { isCancelledError } from '@/lib/services/llm';
 import type { PBLReportRow } from '@/lib/services/pbl';
+import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 
 import { PBLResultClient } from './result-v2/PBLResultClient';
-import type {
-  PBLResultEditPayload,
-  ResultPBLInterviewSnapshot,
-} from './result-v2/types';
+import type { PBLResultEditPayload, ResultPBLInterviewSnapshot } from './result-v2/types';
 
 export interface PBLResultPageClientProps {
   projectId: string;
@@ -46,6 +44,8 @@ export interface PBLResultPageClientProps {
   /** #013 fix — EmptyState 가드 강화용. */
   initialHasInterview: boolean;
   initialProjectStatus: string;
+  /** 선행 로드맵 인터뷰(연계) — Ⅱ장 읽기 전용 렌더용. 미연계 시 null. */
+  linkedRoadmap?: Partial<RoadmapInterviewStrict> | null;
 }
 
 export default function PBLResultPageClient({
@@ -57,13 +57,11 @@ export default function PBLResultPageClient({
   initialInterview,
   initialHasInterview,
   initialProjectStatus,
+  linkedRoadmap,
 }: PBLResultPageClientProps) {
   const [versions, setVersions] = useState<PBLReportRow[]>(initialVersions);
-  const [selectedVersion, setSelectedVersion] = useState<PBLReportRow | null>(
-    initialSelected,
-  );
-  const [interview, setInterview] =
-    useState<Partial<ResultPBLInterviewSnapshot>>(initialInterview);
+  const [selectedVersion, setSelectedVersion] = useState<PBLReportRow | null>(initialSelected);
+  const [interview, setInterview] = useState<Partial<ResultPBLInterviewSnapshot>>(initialInterview);
   const [hasInterview, setHasInterview] = useState<boolean>(initialHasInterview);
   const [projectStatus, setProjectStatus] = useState<string>(initialProjectStatus);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -176,6 +174,7 @@ export default function PBLResultPageClient({
         onCancelGenerate={handleCancelGenerate}
         companyName={companyName}
         projectMeta={projectMeta}
+        linkedRoadmap={linkedRoadmap}
       />
       <VersionSwitchOverlay open={isSwitchingVersion} />
     </>

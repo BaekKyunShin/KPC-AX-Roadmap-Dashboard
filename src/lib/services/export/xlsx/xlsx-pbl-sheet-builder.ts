@@ -9,10 +9,8 @@
  */
 
 import type * as XLSX from 'xlsx-js-style';
-import type {
-  PBLContent,
-  PBLOperationPlan,
-} from '../../pbl/pbl-types';
+import { bulletizeDetails } from '@/lib/utils/list-format';
+import type { PBLContent, PBLOperationPlan } from '../../pbl/pbl-types';
 import { calcRowHeight, formatBulletLines } from './xlsx-formatter';
 import { STYLE, tableBodyCenterStyle, tableBodyStyle } from './xlsx-styles';
 import {
@@ -56,7 +54,7 @@ function addTableRow(
   ctx: ReturnType<typeof createCtx>,
   cells: string[],
   centerIdxSet: Set<number>,
-  alt: boolean,
+  alt: boolean
 ): void {
   let maxH = 22;
   cells.forEach((v, c) => {
@@ -124,7 +122,7 @@ export function buildPBLOverviewSheet(input: PBLOverviewSheetInput): XLSX.WorkSh
     ctx,
     input.diagnosisSummary || '-',
     STYLE.diagnosis,
-    Math.max(60, calcRowHeight(input.diagnosisSummary || '-', width)),
+    Math.max(60, calcRowHeight(input.diagnosisSummary || '-', width))
   );
 
   if (input.interviewOverview) {
@@ -163,13 +161,20 @@ export function buildPBLOperationSheet(op: PBLOperationPlan): XLSX.WorkSheet {
     ctx,
     op.training_goal || '-',
     STYLE.value,
-    Math.max(40, calcRowHeight(op.training_goal || '-', width)),
+    Math.max(40, calcRowHeight(op.training_goal || '-', width))
   );
   addBlankRow(ctx, 10);
 
   addSectionHeader(ctx, 'Ⅳ-2. AI 도구 활용 계획');
   addBlankRow(ctx, 6);
-  addTableHeader(ctx, ['단계', '주요 활동', 'AI 도구', '활용 데이터', '활용 목적', '구체적 활용 방법']);
+  addTableHeader(ctx, [
+    '단계',
+    '주요 활동',
+    'AI 도구',
+    '활용 데이터',
+    '활용 목적',
+    '구체적 활용 방법',
+  ]);
   op.ai_tool_usage_plan.forEach((item, idx) => {
     addTableRow(
       ctx,
@@ -182,7 +187,7 @@ export function buildPBLOperationSheet(op: PBLOperationPlan): XLSX.WorkSheet {
         item.specific_method,
       ],
       new Set([0]),
-      idx % 2 === 1,
+      idx % 2 === 1
     );
   });
   if (op.ai_tool_usage_plan.length === 0) {
@@ -216,13 +221,13 @@ export function buildPBLTrainingSheet(op: PBLOperationPlan): XLSX.WorkSheet {
   addBlankRow(ctx, 6);
 
   addSubSection(ctx, '나. 학습그룹 구성 (훈련강사)');
-  addTableHeader(ctx, ['구분', '역할', '소속', '직위', '성명']);
+  addTableHeader(ctx, ['구분', '역할', '소속(부서)', '직위', '성명']);
   tp.learning_group.instructors.forEach((ins, i) => {
     addTableRow(
       ctx,
       [ins.type, ins.role, ins.affiliation, ins.position, ins.name],
       new Set([0, 1]),
-      i % 2 === 1,
+      i % 2 === 1
     );
   });
   if (tp.learning_group.instructors.length === 0) {
@@ -231,14 +236,9 @@ export function buildPBLTrainingSheet(op: PBLOperationPlan): XLSX.WorkSheet {
   addBlankRow(ctx, 6);
 
   addSubSection(ctx, '나. 학습그룹 구성 (훈련생)');
-  addTableHeader(ctx, ['역할', '소속', '직위', '성명', '']);
+  addTableHeader(ctx, ['역할', '소속(부서)', '직위', '성명', '']);
   tp.learning_group.trainees.forEach((t, i) => {
-    addTableRow(
-      ctx,
-      [t.role, t.affiliation, t.position, t.name, ''],
-      new Set([0]),
-      i % 2 === 1,
-    );
+    addTableRow(ctx, [t.role, t.affiliation, t.position, t.name, ''], new Set([0]), i % 2 === 1);
   });
   if (tp.learning_group.trainees.length === 0) {
     addTableRow(ctx, ['-', '-', '-', '-', ''], new Set([0]), false);
@@ -248,32 +248,39 @@ export function buildPBLTrainingSheet(op: PBLOperationPlan): XLSX.WorkSheet {
   addSubSection(ctx, '다. 훈련 교과목 프로파일');
   addLabelValueRows(ctx, [
     ['과정명', tp.subject_profile.course_name || '-'],
-    ['전체 훈련시간(H)', String(tp.subject_profile.total_hours)],
-    ['분석 방법', tp.subject_profile.analysis_method || '-'],
+    ['총 훈련시간(h)', String(tp.subject_profile.total_hours)],
+    ['분석방법', tp.subject_profile.analysis_method || '-'],
     ['활용 데이터', tp.subject_profile.utilized_data || '-'],
-    ['훈련 목표', formatBulletLines(tp.subject_profile.training_goals)],
-    ['활용 AI 도구', tp.subject_profile.ai_tools.join(', ') || '-'],
+    ['훈련목표', formatBulletLines(tp.subject_profile.training_goals)],
+    ['활용 AI도구', tp.subject_profile.ai_tools.join(', ') || '-'],
   ]);
   addBlankRow(ctx, 4);
-  addTableHeader(ctx, ['업무(단원)명', '세부 내용', '훈련시간(H)', '외부 투입(H)', '내부 투입(H)']);
+  addTableHeader(ctx, [
+    '업무(단원)명',
+    '세부 내용',
+    '훈련 시간(H)',
+    '외부 강사 (H)',
+    '내부 강사 (H)',
+  ]);
   tp.subject_profile.training_contents.forEach((row, idx) => {
     addTableRow(
       ctx,
       [
         row.unit_name,
-        row.detail,
+        // 항목별 머리기호(▪) — 화면·한글(HWPX)·PDF 와 동일 표기.
+        bulletizeDetails(row.detail),
         String(row.training_hours),
         String(row.instructor_hours.external),
         String(row.instructor_hours.internal),
       ],
       new Set([2, 3, 4]),
-      idx % 2 === 1,
+      idx % 2 === 1
     );
   });
   if (tp.subject_profile.training_contents.length === 0) {
     addTableRow(ctx, ['-', '-', '-', '-', '-'], new Set([2, 3, 4]), false);
   }
-  addLabelValueRow(ctx, '전체시간 합계', `${tp.subject_profile.total_sum_hours}시간`);
+  addLabelValueRow(ctx, '전체시간', `${tp.subject_profile.total_sum_hours}시간`);
   addBlankRow(ctx, 6);
 
   addSubSection(ctx, '라. 시설·장비');
@@ -283,7 +290,7 @@ export function buildPBLTrainingSheet(op: PBLOperationPlan): XLSX.WorkSheet {
       ctx,
       [String(f.seq), f.category, f.name, f.spec, f.location],
       new Set([0, 1]),
-      i % 2 === 1,
+      i % 2 === 1
     );
   });
   if (tp.facilities.length === 0) {
@@ -292,7 +299,7 @@ export function buildPBLTrainingSheet(op: PBLOperationPlan): XLSX.WorkSheet {
   addBlankRow(ctx, 6);
 
   addSubSection(ctx, '마. 훈련강사');
-  addTableHeader(ctx, ['성명', '내/외부', '경력(년)', '업무명', '세부 교육훈련 내용']);
+  addTableHeader(ctx, ['성명', '구분', '업무경력', '업무명', '세부 교육훈련 내용']);
   tp.training_instructors.forEach((row, i) => {
     addTableRow(
       ctx,
@@ -304,7 +311,7 @@ export function buildPBLTrainingSheet(op: PBLOperationPlan): XLSX.WorkSheet {
         formatBulletLines(row.detailed_training_content),
       ],
       new Set([1, 2]),
-      i % 2 === 1,
+      i % 2 === 1
     );
   });
   if (tp.training_instructors.length === 0) {
@@ -342,7 +349,7 @@ export function buildPBLEvaluationSheet(op: PBLOperationPlan): XLSX.WorkSheet {
       ctx,
       [row.unit_name, row.evaluation_criteria, String(row.performance_level), ''],
       new Set([2]),
-      i % 2 === 1,
+      i % 2 === 1
     );
   });
   if (ce.performance_checklist.length === 0) {
@@ -382,17 +389,17 @@ export async function generatePBLXLSX(data: PBLXLSXInput): Promise<Uint8Array> {
   XLSXmod.utils.book_append_sheet(
     wb,
     buildPBLOperationSheet(data.pblContent.operation_plan),
-    'Ⅳ-1·Ⅳ-2 운영계획',
+    'Ⅳ-1·Ⅳ-2 운영계획'
   );
   XLSXmod.utils.book_append_sheet(
     wb,
     buildPBLTrainingSheet(data.pblContent.operation_plan),
-    'Ⅳ-3 훈련 실시',
+    'Ⅳ-3 훈련 실시'
   );
   XLSXmod.utils.book_append_sheet(
     wb,
     buildPBLEvaluationSheet(data.pblContent.operation_plan),
-    'Ⅳ-4 평가 계획',
+    'Ⅳ-4 평가 계획'
   );
 
   const wbout = XLSXmod.write(wb, { bookType: 'xlsx', type: 'array' });

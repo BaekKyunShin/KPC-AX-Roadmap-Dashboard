@@ -1,28 +1,52 @@
 'use client';
 
-import { AiLevel4Check } from '@/components/charts/AiLevel4Check';
 import { FormTable } from '@/components/forms/FormTable';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { SectionCard } from '@/components/result/SectionCard';
-import { PBL_ACTIVITY_ROLE_LABEL } from '@/lib/schemas/interview-pbl';
+import { Badge } from '@/components/ui/badge';
+import { INTERVIEW_METHOD_LABEL, type InterviewMethod } from '@/lib/schemas/interview-roadmap';
+import type { PBLPerformanceActivity } from '@/lib/schemas/interview-pbl';
 
 import type { TabPBLCommonProps } from './types';
+
+/** 정본 Ⅲ-1(T19) 참석자 4역할 — 라벨은 양식 그대로 */
+const PARTICIPANT_ROLES = [
+  { key: 'pm', label: '컨설팅책임자(PM)' },
+  { key: 'external_expert', label: '외부전문가(직무,HRD)' },
+  { key: 'internal_expert', label: '기업내부전문가' },
+  { key: 'jurisdiction_manager', label: '능력개발전담주치의' },
+] as const satisfies ReadonlyArray<{
+  key: keyof PBLPerformanceActivity['participants'];
+  label: string;
+}>;
+
+/** 수행 방법 코드(ONSITE 등) → 양식 한글 라벨. 이미 한글이면 그대로. */
+function formatMethod(method: string): string {
+  if (!method) return '-';
+  return INTERVIEW_METHOD_LABEL[method as InterviewMethod] ?? method;
+}
 
 /**
  * Ⅲ. AI기반 훈련과제 도출 탭 — PBL 결과 V2.
  *
  * 섹션:
- *  - P-08 Ⅲ-1 훈련과제 도출 수행활동 (표, 동적 행) — 인터뷰 입력.
- *  - P-09 Ⅲ-2-가 문제 도출 (표) — 인터뷰 입력.
- *  - P-10 Ⅲ-2-나 문제 우선순위 (표 + method 박스) — 인터뷰 입력.
- *  - P-11 Ⅲ-3-가 훈련대상 업무 선정 (표) — 인터뷰 입력.
- *  - P-12 Ⅲ-3-나 필요성 (박스) — 인터뷰 입력. DRAFT 인라인 편집.
- *  - P-13 Ⅲ-3-다 세부내용 (동적 행 표) — 인터뷰 입력.
- *  - P-14 Ⅲ-4-가 현재 AI 역량 — AiLevel4Check readOnly.
- *  - P-15 Ⅲ-4-나 예상 AI 역량 — AiLevel4Check readOnly.
+ *  - Ⅲ-1 훈련과제 도출 수행활동 — **PBL 자체 입력**(정본 4역할·수행 일자). 읽기 전용
+ *    표출(편집은 인터뷰 페이지). ⚠️ 로드맵 Ⅰ-2 주요 활동과 **다른 표** — 연계 금지.
+ *  - Ⅲ-2-가 문제 정의서 (4 정형 항목 단일 세트) — 인터뷰 입력. DRAFT 인라인 편집.
+ *  - Ⅲ-3-가 훈련대상 업무 선정 — 선행 로드맵 과업 4열(읽기 전용) + PBL 2열
+ *    (AI 도입·활용 필요도 · 훈련 선정)을 로드맵 과업 순서와 1:1 로 zip 하여 표출.
+ *  - Ⅲ-3-나 AI기반 문제해결의 필요성 (선정 사유) — 인터뷰 입력. DRAFT 인라인 편집.
+ *  - Ⅲ-3-다 훈련대상 업무 세부내용 (5 컬럼) — 인터뷰 입력. DRAFT 인라인 편집.
+ *
+ * V2 제거:
+ *  - Ⅲ-2-나 문제 우선순위 · Ⅲ-4 AI역량 수준 진단 — 양식에서 삭제
+ *    (AI역량은 로드맵 연동으로만 표출).
  */
-export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) {
-  const activities = interview?.activities ?? [];
+export function TabPBLTasks({ interview, linkedRoadmap, readOnly, onEdit }: TabPBLCommonProps) {
+  // Ⅲ-1 수행활동 — PBL 자체 입력. 로드맵 활동(linkedRoadmap.performanceActivities)을
+  // 폴백으로 쓰지 않는다: 정본 표가 4역할·수행 일자로 로드맵과 다르고, PBL 인터뷰는
+  // 로드맵 인터뷰와 별도 일정이라 로드맵 값을 쓰면 날짜가 틀린다.
+  const performanceActivities = interview?.performanceActivities ?? [];
   // R8 PBL-자체-04 — 4 정형 항목 단일 세트 (배경/핵심/범위/제약)
   const problemDefinitionSheet = interview?.problemDefinitionSheet ?? {
     background: '',
@@ -30,73 +54,82 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
     scope: '',
     constraints: '',
   };
-  const priority = interview?.priority;
   const target = interview?.target;
-  const currentAiLevel = interview?.currentAiLevel ?? { level: 'BASIC' as const, note: '' };
-  const expectedAiLevel = interview?.expectedAiLevel ?? { level: 'USER' as const, note: '' };
+  const taskSelections = target?.taskSelections ?? [];
+  // Ⅲ-3-가 4열 — 선행 로드맵 과업 분석표(읽기 전용). 미연계 시 빈 배열.
+  const roadmapTasks = linkedRoadmap?.taskAnalysis ?? [];
 
   async function patchProblemDefinition(
     key: keyof typeof problemDefinitionSheet,
-    value: string,
+    value: string
   ): Promise<void> {
     await onEdit({ problemDefinitionSheet: { [key]: value } });
   }
 
   return (
     <div className="space-y-6">
-      {/* Ⅲ-1 훈련과제 도출 수행활동 (R8 PBL-자체-03 — 차수×4 역할 평면 4행) */}
+      {/* Ⅲ-1 훈련과제 도출 수행활동 (PBL 자체 입력 — 차수당 참석자 4역할) */}
       <SectionCard
         title="Ⅲ-1. 훈련과제 도출 수행활동"
-        description="양식 13×6 정형 — 차수×4 역할(PM·외부전문가·기업내부전문가·능력개발전담주치의)별 일자·내용·방법 (인터뷰 입력, 읽기 전용)"
+        description="PBL 과정 개발 수행 차수별 일자·내용·방법과 참석자 4역할 (인터뷰 입력값, 읽기 전용)"
         dataSource="user"
       >
-        {activities.length > 0 ? (
+        {performanceActivities.length > 0 ? (
           <div className="overflow-x-auto">
             <FormTable
-              caption="수행활동"
+              caption="훈련과제 도출 수행활동"
               headerRows={[
                 {
                   cells: [
-                    { content: '차수', header: true, className: 'w-[60px]' },
-                    { content: '역할', header: true, className: 'w-[140px]' },
-                    { content: '성명', header: true, className: 'w-[100px]' },
-                    { content: '일자', header: true, className: 'w-[110px]' },
+                    { content: '수행 차수', header: true },
+                    { content: '수행 일자', header: true },
                     { content: '수행 내용', header: true },
                     { content: '수행 방법', header: true },
+                    { content: '참석자', header: true },
+                    { content: '성명', header: true },
                   ],
                 },
               ]}
-              bodyRows={activities.map((a, idx) => ({
-                cells: [
-                  { content: `${a.round}차`, align: 'center' },
-                  { content: PBL_ACTIVITY_ROLE_LABEL[a.role], align: 'center' },
-                  { content: a.personName || '-', align: 'center' },
-                  { content: a.date || '-', align: 'center' },
-                  {
-                    content: (
-                      <InlineEditField
-                        value={a.content ?? ''}
-                        onSave={async (next) => {
-                          const draft = activities.map((row, i) =>
-                            i === idx ? { ...row, content: next } : row,
-                          );
-                          await onEdit({ activities: draft });
-                        }}
-                        readOnly={readOnly}
-                        multiline
-                        placeholder="수행 내용이 입력되지 않았습니다."
-                      />
-                    ),
-                    align: 'left',
-                  },
-                  { content: a.method || '-', align: 'left' },
-                ],
-              }))}
+              bodyRows={performanceActivities.flatMap((activity) =>
+                PARTICIPANT_ROLES.map((role, roleIdx) => ({
+                  cells: [
+                    // 차수·일자·내용·방법은 첫 역할 행에만 표기 (정본 rowspan 표현)
+                    {
+                      content: roleIdx === 0 ? `${activity.round}차` : '',
+                      align: 'center' as const,
+                    },
+                    {
+                      content: roleIdx === 0 ? activity.date || '-' : '',
+                      align: 'center' as const,
+                    },
+                    {
+                      content:
+                        roleIdx === 0 ? (
+                          <span className="whitespace-pre-wrap text-sm">
+                            {activity.content || '-'}
+                          </span>
+                        ) : (
+                          ''
+                        ),
+                      align: 'left' as const,
+                    },
+                    {
+                      content: roleIdx === 0 ? formatMethod(activity.method) : '',
+                      align: 'center' as const,
+                    },
+                    { content: role.label, header: true, align: 'left' as const },
+                    {
+                      content: activity.participants?.[role.key] || '-',
+                      align: 'center' as const,
+                    },
+                  ],
+                }))
+              )}
             />
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            등록된 수행활동이 없습니다. 인터뷰에서 입력하세요.
+            등록된 수행활동이 없습니다. 인터뷰 페이지 Ⅲ-1 에서 입력하세요.
           </p>
         )}
       </SectionCard>
@@ -190,127 +223,76 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
         />
       </SectionCard>
 
-      {/* Ⅲ-2-나 문제 우선순위 결정 */}
+      {/* Ⅲ-3-가 훈련대상 업무 선정 (양식 6열 = 로드맵 4열 자동 연동 + PBL 2열 입력) */}
       <SectionCard
-        title="Ⅲ-2-나. 문제 우선순위 결정"
-        description="문제별 점수·순위 + 우선순위 결정 방법 (AHP · 협의 등)"
-        dataSource="user"
+        title="Ⅲ-3-가. 훈련대상 업무 선정"
+        description="선행 로드맵 과업 분석표(직무·과업·현행·개선점, 읽기 전용) + PBL 입력(AI도입·활용 필요도·훈련 선정)"
+        dataSource="mixed"
       >
-        {priority?.items && priority.items.length > 0 ? (
+        {roadmapTasks.length > 0 ? (
           <div className="overflow-x-auto">
             <FormTable
-              caption="문제 우선순위"
+              caption="훈련대상 과업 선정 (로드맵 과업 연동)"
               headerRows={[
                 {
                   cells: [
-                    { content: '문제명', header: true },
-                    { content: '점수 (1~5)', header: true },
-                    { content: '순위', header: true },
+                    { content: '직무', header: true, className: 'w-[110px]' },
+                    { content: '과업(Task)', header: true, className: 'w-[140px]' },
+                    { content: '현행 방식', header: true },
+                    { content: '개선점 및 AI 적용 가능성', header: true },
+                    { content: 'AI도입·활용 필요도', header: true, className: 'w-[180px]' },
+                    { content: '훈련 선정', header: true, className: 'w-[90px]' },
                   ],
                 },
               ]}
-              bodyRows={priority.items.map((p) => ({
-                cells: [
-                  { content: p.problem || '-', align: 'left' },
-                  { content: String(p.score ?? '-'), align: 'center' },
-                  { content: String(p.rank ?? '-'), align: 'center' },
-                ],
-              }))}
+              bodyRows={roadmapTasks.map((t, idx) => {
+                const sel = taskSelections[idx];
+                return {
+                  cells: [
+                    { content: t.domain || '-', align: 'left' },
+                    { content: t.task || '-', align: 'left' },
+                    {
+                      content: <span className="whitespace-pre-wrap text-sm">{t.asIs || '-'}</span>,
+                      align: 'left',
+                    },
+                    {
+                      content: (
+                        <span className="whitespace-pre-wrap text-sm">{t.improvement || '-'}</span>
+                      ),
+                      align: 'left',
+                    },
+                    {
+                      content: (
+                        <span className="whitespace-pre-wrap text-sm">
+                          {sel?.ai_necessity || '-'}
+                        </span>
+                      ),
+                      align: 'left',
+                    },
+                    {
+                      content: (
+                        <Badge variant={sel?.training_selected ? 'default' : 'secondary'}>
+                          {sel?.training_selected ? '선정' : '미선정'}
+                        </Badge>
+                      ),
+                      align: 'center',
+                    },
+                  ],
+                };
+              })}
             />
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            등록된 우선순위 항목이 없습니다.
+            선행 로드맵 과업이 연결되지 않았습니다. Ⅱ장 상단 안내에 따라 운영관리자에게 로드맵
+            연결을 요청하세요.
           </p>
         )}
-
-        <div>
-          <p className="mb-2 text-sm font-medium text-muted-foreground">
-            우선순위 결정 방법
-          </p>
-          <InlineEditField
-            value={priority?.method ?? ''}
-            onSave={async (next) => {
-              await onEdit({ priority: { method: next } });
-            }}
-            readOnly={readOnly}
-            multiline
-            placeholder="우선순위 결정 방법(AHP · 협의 등)이 입력되지 않았습니다."
-          />
-        </div>
       </SectionCard>
 
-      {/* Ⅲ-3-가 훈련대상 업무 선정 */}
+      {/* Ⅲ-3-나 필요성 (선정 사유) */}
       <SectionCard
-        title="Ⅲ-3-가. 훈련대상 업무 선정"
-        description="업무명 · NCS 코드 · 업무 범위 (인터뷰 입력)"
-        dataSource="user"
-      >
-        <FormTable
-          caption="훈련대상 업무 선정"
-          bodyRows={[
-            {
-              cells: [
-                { content: '업무명', header: true, className: 'w-[160px]' },
-                {
-                  content: (
-                    <InlineEditField
-                      value={target?.name ?? ''}
-                      onSave={async (next) => {
-                        await onEdit({ target: { name: next } });
-                      }}
-                      readOnly={readOnly}
-                      placeholder="훈련대상 업무명이 입력되지 않았습니다."
-                    />
-                  ),
-                  align: 'left',
-                },
-              ],
-            },
-            {
-              cells: [
-                { content: 'NCS 코드', header: true },
-                {
-                  content: (
-                    <InlineEditField
-                      value={target?.code ?? ''}
-                      onSave={async (next) => {
-                        await onEdit({ target: { code: next } });
-                      }}
-                      readOnly={readOnly}
-                      placeholder="(선택) NCS 코드"
-                    />
-                  ),
-                  align: 'left',
-                },
-              ],
-            },
-            {
-              cells: [
-                { content: '업무 범위', header: true },
-                {
-                  content: (
-                    <InlineEditField
-                      value={target?.scope ?? ''}
-                      onSave={async (next) => {
-                        await onEdit({ target: { scope: next } });
-                      }}
-                      readOnly={readOnly}
-                      multiline
-                      placeholder="부서·인원 등 업무 범위가 입력되지 않았습니다."
-                    />
-                  ),
-                  align: 'left',
-                },
-              ],
-            },
-          ]}
-        />
-      </SectionCard>
-
-      {/* Ⅲ-3-나 필요성 */}
-      <SectionCard
-        title="Ⅲ-3-나. AI기반 문제해결 필요성 (선정 사유)"
+        title="Ⅲ-3-나. AI기반 문제해결의 필요성 (선정 사유)"
         description="인터뷰 입력 (DRAFT 인라인 편집)"
         dataSource="user"
       >
@@ -321,14 +303,14 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
           }}
           readOnly={readOnly}
           multiline
-          placeholder="AI기반 문제해결 필요성(선정 사유)이 입력되지 않았습니다."
+          placeholder="AI기반 문제해결의 필요성(선정 사유)이 입력되지 않았습니다."
         />
       </SectionCard>
 
-      {/* Ⅲ-3-다 세부내용 (V2 PR #7: 양식 4×5 의 5 컬럼 1:1 정합) */}
+      {/* Ⅲ-3-다 세부내용 (양식 4×5 의 5 컬럼 1:1 정합) */}
       <SectionCard
         title="Ⅲ-3-다. 훈련대상 업무 세부내용"
-        description="업무명 / AS-IS / TO-BE / 요구지식 / 기술 5 컬럼 (인터뷰 입력, 읽기 전용)"
+        description="업무명 / AS-IS / TO-BE / 요구지식 / 기술 5 컬럼 (인터뷰 입력)"
         dataSource="user"
       >
         {target?.details && target.details.length > 0 ? (
@@ -348,8 +330,8 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
               ]}
               bodyRows={target.details.map((d, idx) => {
                 const patchDetail = async (next: Partial<typeof d>) => {
-                  const draft = target.details.map((row, i) =>
-                    i === idx ? { ...row, ...next } : row,
+                  const draft = (target.details ?? []).map((row, i) =>
+                    i === idx ? { ...row, ...next } : row
                   );
                   await onEdit({ target: { details: draft } });
                 };
@@ -418,42 +400,8 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
             />
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            등록된 세부내용이 없습니다.
-          </p>
+          <p className="text-sm text-muted-foreground">등록된 세부내용이 없습니다.</p>
         )}
-      </SectionCard>
-
-      {/* Ⅲ-4-가 현재 AI 역량 수준 */}
-      <SectionCard
-        title="Ⅲ-4-가. 현재 AI 역량 수준"
-        description="4등급(AI기초형/AI탐구형/AI활용형/AI선도형) 택1 + 선택 근거"
-        dataSource="user"
-      >
-        <AiLevel4Check
-          value={currentAiLevel}
-          onChange={() => {
-            /* 결과 화면은 readOnly — 인터뷰에서만 수정 */
-          }}
-          ariaLabel="현재 AI 역량 수준"
-          readOnly
-        />
-      </SectionCard>
-
-      {/* Ⅲ-4-나 예상 AI 역량 수준 */}
-      <SectionCard
-        title="Ⅲ-4-나. 예상 AI 역량 수준"
-        description="훈련 후 도달 예상 등급 + 선택 근거"
-        dataSource="user"
-      >
-        <AiLevel4Check
-          value={expectedAiLevel}
-          onChange={() => {
-            /* 결과 화면은 readOnly — 인터뷰에서만 수정 */
-          }}
-          ariaLabel="예상 AI 역량 수준"
-          readOnly
-        />
       </SectionCard>
     </div>
   );

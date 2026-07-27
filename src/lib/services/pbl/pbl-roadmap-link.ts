@@ -1,0 +1,168 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getLatestFinalRoadmap, type RoadmapVersionRow } from '../roadmap/roadmap-crud';
+import { fromRoadmapVersionColumns } from '../roadmap/roadmap-storage-mapper';
+import { mapDbToRoadmapInterview } from '../interview/converters';
+import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
+import type { PBLRoadmapOverrides } from '@/lib/schemas/interview-pbl';
+
+/** 로드맵 프로젝트 인터뷰 원시 행 (PBL Ⅱ장 자동 연계에 필요한 컬럼만) */
+export interface RoadmapInterviewRow {
+  id: string;
+  project_id: string;
+  company_details: unknown;
+  job_tasks: unknown;
+  improvement_goals: unknown;
+  stt_insights: unknown;
+}
+
+const ROADMAP_INTERVIEW_COLUMNS =
+  'id, project_id, company_details, job_tasks, improvement_goals, stt_insights';
+
+/** PBL 프로젝트에 연계된 선행 로드맵 데이터 */
+export interface LinkedRoadmapData {
+  /** 선행 로드맵의 최신 FINAL 버전 (미연계·미확정 시 null) */
+  roadmap: RoadmapVersionRow | null;
+  /** 선행 로드맵 프로젝트의 인터뷰 원시 행 (없으면 null) */
+  interview: RoadmapInterviewRow | null;
+}
+
+/**
+ * PBL 프로젝트의 선행 로드맵 연계 데이터를 조회한다.
+ *
+ * 신규 PBL 양식은 Ⅱ장(로드맵 수립·요구분석)을 선행 로드맵 보고서에서 자동 연계한다.
+ * 연결은 `projects.roadmap_project_id`(자기참조 FK)로 성립하며, 미연계·자기참조·FINAL 부재는
+ * 모두 정상 폴백(null)으로 처리한다(오류 아님 → PBL 결과 Ⅱ장이 빈 양식으로 출력).
+ *
+ * 서버 전용 모듈 — admin 클라이언트로 다른 프로젝트를 조회하므로 index.ts에 re-export 하지 않는다.
+ */
+export async function fetchLinkedRoadmapData(
+  pblProjectId: string,
+  supabase?: SupabaseClient
+): Promise<LinkedRoadmapData> {
+  const client = supabase ?? createAdminClient();
+
+  // 1. PBL 프로젝트에서 선행 로드맵 연결 해석
+  const { data: pblProject } = await client
+    .from('projects')
+    .select('id, roadmap_project_id')
+    .eq('id', pblProjectId)
+    .maybeSingle();
+
+  const roadmapProjectId =
+    (pblProject as { roadmap_project_id?: string | null } | null)?.roadmap_project_id ?? null;
+
+  // 2. 미연계 또는 자기참조(방어) → 빈 폴백
+  if (!roadmapProjectId || roadmapProjectId === pblProjectId) {
+    return { roadmap: null, interview: null };
+  }
+
+  // 3. 선행 로드맵의 최신 FINAL 버전
+  const roadmap = await getLatestFinalRoadmap(roadmapProjectId, client);
+
+  // 4. 선행 로드맵 프로젝트의 인터뷰 (FINAL 유무와 독립적으로 조회)
+  const { data: interview } = await client
+    .from('interviews')
+    .select(ROADMAP_INTERVIEW_COLUMNS)
+    .eq('project_id', roadmapProjectId)
+    .maybeSingle();
+
+  return { roadmap, interview: (interview as RoadmapInterviewRow) ?? null };
+}
+
+/**
+ * 선행 로드맵 인터뷰 원시 행을 camelCase 도메인 형태(RoadmapInterview)로 복원한다.
+ *
+ * PBL Ⅱ장(수립 배경·주요 활동·수립 결과·요구분석·과업분석표·훈련대상 과업)·Ⅲ-1 수행활동·
+ * Ⅲ-3-가 과업 목록은 모두 선행 로드맵 인터뷰에서 자동 연계된다. `fetchLinkedRoadmapData`
+ * 의 `interview` 를 그대로 넘기면 `mapDbToRoadmapInterview` 로 복원해 읽기 전용 렌더·
+ * HWPX payload 에 흘려보낼 수 있다. 미연계(null) 시 null 을 반환한다(재조회 없는 순수 함수).
+ */
+export function hydrateRoadmapInterview(
+  row: RoadmapInterviewRow | null
+): Partial<RoadmapInterviewStrict> | null {
+  if (!row) return null;
+  return mapDbToRoadmapInterview(row as Parameters<typeof mapDbToRoadmapInterview>[0]);
+}
+
+/**
+ * 로드맵 연계값 + PBL 측 수정값(override) 을 병합한다 — **Ⅱ장 단일 병합 지점**.
+ *
+ * 정본은 Ⅱ장을 로드맵 보고서에서 자동 연계하도록 지정하지만, 로드맵 확정 후 PBL 착수까지
+ * 기업 현황·과업 범위가 달라질 수 있어 PBL 에서 수정할 수 있게 열어 뒀다. 수정값은
+ * `pbl_data.roadmapOverrides` 에만 저장되므로 **로드맵 원본은 절대 바뀌지 않는다**.
+ *
+ * 병합 규칙: 필드별 `override ?? linked`. `companyRequirements`·`targetTask` 는 필드
+ * 단위, `taskAnalysis` 는 행 index → 셀 단위로 부분 병합한다(미지정은 로드맵 값 유지).
+ *
+ * ⚠️ `performanceActivities`(Ⅱ-1-나 주요 활동)는 병합 대상이 아니다 — 로드맵 컨설팅
+ * 수행 이력이라 PBL 이 고칠 성질이 아니다(로드맵 결과 화면에서도 읽기 전용).
+ *
+ * **호출 지점은 2곳뿐**: PBL 결과 페이지(`pbl/page.tsx`)와 HWPX export(`pbl/actions.ts`).
+ * 같은 함수를 통과하므로 화면과 산출물이 어긋날 수 없다. 순수 함수 — 입력을 변형하지 않는다.
+ */
+export function mergeRoadmapOverrides(
+  linked: Partial<RoadmapInterviewStrict> | null | undefined,
+  overrides: PBLRoadmapOverrides | null | undefined
+): Partial<RoadmapInterviewStrict> | null {
+  if (!linked) return null;
+  if (!overrides) return linked;
+
+  const merged: Partial<RoadmapInterviewStrict> = { ...linked };
+
+  if (overrides.establishmentNecessity !== undefined) {
+    merged.establishmentNecessity = overrides.establishmentNecessity;
+  }
+  if (overrides.aiLevel !== undefined) merged.aiLevel = overrides.aiLevel;
+  if (overrides.selectedTask !== undefined) merged.selectedTask = overrides.selectedTask;
+
+  if (overrides.companyRequirements && linked.companyRequirements) {
+    merged.companyRequirements = {
+      ...linked.companyRequirements,
+      ...stripUndefined(overrides.companyRequirements),
+    };
+  }
+
+  if (overrides.targetTask && linked.targetTask) {
+    merged.targetTask = { ...linked.targetTask, ...stripUndefined(overrides.targetTask) };
+  }
+
+  if (overrides.taskAnalysis && linked.taskAnalysis) {
+    // 행 index 기준 부분 덮어쓰기 — override 배열이 짧으면 나머지 행은 로드맵 값 그대로.
+    merged.taskAnalysis = linked.taskAnalysis.map((row, i) => {
+      const patch = overrides.taskAnalysis?.[i];
+      return patch ? { ...row, ...stripUndefined(patch) } : row;
+    });
+  }
+
+  return merged;
+}
+
+/** `{...a, ...b}` 로 병합할 때 b 의 undefined 값이 a 를 지우지 않도록 걸러낸다. */
+function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
+}
+
+/**
+ * 선행 로드맵 결과의 "수립 주요내용(요약)"을 추출한다 — PBL Ⅱ-1-나 r2 요약 셀.
+ *
+ * 로드맵 보고서 Ⅰ-3(`{{roadmap_outcome_main_content}}`)과 동일 소스:
+ * FINAL 로드맵 버전을 결과 구조로 복원한 `outcome_summary.main_content`
+ * (폴백: 로드맵 인터뷰 overview.roadmap_summary). FINAL 미확정 시 빈 문자열.
+ */
+export function extractLinkedRoadmapSummary(linked: LinkedRoadmapData): string {
+  if (!linked.roadmap) return '';
+  const result = fromRoadmapVersionColumns({
+    diagnosis_summary: linked.roadmap.diagnosis_summary,
+    roadmap_matrix: linked.roadmap.roadmap_matrix as unknown,
+    pbl_course: linked.roadmap.pbl_course as unknown,
+    courses: linked.roadmap.courses as unknown,
+  });
+  const overview = (
+    linked.interview?.company_details as
+      | { roadmap_overview?: { roadmap_summary?: string } }
+      | null
+      | undefined
+  )?.roadmap_overview;
+  return result.outcome_summary.main_content || overview?.roadmap_summary || '';
+}

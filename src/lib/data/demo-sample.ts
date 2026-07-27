@@ -1,7 +1,15 @@
 import type { RoadmapResult } from '@/lib/services/roadmap';
+import type { PBLOperationPlan } from '@/lib/services/pbl/pbl-types';
+import { PBL_EVALUATION_SCALE_DESCRIPTION } from '@/lib/services/pbl/pbl-types';
 
 // =============================================================================
-// 데모용 샘플 데이터 — 산인공 공식 양식 Ⅲ장 4섹션 구조
+// 데모용 샘플 데이터 — 산인공 공식 양식 v2 (2026-07-13 개정)
+// -----------------------------------------------------------------------------
+//   Ⅰ-1. 수립 배경        → setup_necessity
+//   Ⅰ-3. 수립 주요 결과    → outcome_summary
+//   Ⅲ.   훈련실시 계획 제안 → course_specs (훈련과정 명세서 6개)
+//
+// v1 샘플(역량 모델링·훈련체계도·연간 훈련계획)은 양식에서 삭제되어 함께 제거.
 // =============================================================================
 
 export const SAMPLE_COMPANY = {
@@ -11,219 +19,248 @@ export const SAMPLE_COMPANY = {
 };
 
 // ---------------------------------------------------------------------------
-// Ⅲ-1. 역량 모델링
-// ---------------------------------------------------------------------------
-export const SAMPLE_COMPETENCIES: RoadmapResult['competencies'] = [
-  {
-    name: 'AI 활용 고객 응대',
-    definition: 'ChatGPT 등 생성형 AI 도구를 활용해 고객 문의를 빠르고 일관성 있게 처리하는 능력',
-    knowledge: [
-      '프롬프트 엔지니어링 원칙',
-      '고객 문의 유형 분류 체계',
-      'AI 도구 활용 윤리',
-    ],
-    skills: [
-      'ChatGPT로 문의 자동 분류',
-      '맞춤 응답 템플릿 작성',
-      'Google Sheets 연동 워크플로우 구축',
-    ],
-    attitudes: ['고객 중심 사고', '지속적 개선 마인드'],
-  },
-  {
-    name: 'AI 콘텐츠 제작',
-    definition: '마케팅·홍보 콘텐츠를 생성형 AI로 빠르게 제작하고 브랜드 일관성을 유지하는 능력',
-    knowledge: ['카피라이팅 기본', '시각 콘텐츠 디자인 원칙', 'SNS 채널별 특성'],
-    skills: ['ChatGPT 콘텐츠 초안 생성', 'Canva AI 디자인', 'Gamma 프레젠테이션 자동화'],
-    attitudes: ['창의성', '브랜드 일관성 중시'],
-  },
-  {
-    name: 'AI 기반 업무 자동화',
-    definition: '노코드 도구를 활용해 반복 업무를 자동화하고 데이터 기반 의사결정을 지원하는 능력',
-    knowledge: ['업무 프로세스 분석 기법', '노코드 자동화 플랫폼(Make, Zapier)', '데이터 구조화'],
-    skills: ['반복 업무 식별 및 우선순위화', 'Make 워크플로우 설계', '보고서 자동 생성'],
-    attitudes: ['분석적 사고', '자동화 마인드'],
-  },
-];
-
-// ---------------------------------------------------------------------------
-// Ⅲ-2. 훈련체계도
-// ---------------------------------------------------------------------------
-export const SAMPLE_TRAINING_STRUCTURE: RoadmapResult['training_structure'] = [
-  {
-    competency_name: 'AI 활용 고객 응대',
-    level: 'BEGINNER',
-    content: 'ChatGPT로 고객 문의 자동 분류하기',
-    target_audience: 'CS 담당자, 고객관리팀',
-    method: '집체 + 실습',
-    goal: '문의 분류 정확도 80% 이상 달성',
-  },
-  {
-    competency_name: 'AI 활용 고객 응대',
-    level: 'INTERMEDIATE',
-    content: 'AI 챗봇 기반 고객 응대 시스템 구축',
-    target_audience: 'CS 리더, IT 담당자',
-    method: '혼합',
-    goal: '응답 시간 40% 단축',
-  },
-  {
-    competency_name: 'AI 콘텐츠 제작',
-    level: 'BEGINNER',
-    content: 'AI로 SNS 콘텐츠 빠르게 만들기',
-    target_audience: '마케팅 담당자',
-    method: '집체 + 실습',
-    goal: '콘텐츠 제작 시간 50% 단축',
-  },
-  {
-    competency_name: 'AI 콘텐츠 제작',
-    level: 'INTERMEDIATE',
-    content: 'AI 활용 마케팅 콘텐츠 제작 심화',
-    target_audience: '마케팅 리더',
-    method: '집체',
-    goal: '월간 발행량 2배 증가',
-  },
-  {
-    competency_name: 'AI 기반 업무 자동화',
-    level: 'ADVANCED',
-    content: '노코드로 업무 자동화 구축하기',
-    target_audience: '경영지원팀, 부서별 업무 리더',
-    method: '혼합 + PBL',
-    goal: '주 10시간 이상 반복 업무 자동화',
-  },
-];
-
-// ---------------------------------------------------------------------------
-// Ⅲ-3. 연간 훈련계획
-// ---------------------------------------------------------------------------
-export const SAMPLE_ANNUAL_PLAN: RoadmapResult['annual_plan'] = {
-  items: [
-    {
-      competency_name: 'AI 활용 고객 응대',
-      course_name: 'ChatGPT 고객 문의 자동 분류 실무',
-      format: '집체',
-      hours: 12,
-      notes: '1분기',
-    },
-    {
-      competency_name: 'AI 활용 고객 응대',
-      course_name: 'AI 챗봇 고객 응대 시스템 구축',
-      format: '혼합',
-      hours: 20,
-      notes: '2분기',
-    },
-    {
-      competency_name: 'AI 콘텐츠 제작',
-      course_name: 'AI 활용 마케팅 콘텐츠 제작',
-      format: '집체',
-      hours: 16,
-      notes: '2분기',
-    },
-    {
-      competency_name: 'AI 기반 업무 자동화',
-      course_name: '노코드 업무 자동화 PBL',
-      format: '혼합',
-      hours: 24,
-      notes: '3분기',
-    },
-  ],
-  usage_plan:
-    '재직자 향상훈련(내일배움카드) 연계 집체·혼합 훈련으로 운영. 분기별 성과 리뷰를 통해 ' +
-    '과정 효과성을 검증하고 다음 연도 계획에 반영. CS·마케팅·경영지원 3개 부서 순차 적용.',
-};
-
-// ---------------------------------------------------------------------------
-// Ⅲ-4. 훈련과정 명세서 (최소 3개)
+// Ⅲ. 훈련과정 명세서 (6개 — 초급 2 · 중급 2 · 고급 2, 분기별 순차 운영)
 // ---------------------------------------------------------------------------
 export const SAMPLE_COURSE_SPECS: RoadmapResult['course_specs'] = [
   {
-    course_name: 'ChatGPT 고객 문의 자동 분류 실무',
-    format: '집체 + 실습',
+    training_period: '2026년 1분기',
+    training_level: 'BEGINNER',
+    course_name: '생성형 AI 업무 활용 입문',
+    training_method: '집체 + 실습',
     recommended_program: '재직자 향상훈련',
-    goal: '고객 문의 자동 분류 워크플로우를 구축하고 응답 시간 40% 단축',
+    goal: '전 직원이 생성형 AI 도구를 일상 업무에 안전하게 활용할 수 있는 기초 역량 확보',
     main_content:
-      'ChatGPT 프롬프트 기초, 고객 문의 유형 분류 체계 설계, Google Sheets 연동, 자동 응답 템플릿 작성',
-    target_audience: 'CS 담당자, 고객관리팀',
+      '생성형 AI 기본 개념, 프롬프트 작성 원칙, 사내 데이터 보안 수칙, 부서별 활용 사례 실습',
+    target_audience: '전 직원 (신입~관리자)',
     subjects: [
       {
-        name: 'AI 챗봇과 프롬프트 기초',
-        details: 'ChatGPT 기본 사용법, 프롬프트 작성 원칙, 고객 문의 50건 분류 실습',
+        name: '생성형 AI 이해',
+        details:
+          'LLM 동작 원리와 토큰·컨텍스트 개념 강의\n' +
+          'ChatGPT·Claude·Gemini 도구별 강점 비교 실습\n' +
+          '환각·최신성 한계 확인 및 검증 절차 워크숍\n' +
+          '업무별 적용 가능성 진단표 작성 (산출물)',
         hours: 3,
       },
       {
-        name: '문의 자동 분류 시스템 구축',
-        details: 'Google Sheets 데이터 구조화, 반자동 분류 워크플로우 설계, 정확도 검증',
+        name: '프롬프트 작성 기초',
+        details:
+          '역할·맥락·제약 3요소 프롬프트 설계 강의\n' +
+          '업무 이메일·회신 초안 생성 실습\n' +
+          '보고서 목차·요약문 생성 및 다듬기 실습\n' +
+          '반복 사용 프롬프트 템플릿 5종 작성 (산출물)',
         hours: 3,
       },
       {
-        name: '자동 응답 템플릿 생성',
-        details: '유형별 응답 템플릿 작성, 톤앤매너 일관성 유지, 10개 템플릿 완성',
-        hours: 3,
-      },
-      {
-        name: '현업 적용 및 성과 측정',
-        details: '실무 적용, Before/After 비교, 성과 보고서 작성',
-        hours: 3,
+        name: 'AI 활용 보안·윤리',
+        details:
+          '사내 정보 입력 금지 기준과 사고 사례 강의\n' +
+          '저작권·개인정보 유의사항 판별 실습\n' +
+          '결과물 사실 확인 체크리스트 공동 작성 워크숍\n' +
+          '부서용 AI 활용 수칙 1페이지 정리 (산출물)',
+        hours: 2,
       },
     ],
   },
   {
+    training_period: '2026년 1분기',
+    training_level: 'BEGINNER',
+    course_name: 'ChatGPT 고객 문의 자동 분류 실무',
+    training_method: '집체 + 실습',
+    recommended_program: '재직자 향상훈련',
+    goal: '고객 문의 분류·응답 워크플로우를 구축해 1차 응답 시간 40% 단축',
+    main_content: '고객 문의 유형 분류 체계 설계, Google Sheets 연동, 유형별 자동 응답 템플릿 작성',
+    target_audience: 'CS 담당자, 고객관리팀',
+    subjects: [
+      {
+        name: '문의 유형 분류 체계 설계',
+        details:
+          '최근 3개월 문의 데이터 수집·정제 실습\n' +
+          '문의 유형 taxonomy 정의 워크숍\n' +
+          '실제 문의 50건 수동 분류 및 경계 사례 조정\n' +
+          '분류 기준서와 예외 처리 규칙 작성 (산출물)',
+        hours: 4,
+      },
+      {
+        name: '반자동 분류 워크플로우 구축',
+        details:
+          'Google Sheets 데이터 구조화 실습 (무료 도구)\n' +
+          'ChatGPT 연동 자동 분류 프롬프트 작성\n' +
+          '분류 정확도 측정 및 오분류 원인 분석 실습\n' +
+          '임계값·재확인 규칙 정의 워크숍\n' +
+          '분류 워크플로우 명세서 작성 (산출물)',
+        hours: 4,
+      },
+      {
+        name: '자동 응답 템플릿 작성',
+        details:
+          '유형별 응답 템플릿 10종 초안 생성 실습\n' +
+          '톤앤매너 가이드 반영 및 문구 정제 워크숍\n' +
+          '에스컬레이션 기준과 담당자 이관 규칙 정의\n' +
+          '현업 시범 적용 후 1차 응답 시간 측정 (산출물)',
+        hours: 4,
+      },
+    ],
+  },
+  {
+    training_period: '2026년 2분기',
+    training_level: 'INTERMEDIATE',
     course_name: 'AI 활용 마케팅 콘텐츠 제작',
-    format: '집체',
+    training_method: '집체',
     recommended_program: '재직자 향상훈련',
     goal: '콘텐츠 제작 시간 60% 단축 및 월간 발행량 2배 증가',
     main_content:
-      'ChatGPT 콘텐츠 생성, Canva AI 디자인, Gamma 프레젠테이션 자동화, 월간 콘텐츠 캘린더 구축',
+      'AI 콘텐츠 생성, Canva AI 디자인, Gamma 프레젠테이션 자동화, 월간 콘텐츠 캘린더 구축',
     target_audience: '마케팅 담당자, SNS 운영자',
     subjects: [
       {
-        name: 'AI 콘텐츠 생성 기초',
-        details: 'ChatGPT로 블로그·SNS 글 작성, 타겟 고객별 톤앤매너, 자사 콘텐츠 5개 생성',
+        name: 'AI 콘텐츠 생성 실무',
+        details:
+          '타겟 고객 페르소나와 톤앤매너 설계 워크숍\n' +
+          '블로그 장문 글 구조 잡기 및 초안 생성 실습\n' +
+          'SNS 채널별 길이·해시태그 변형 실습\n' +
+          '자사 콘텐츠 5건 완성 및 상호 리뷰 (산출물)',
         hours: 4,
       },
       {
         name: 'AI 이미지·디자인 제작',
-        details: 'Canva AI 디자인 활용, SNS 배너·카드뉴스·썸네일 제작, 브랜드 일관성 유지',
+        details:
+          'Canva AI 기능 개요와 브랜드 킷 설정 강의\n' +
+          '배너·카드뉴스·썸네일 제작 실습\n' +
+          '브랜드 가이드 일관성 점검 체크리스트 적용\n' +
+          '채널 규격별 이미지 세트 산출 (산출물)',
         hours: 4,
       },
       {
-        name: '프레젠테이션·보고서 자동 생성',
-        details: 'Gamma 자동 생성, 데이터 시각화, 월간 마케팅 리포트 템플릿',
-        hours: 4,
-      },
-      {
-        name: '통합 콘텐츠 전략',
-        details: '도구별 활용 시나리오, 월간 콘텐츠 캘린더 자동화, 성과 측정',
+        name: '콘텐츠 캘린더 자동화',
+        details:
+          'Gamma 활용 월간 리포트 자동 생성 실습\n' +
+          '콘텐츠 캘린더 템플릿 구축 워크숍\n' +
+          '채널별 성과 지표 정의 및 수집 자동화\n' +
+          '차기 분기 콘텐츠 계획서 작성 (산출물)',
         hours: 4,
       },
     ],
   },
   {
+    training_period: '2026년 2분기',
+    training_level: 'INTERMEDIATE',
+    course_name: 'AI 챗봇 고객 응대 시스템 구축',
+    training_method: '혼합',
+    recommended_program: '재직자 향상훈련',
+    goal: 'FAQ 챗봇을 자체 구축해 반복 문의 처리율 60% 달성',
+    main_content: 'FAQ 지식베이스 설계, 노코드 챗봇 빌더 활용, 상담원 이관 시나리오 설계',
+    target_audience: 'CS 리더, IT 담당자',
+    subjects: [
+      {
+        name: 'FAQ 지식베이스 설계',
+        details:
+          '문의 로그 분석을 통한 상위 FAQ 30종 선별 실습\n' +
+          '질문·답변 구조화 규칙 정의 워크숍\n' +
+          '답변 문구 작성 및 중복·상충 항목 정리 실습\n' +
+          '지식베이스 갱신 주기·담당자 체계 수립\n' +
+          'FAQ 지식베이스 초판 완성 (산출물)',
+        hours: 5,
+      },
+      {
+        name: '노코드 챗봇 구축',
+        details:
+          '챗봇 빌더 계정 개설과 기본 흐름 강의\n' +
+          '인텐트·시나리오 분기 설계 실습\n' +
+          '사내 FAQ 지식베이스 연동 실습\n' +
+          '응답 품질 테스트 케이스 20건 실행 및 보정 (산출물)',
+        hours: 5,
+      },
+      {
+        name: '상담원 이관·운영',
+        details:
+          '이관 조건과 우선순위 규칙 설계 워크숍\n' +
+          '대화 로그 분석으로 미해결 유형 도출 실습\n' +
+          '운영 KPI(처리율·이관율·만족도) 정의\n' +
+          '운영 대시보드 구성 및 주간 점검 절차 작성 (산출물)',
+        hours: 4,
+      },
+    ],
+  },
+  {
+    training_period: '2026년 3분기',
+    training_level: 'ADVANCED',
     course_name: '노코드 업무 자동화 PBL',
-    format: '혼합 + PBL',
+    training_method: '혼합 + PBL',
     recommended_program: '재직자 향상훈련 (고숙련)',
     goal: '주 10시간 이상 반복 업무 자동화 및 수작업 오류 90% 감소',
     main_content:
       'Make 기반 자동화 설계, 데이터 수집·정리 자동화, 보고서 자동 생성, 멀티 도구 연동',
-    target_audience: '경영지원팀, IT 담당자, 각 부서 업무 리더',
+    target_audience: '경영지원팀, IT 담당자, 부서별 업무 리더',
     subjects: [
       {
         name: '업무 자동화 설계',
-        details: '반복 업무 식별, Make 기본 사용법, 트리거-액션 워크플로우 이해',
+        details:
+          '반복 업무 인벤토리 작성 및 소요시간 측정 실습\n' +
+          '자동화 우선순위 평가(효과·난이도) 워크숍\n' +
+          'Make 트리거-액션 개념과 모듈 구성 강의\n' +
+          '대상 업무 1건의 워크플로우 설계도 작성 (산출물)',
         hours: 6,
       },
       {
         name: '데이터 수집·정리 자동화',
-        details: 'Sheets + ChatGPT 연동, 이메일·폼 데이터 자동 수집, 정합성 검증',
+        details:
+          'Google Sheets + AI 연동 기초 실습 (무료 도구)\n' +
+          '이메일·웹폼 데이터 자동 수집 시나리오 구현\n' +
+          '중복·결측 정합성 검증 로직 작성 실습\n' +
+          '실패 알림·재시도 처리 설정 워크숍\n' +
+          '수집 자동화 시나리오 가동 및 로그 확인 (산출물)',
         hours: 6,
       },
       {
-        name: '보고·알림 자동화',
-        details: '주간·월간 보고서 자동 생성, 조건별 알림, 대시보드 자동 업데이트',
+        name: '통합 자동화 PBL',
+        details:
+          '부서별 실제 과제 선정 및 요구 정의 워크숍\n' +
+          '멀티 도구 연동 자동화 구현 실습\n' +
+          '예외·오류 처리 분기 보강 실습\n' +
+          '운영 문서화 및 인수인계 자료 작성\n' +
+          '팀 전파 발표와 효과 측정표 제출 (산출물)',
+        hours: 8,
+      },
+    ],
+  },
+  {
+    training_period: '2026년 4분기',
+    training_level: 'ADVANCED',
+    course_name: 'AI 데이터 기반 의사결정·성과관리',
+    training_method: '혼합 + PBL',
+    recommended_program: '재직자 향상훈련 (고숙련)',
+    goal: '주요 KPI 대시보드를 자동화해 경영 의사결정 리드타임 50% 단축',
+    main_content: '지표 체계 설계, AI 데이터 분석, 자동 대시보드 구축, AI 도입 성과 측정',
+    target_audience: '경영진, 팀장급 리더',
+    subjects: [
+      {
+        name: 'KPI 지표 체계 설계',
+        details:
+          '부서별 핵심 지표 후보 도출 워크숍\n' +
+          '지표 정의서(산식·단위·목표) 작성 실습\n' +
+          '데이터 소스 매핑 및 수집 주기 설계\n' +
+          '지표 체계도 1페이지 정리 (산출물)',
+        hours: 5,
+      },
+      {
+        name: 'AI 데이터 분석·시각화',
+        details:
+          '매출·CS·마케팅 데이터 통합 정제 실습\n' +
+          'AI 활용 추세·이상치 분석 실습\n' +
+          '경영 보고용 인사이트 요약문 작성 실습\n' +
+          '대시보드 자동 갱신 파이프라인 구성 워크숍\n' +
+          '월간 대시보드 시안 완성 (산출물)',
         hours: 6,
       },
       {
-        name: '통합 자동화 및 운영',
-        details: '멀티 도구 연동, 오류 처리, 자동화 문서화 및 팀 전파',
-        hours: 6,
+        name: 'AI 도입 성과관리',
+        details:
+          '훈련 전후 Before/After 비교 지표 설계\n' +
+          '투입 비용·절감 시간 기반 ROI 산정 실습\n' +
+          '확산 저해 요인 진단 및 대응안 워크숍\n' +
+          '차년도 AI 훈련 로드맵 초안 작성 (산출물)',
+        hours: 5,
       },
     ],
   },
@@ -243,16 +280,190 @@ export const SAMPLE_ROADMAP_RESULT: RoadmapResult = {
   outcome_summary: {
     ai_competency_level: 'INTERMEDIATE',
     selected_tasks: '고객 응대 자동화, AI 콘텐츠 제작, 반복 업무 자동화',
-    main_content: '3단계 AI 역량 체계(기초·실무·심화) + 과제 기반 학습으로 전 직원 대상 운영',
+    main_content:
+      '초급·중급·고급 3단계 훈련과정 명세서 6개를 분기별로 순차 운영. ' +
+      '초급은 전 직원 공통 소양, 중급은 CS·마케팅 실무자, 고급은 리더·경영진 대상 PBL로 구성.',
   },
-  competencies: SAMPLE_COMPETENCIES,
-  ncs_used: true,
-  ncs_methodology:
-    'NCS 02020201 "고객불만관리", NCS 20010201 "경영기획" 능력단위를 본 훈련과정 역량 정의에 매핑.',
-  ncs_derivation_method: '',
-  training_structure: SAMPLE_TRAINING_STRUCTURE,
-  training_structure_method:
-    '역량별 3수준 체계(초급/중급/고급). 초급은 전 직원 공통 소양, 중급은 실무자, 고급은 리더 대상. 수준 간 선수요건을 명확히 설정.',
-  annual_plan: SAMPLE_ANNUAL_PLAN,
   course_specs: SAMPLE_COURSE_SPECS,
+};
+
+// =============================================================================
+// PBL 데모 샘플 — 산인공 PBL 양식 2번 Ⅳ장 (제조업 케이스)
+// -----------------------------------------------------------------------------
+// 로드맵 샘플((주)샘플유통·유통서비스업)과 별개의 독립 예시로, PBL 트랙을 보여주기
+// 위한 제조업 현장 케이스다. 랜딩 데모(DemoSection)의 [PBL] 운영계획 슬라이드에서
+// training_goal · outcome_metrics · ai_tool_usage_plan · 교과목 요약만 렌더링하며,
+// training_plan/evaluation_plan 은 PBLOperationPlan 타입을 만족시키기 위한 값이다.
+// =============================================================================
+export const SAMPLE_PBL_OPERATION: PBLOperationPlan = {
+  training_goal:
+    '생산 현장의 설비·품질 데이터를 AI로 분석해 불량 원인을 조기에 진단하고, ' +
+    '숙련 기술자의 노하우를 표준 작업 매뉴얼로 형식지화하여 불량률과 설비 비가동 시간을 함께 줄인다.',
+  outcome_metrics: {
+    selected_goals: ['불량률 감소', '공정 최적화', '기술 매뉴얼 개발'],
+    quantitative:
+      '훈련 후 3개월 내 공정 불량률 12% → 7% 이하로 감소, 설비 이상 대응 리드타임 30% 단축',
+    qualitative:
+      '현장 작업자가 AI 분석 리포트를 스스로 해석·활용하는 데이터 기반 문제해결 문화 정착, 숙련 노하우의 매뉴얼화',
+  },
+  ai_tool_usage_plan: [
+    {
+      stage: '1단계',
+      main_activity: '데이터 수집·전처리',
+      ai_tools: ['ChatGPT', 'Claude', 'Python(Pandas)'],
+      utilized_data: '설비 센서 로그, 일별 생산·불량 집계표, 품질 검사 기록',
+      purpose: '흩어진 현장 데이터를 분석 가능한 형태로 통합하고 결측·이상치를 식별한다.',
+      specific_method:
+        'AI에 데이터 스키마와 표본을 제시해 전처리 스크립트 초안을 생성하고, ' +
+        '불량 코드 체계를 표준화한 뒤 분석용 데이터셋으로 통합한다.',
+    },
+    {
+      stage: '2단계',
+      main_activity: '불량 원인 분석',
+      ai_tools: ['Claude', 'Julius AI', 'Google Sheets'],
+      utilized_data: '통합 불량 데이터셋, 공정 조건(온도·압력·속도) 이력',
+      purpose: '불량 유형별 핵심 원인 변수를 도출하고 공정 조건과의 상관관계를 파악한다.',
+      specific_method:
+        '자연어로 분석을 요청해 불량 유형별 상관·회귀 결과를 얻고, ' +
+        'AI가 제안한 가설을 현장 엔지니어가 검증해 핵심 관리 변수를 선정한다.',
+    },
+    {
+      stage: '3단계',
+      main_activity: '개선안 도출·표준화',
+      ai_tools: ['ChatGPT', 'Gamma', 'Notion AI'],
+      utilized_data: '원인 분석 결과, 기존 작업표준서(SOP)',
+      purpose: '분석 결과를 현장 개선안과 표준 작업 매뉴얼로 전환한다.',
+      specific_method:
+        '개선안을 AI와 함께 SOP 문서·교육 자료로 구조화하고, ' +
+        'Gamma로 현장 공유용 요약 리포트를 자동 생성해 전 작업조에 배포한다.',
+    },
+  ],
+  training_plan: {
+    overview: {
+      course_name: 'AI 기반 스마트 품질관리 실무',
+      training_period: { start: '2026-03-02', end: '2026-03-27' },
+    },
+    learning_group: {
+      instructors: [
+        {
+          type: '외부',
+          role: '팀장',
+          affiliation: 'KPC AI 컨설팅',
+          position: '수석 컨설턴트',
+          name: '김현우',
+        },
+        {
+          type: '내부',
+          role: '팀원',
+          affiliation: '생산기술팀',
+          position: '팀장',
+          name: '이정민',
+        },
+      ],
+      trainees: [
+        { role: '팀원', affiliation: '품질관리팀', position: '주임', name: '박서준' },
+        { role: '팀원', affiliation: '생산1팀', position: '반장', name: '최유진' },
+      ],
+    },
+    subject_profile: {
+      course_name: 'AI 기반 스마트 품질관리 실무',
+      total_hours: 24,
+      training_goals: [
+        'AI로 생산 데이터를 분석해 불량 원인을 진단할 수 있다',
+        '공정 조건과 불량의 상관관계를 해석해 개선안을 도출할 수 있다',
+        '숙련 노하우를 표준 작업 매뉴얼로 형식지화할 수 있다',
+      ],
+      ai_tools: ['ChatGPT', 'Claude', 'Julius AI', 'Gamma'],
+      utilized_data: '설비 센서 로그, 생산·불량 집계표, 품질 검사 기록, 작업표준서(SOP)',
+      analysis_method: 'LLM, 상관·회귀 분석, RAG',
+      training_contents: [
+        {
+          unit_name: '생산 데이터 수집·정제',
+          detail:
+            '설비 로그·품질 기록을 통합하고 AI로 전처리 스크립트를 작성해 분석용 데이터셋 구축',
+          training_hours: 8,
+          instructor_hours: { external: 6, internal: 2 },
+        },
+        {
+          unit_name: '불량 원인 AI 분석',
+          detail: '공정 조건과 불량 데이터의 상관관계를 AI로 분석하고 핵심 관리 변수 도출',
+          training_hours: 8,
+          instructor_hours: { external: 6, internal: 2 },
+        },
+        {
+          unit_name: '개선안 표준화·매뉴얼화',
+          detail: '분석 결과 기반 개선안을 SOP·교육자료로 문서화하고 현장에 적용',
+          training_hours: 8,
+          instructor_hours: { external: 5, internal: 3 },
+        },
+      ],
+      total_sum_hours: 24,
+    },
+    facilities: [
+      {
+        seq: 1,
+        category: '시설',
+        name: '스마트팩토리 교육장',
+        spec: '20인 수용, 실습용 PC 20대',
+        location: '본사 3층',
+      },
+      {
+        seq: 2,
+        category: '장비',
+        name: '데이터 분석용 노트북',
+        spec: 'RAM 16GB, Python 분석 환경 사전 구성',
+        location: '교육장',
+      },
+    ],
+    training_instructors: [
+      {
+        name: '김현우',
+        internal_external: '외부',
+        career_years: 12,
+        work_name: 'AI 기반 스마트 품질관리 실무',
+        detailed_training_content: [
+          '생산 데이터 수집·정제',
+          '불량 원인 AI 분석',
+          '개선안 표준화·매뉴얼화',
+        ],
+      },
+    ],
+  },
+  evaluation_plan: {
+    course_evaluation: {
+      course_name: 'AI 기반 스마트 품질관리 실무',
+      evaluation_methods: ['포트폴리오', '문제해결시나리오'],
+      evaluation_target: '품질관리팀·생산팀 재직자 12명',
+      evaluation_date: '2026-03-27',
+      evaluation_criteria: '3개 업무(단원) 중 수행 수준 4 이상 2개(60%) 이상 시 PASS',
+      evaluation_result: '예정',
+      performance_checklist: [
+        {
+          unit_name: '생산 데이터 수집·정제',
+          evaluation_criteria: 'AI로 전처리 스크립트를 작성해 분석용 데이터셋을 구축한다',
+          performance_level: 4,
+        },
+        {
+          unit_name: '불량 원인 AI 분석',
+          evaluation_criteria: '공정 조건과 불량의 상관관계를 해석해 핵심 관리 변수를 도출한다',
+          performance_level: 4,
+        },
+        {
+          unit_name: '개선안 표준화·매뉴얼화',
+          evaluation_criteria: '분석 결과를 SOP·교육자료로 문서화한다',
+          performance_level: 3,
+        },
+      ],
+      overall_comment: '현장 데이터 기반 문제해결 역량이 전반적으로 향상됨. 후속 심화 과정 권장.',
+      evaluation_scale: PBL_EVALUATION_SCALE_DESCRIPTION,
+    },
+    result_evaluation: {
+      satisfaction_survey: [5, 4, 5, 4, 4],
+      achievement_survey: [4, 4, 5],
+      external_expert_survey: [5, 4, 4, 5, 4],
+      practical_application_survey: [4, 4, 5, 4],
+      respondent_name: '이정민',
+      evaluation_date: '2026-03-27',
+    },
+  },
 };

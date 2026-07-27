@@ -10,9 +10,7 @@ describe('InlineEditField', () => {
   });
 
   it('value 가 비어있으면 placeholder 를 표시한다', () => {
-    render(
-      <InlineEditField value="" onSave={vi.fn()} placeholder="입력하세요" />,
-    );
+    render(<InlineEditField value="" onSave={vi.fn()} placeholder="입력하세요" />);
     expect(screen.getByText('입력하세요')).toBeInTheDocument();
   });
 
@@ -147,7 +145,7 @@ describe('InlineEditField', () => {
       () =>
         new Promise<void>((resolve) => {
           resolveSave = resolve;
-        }),
+        })
     );
 
     const { container } = render(<InlineEditField value="원본" onSave={onSave} />);
@@ -161,9 +159,7 @@ describe('InlineEditField', () => {
     await user.type(screen.getByRole('textbox'), '수정');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
-    expect(
-      container.querySelector('[data-saving-state="saving"]'),
-    ).toBeInTheDocument();
+    expect(container.querySelector('[data-saving-state="saving"]')).toBeInTheDocument();
 
     // cleanup
     resolveSave?.();
@@ -221,7 +217,7 @@ describe('InlineEditField', () => {
           value="A\nB"
           onSave={vi.fn()}
           displayTransform={(raw) => raw.replace(/\\n/g, '|')}
-        />,
+        />
       );
       expect(screen.getByText('A|B')).toBeInTheDocument();
     });
@@ -234,7 +230,7 @@ describe('InlineEditField', () => {
           onSave={vi.fn()}
           multiline
           displayTransform={() => '변환된 텍스트'}
-        />,
+        />
       );
       await user.click(screen.getByText('변환된 텍스트'));
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
@@ -242,11 +238,26 @@ describe('InlineEditField', () => {
     });
 
     it('multiline view 모드는 whitespace-pre-line 으로 줄바꿈을 시각화한다', () => {
-      const { container } = render(
-        <InlineEditField value={'1\n2'} onSave={vi.fn()} multiline />,
-      );
+      const { container } = render(<InlineEditField value={'1\n2'} onSave={vi.fn()} multiline />);
       const span = container.querySelector('span.whitespace-pre-line');
       expect(span).not.toBeNull();
+    });
+  });
+
+  describe('ariaLabel (접근성 이름)', () => {
+    it('ariaLabel 을 주면 view 모드 버튼의 접근성 이름이 된다', () => {
+      render(<InlineEditField value="본문" onSave={vi.fn()} ariaLabel="수립 배경 편집" />);
+      expect(screen.getByRole('button', { name: '수립 배경 편집' })).toBeInTheDocument();
+    });
+
+    it('ariaLabel 미지정 시 기존 동작 유지 (값 텍스트가 접근성 이름)', () => {
+      render(<InlineEditField value="본문" onSave={vi.fn()} />);
+      expect(screen.getByRole('button', { name: '본문' })).toBeInTheDocument();
+    });
+
+    it('readOnly 면 button role 이 없으므로 ariaLabel 도 노출되지 않는다', () => {
+      render(<InlineEditField value="본문" onSave={vi.fn()} readOnly ariaLabel="수립 배경 편집" />);
+      expect(screen.queryByRole('button', { name: '수립 배경 편집' })).toBeNull();
     });
   });
 });

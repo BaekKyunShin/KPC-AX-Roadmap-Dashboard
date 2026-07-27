@@ -12,7 +12,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { WorkSheet } from 'xlsx-js-style';
 import type { PBLOperationPlan, PBLContent } from '../../pbl/pbl-types';
-import { createEmptyOutcomeAnalysis } from '../../pbl/__fixtures__/empty-outcome-analysis';
 import {
   buildPBLOverviewSheet,
   buildPBLOperationSheet,
@@ -29,11 +28,10 @@ import {
 // =============================================================================
 
 /** 최소 유효한 PBLOperationPlan 픽스처 */
-function makeOperationPlan(
-  overrides: Partial<PBLOperationPlan> = {},
-): PBLOperationPlan {
+function makeOperationPlan(overrides: Partial<PBLOperationPlan> = {}): PBLOperationPlan {
   return {
     training_goal: '훈련 목표 텍스트',
+    outcome_metrics: { selected_goals: [], quantitative: '', qualitative: '' },
     ai_tool_usage_plan: [
       {
         stage: '1단계',
@@ -134,9 +132,7 @@ function makeOperationPlan(
 }
 
 /** 최소 유효한 PBLOverviewSheetInput 픽스처 */
-function makeOverviewInput(
-  overrides: Partial<PBLOverviewSheetInput> = {},
-): PBLOverviewSheetInput {
+function makeOverviewInput(overrides: Partial<PBLOverviewSheetInput> = {}): PBLOverviewSheetInput {
   return {
     companyName: '(주)테스트기업',
     versionNumber: 1,
@@ -152,7 +148,7 @@ function makeOverviewInput(
 function findCellWithValue(ws: WorkSheet, target: string): boolean {
   return Object.entries(ws).some(
     ([key, cell]) =>
-      !key.startsWith('!') && typeof cell === 'object' && cell !== null && cell.v === target,
+      !key.startsWith('!') && typeof cell === 'object' && cell !== null && cell.v === target
   );
 }
 
@@ -247,7 +243,7 @@ describe('buildPBLOverviewSheet', () => {
             aiLevel: '초급',
             trainingGoals: ['목표A', '목표B'],
           },
-        }),
+        })
       );
       expect(findCellWithValue(ws, 'AI 기초 과정')).toBe(true);
       expect(findCellWithValue(ws, '24시간')).toBe(true);
@@ -265,7 +261,7 @@ describe('buildPBLOverviewSheet', () => {
             aiLevel: '중급',
             trainingGoals: [],
           },
-        }),
+        })
       );
       // 빈 목표 → "-" 폴백
       expect(findCellWithValue(ws, '-')).toBe(true);
@@ -282,7 +278,7 @@ describe('buildPBLOverviewSheet', () => {
             aiLevel: '중급',
             trainingGoals: ['목표1', '목표2', '목표3'],
           },
-        }),
+        })
       );
       expect(findCellWithValue(ws, '목표1, 목표2, 목표3')).toBe(true);
     });
@@ -291,12 +287,14 @@ describe('buildPBLOverviewSheet', () => {
   describe('긴 텍스트 / 엣지 케이스', () => {
     it('매우 긴 진단 요약(200자)도 오류 없이 처리된다', () => {
       const longText = 'A'.repeat(200);
-      expect(() => buildPBLOverviewSheet(makeOverviewInput({ diagnosisSummary: longText }))).not.toThrow();
+      expect(() =>
+        buildPBLOverviewSheet(makeOverviewInput({ diagnosisSummary: longText }))
+      ).not.toThrow();
     });
 
     it('특수문자가 포함된 기업명도 오류 없이 처리된다', () => {
       expect(() =>
-        buildPBLOverviewSheet(makeOverviewInput({ companyName: '(주)테스트&기업<>"\'' })),
+        buildPBLOverviewSheet(makeOverviewInput({ companyName: '(주)테스트&기업<>"\'' }))
       ).not.toThrow();
     });
 
@@ -385,9 +383,30 @@ describe('buildPBLOperationSheet', () => {
     it('3개 항목 모두 렌더링된다', () => {
       const plan = makeOperationPlan({
         ai_tool_usage_plan: [
-          { stage: '1단계', main_activity: '활동A', ai_tools: ['Tool1'], utilized_data: '데이터A', purpose: '목적A', specific_method: '방법A' },
-          { stage: '2단계', main_activity: '활동B', ai_tools: ['Tool2'], utilized_data: '데이터B', purpose: '목적B', specific_method: '방법B' },
-          { stage: '3단계', main_activity: '활동C', ai_tools: ['Tool3'], utilized_data: '데이터C', purpose: '목적C', specific_method: '방법C' },
+          {
+            stage: '1단계',
+            main_activity: '활동A',
+            ai_tools: ['Tool1'],
+            utilized_data: '데이터A',
+            purpose: '목적A',
+            specific_method: '방법A',
+          },
+          {
+            stage: '2단계',
+            main_activity: '활동B',
+            ai_tools: ['Tool2'],
+            utilized_data: '데이터B',
+            purpose: '목적B',
+            specific_method: '방법B',
+          },
+          {
+            stage: '3단계',
+            main_activity: '활동C',
+            ai_tools: ['Tool3'],
+            utilized_data: '데이터C',
+            purpose: '목적C',
+            specific_method: '방법C',
+          },
         ],
       });
       const ws = buildPBLOperationSheet(plan);
@@ -399,8 +418,22 @@ describe('buildPBLOperationSheet', () => {
     it('짝수/홀수 행에 alt 스타일이 교대 적용된다 (오류 없음)', () => {
       const plan = makeOperationPlan({
         ai_tool_usage_plan: [
-          { stage: '1단계', main_activity: 'A', ai_tools: [], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
-          { stage: '2단계', main_activity: 'B', ai_tools: [], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
+          {
+            stage: '1단계',
+            main_activity: 'A',
+            ai_tools: [],
+            utilized_data: 'd',
+            purpose: 'p',
+            specific_method: 'm',
+          },
+          {
+            stage: '2단계',
+            main_activity: 'B',
+            ai_tools: [],
+            utilized_data: 'd',
+            purpose: 'p',
+            specific_method: 'm',
+          },
         ],
       });
       expect(() => buildPBLOperationSheet(plan)).not.toThrow();
@@ -500,6 +533,21 @@ describe('buildPBLTrainingSheet', () => {
       expect(findCellWithValue(ws, '20')).toBe(true);
     });
 
+    it('세부 내용은 항목마다 머리기호(▪)를 부여한다 (화면·한글 산출물과 동일 표기)', () => {
+      const plan = makeOperationPlan();
+      plan.training_plan.subject_profile.training_contents = [
+        {
+          unit_name: '단원1',
+          detail: 'AI 개념 강의\n데이터 정제 실습',
+          training_hours: 20,
+          instructor_hours: { external: 10, internal: 10 },
+        },
+      ];
+      const ws = buildPBLTrainingSheet(plan);
+      expect(findCellWithValue(ws, '▪ AI 개념 강의\n▪ 데이터 정제 실습')).toBe(true);
+      expect(findCellWithValue(ws, 'AI 개념 강의\n데이터 정제 실습')).toBe(false);
+    });
+
     it('training_contents가 비어있으면 빈 행이 추가된다', () => {
       const plan = makeOperationPlan();
       plan.training_plan.subject_profile.training_contents = [];
@@ -553,15 +601,81 @@ describe('buildPBLTrainingSheet', () => {
     it('여러 강사가 모두 렌더링된다', () => {
       const plan = makeOperationPlan();
       plan.training_plan.training_instructors = [
-        { name: '강사A', internal_external: '내부', career_years: 3, work_name: '업무A', detailed_training_content: [] },
-        { name: '강사B', internal_external: '외부', career_years: 7, work_name: '업무B', detailed_training_content: ['항목1'] },
-        { name: '강사C', internal_external: '내부', career_years: 1, work_name: '업무C', detailed_training_content: [] },
+        {
+          name: '강사A',
+          internal_external: '내부',
+          career_years: 3,
+          work_name: '업무A',
+          detailed_training_content: [],
+        },
+        {
+          name: '강사B',
+          internal_external: '외부',
+          career_years: 7,
+          work_name: '업무B',
+          detailed_training_content: ['항목1'],
+        },
+        {
+          name: '강사C',
+          internal_external: '내부',
+          career_years: 1,
+          work_name: '업무C',
+          detailed_training_content: [],
+        },
       ];
       const ws = buildPBLTrainingSheet(plan);
       expect(findCellWithValue(ws, '강사A')).toBe(true);
       expect(findCellWithValue(ws, '강사B')).toBe(true);
       expect(findCellWithValue(ws, '강사C')).toBe(true);
     });
+  });
+});
+
+// =============================================================================
+// buildPBLTrainingSheet — 화면(result-v2) 정합 헤더·행 라벨
+// =============================================================================
+
+describe('buildPBLTrainingSheet — 화면 정합 헤더·행 라벨', () => {
+  it('교과목 프로파일 메타 행 라벨을 화면(SubjectProfileMetaTable)과 동일하게 렌더한다', () => {
+    const ws = buildPBLTrainingSheet(makeOperationPlan());
+    // 화면 행 라벨: 과정명 · 총 훈련시간(h) · 훈련목표 · 활용 AI도구 · 활용 데이터 · 분석방법 · 전체시간
+    expect(findCellWithValue(ws, '총 훈련시간(h)')).toBe(true);
+    expect(findCellWithValue(ws, '분석방법')).toBe(true);
+    expect(findCellWithValue(ws, '훈련목표')).toBe(true);
+    expect(findCellWithValue(ws, '활용 AI도구')).toBe(true);
+    expect(findCellWithValue(ws, '전체시간')).toBe(true);
+    // 옛 라벨은 남아있지 않아야 한다
+    expect(findCellWithValue(ws, '전체 훈련시간(H)')).toBe(false);
+    expect(findCellWithValue(ws, '분석 방법')).toBe(false);
+    expect(findCellWithValue(ws, '훈련 목표')).toBe(false);
+    expect(findCellWithValue(ws, '활용 AI 도구')).toBe(false);
+    expect(findCellWithValue(ws, '전체시간 합계')).toBe(false);
+  });
+
+  it('교과목 표 헤더를 화면(TabPBLOps 교과목 표)과 동일하게 렌더한다', () => {
+    const ws = buildPBLTrainingSheet(makeOperationPlan());
+    expect(findCellWithValue(ws, '훈련 시간(H)')).toBe(true);
+    expect(findCellWithValue(ws, '외부 강사 (H)')).toBe(true);
+    expect(findCellWithValue(ws, '내부 강사 (H)')).toBe(true);
+    // 옛 헤더 문자열은 남아있지 않아야 한다
+    expect(findCellWithValue(ws, '훈련시간(H)')).toBe(false);
+    expect(findCellWithValue(ws, '외부 투입(H)')).toBe(false);
+    expect(findCellWithValue(ws, '내부 투입(H)')).toBe(false);
+  });
+
+  it('학습그룹 소속 컬럼을 화면(학습그룹 "소속(부서)")과 동일하게 렌더한다', () => {
+    const ws = buildPBLTrainingSheet(makeOperationPlan());
+    expect(findCellWithValue(ws, '소속(부서)')).toBe(true);
+    expect(findCellWithValue(ws, '소속')).toBe(false);
+  });
+
+  it('훈련강사 표 헤더를 화면(TabPBLOps 훈련강사 표: 구분·업무경력)과 동일하게 렌더한다', () => {
+    const ws = buildPBLTrainingSheet(makeOperationPlan());
+    // "구분" 은 학습그룹 헤더와 공유되므로 훈련강사 고유 라벨 "업무경력" 으로 검증
+    expect(findCellWithValue(ws, '업무경력')).toBe(true);
+    // 옛 헤더 문자열은 남아있지 않아야 한다
+    expect(findCellWithValue(ws, '내/외부')).toBe(false);
+    expect(findCellWithValue(ws, '경력(년)')).toBe(false);
   });
 });
 
@@ -679,12 +793,9 @@ describe('buildPBLEvaluationSheet', () => {
 // =============================================================================
 
 describe('generatePBLXLSX', () => {
-  function makePBLXLSXInput(
-    overrides: Partial<PBLXLSXInput> = {},
-  ): PBLXLSXInput {
+  function makePBLXLSXInput(overrides: Partial<PBLXLSXInput> = {}): PBLXLSXInput {
     const pblContent: PBLContent = {
       operation_plan: makeOperationPlan(),
-      outcome_analysis: createEmptyOutcomeAnalysis(),
     };
     return {
       ...makeOverviewInput(),
@@ -734,8 +845,8 @@ describe('generatePBLXLSX', () => {
     });
     const result = await generatePBLXLSX(
       makePBLXLSXInput({
-        pblContent: { operation_plan: emptyPlan, outcome_analysis: createEmptyOutcomeAnalysis() },
-      }),
+        pblContent: { operation_plan: emptyPlan },
+      })
     );
     expect(result).toBeInstanceOf(Uint8Array);
     expect(result.length).toBeGreaterThan(0);
@@ -827,9 +938,7 @@ describe('downloadPBLXLSX', () => {
     downloadPBLXLSX(bytes, 'report.xlsx');
 
     const blobArg = (URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls[0][0] as Blob;
-    expect(blobArg.type).toBe(
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    );
+    expect(blobArg.type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   });
 
   it('appendChild가 한 번 호출된다', () => {
@@ -904,7 +1013,8 @@ describe('buildPBLEvaluationSheet — 빈 값 폴백 브랜치', () => {
   it('evaluation_result가 빈 문자열이면 "-"로 표시된다', () => {
     const plan = makeOperationPlan();
     // evaluation_result를 빈 문자열로 강제 캐스팅 (엣지 케이스 방어)
-    (plan.evaluation_plan.course_evaluation as { evaluation_result: string }).evaluation_result = '';
+    (plan.evaluation_plan.course_evaluation as { evaluation_result: string }).evaluation_result =
+      '';
     const ws = buildPBLEvaluationSheet(plan);
     expect(findCellWithValue(ws, '-')).toBe(true);
   });
@@ -938,7 +1048,12 @@ describe('addTableRow centerIdxSet 분기 커버', () => {
     // centerIdxSet = new Set([2, 3, 4])
     const plan = makeOperationPlan();
     plan.training_plan.subject_profile.training_contents = [
-      { unit_name: 'U', detail: 'D', training_hours: 10, instructor_hours: { external: 5, internal: 5 } },
+      {
+        unit_name: 'U',
+        detail: 'D',
+        training_hours: 10,
+        instructor_hours: { external: 5, internal: 5 },
+      },
     ];
     expect(() => buildPBLTrainingSheet(plan)).not.toThrow();
   });
@@ -956,7 +1071,14 @@ describe('addTableRow centerIdxSet 분기 커버', () => {
     // centerIdxSet = new Set([0])
     const plan = makeOperationPlan({
       ai_tool_usage_plan: [
-        { stage: '1단계', main_activity: '활동', ai_tools: ['T'], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
+        {
+          stage: '1단계',
+          main_activity: '활동',
+          ai_tools: ['T'],
+          utilized_data: 'd',
+          purpose: 'p',
+          specific_method: 'm',
+        },
       ],
     });
     expect(() => buildPBLOperationSheet(plan)).not.toThrow();
@@ -971,9 +1093,24 @@ describe('엣지 케이스 통합', () => {
   it('training_contents가 3개인 경우 alt 행이 교대 적용된다 (오류 없음)', () => {
     const plan = makeOperationPlan();
     plan.training_plan.subject_profile.training_contents = [
-      { unit_name: '단원1', detail: '내용1', training_hours: 10, instructor_hours: { external: 5, internal: 5 } },
-      { unit_name: '단원2', detail: '내용2', training_hours: 10, instructor_hours: { external: 5, internal: 5 } },
-      { unit_name: '단원3', detail: '내용3', training_hours: 10, instructor_hours: { external: 5, internal: 5 } },
+      {
+        unit_name: '단원1',
+        detail: '내용1',
+        training_hours: 10,
+        instructor_hours: { external: 5, internal: 5 },
+      },
+      {
+        unit_name: '단원2',
+        detail: '내용2',
+        training_hours: 10,
+        instructor_hours: { external: 5, internal: 5 },
+      },
+      {
+        unit_name: '단원3',
+        detail: '내용3',
+        training_hours: 10,
+        instructor_hours: { external: 5, internal: 5 },
+      },
     ];
     expect(() => buildPBLTrainingSheet(plan)).not.toThrow();
   });
@@ -1000,7 +1137,14 @@ describe('엣지 케이스 통합', () => {
   it('ai_tool_usage_plan ai_tools 빈 배열이면 빈 문자열로 렌더링된다', () => {
     const plan = makeOperationPlan({
       ai_tool_usage_plan: [
-        { stage: '1단계', main_activity: '활동', ai_tools: [], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
+        {
+          stage: '1단계',
+          main_activity: '활동',
+          ai_tools: [],
+          utilized_data: 'd',
+          purpose: 'p',
+          specific_method: 'm',
+        },
       ],
     });
     const ws = buildPBLOperationSheet(plan);

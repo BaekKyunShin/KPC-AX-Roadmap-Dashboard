@@ -42,12 +42,7 @@ function isAllAutoFieldsEmpty(meta?: import('./types').PBLProjectMetaSnapshot): 
   return fields.every((v) => !v || String(v).trim().length === 0);
 }
 
-export function TabPBLOverview({
-  interview,
-  projectMeta,
-  readOnly,
-  onEdit,
-}: TabPBLCommonProps) {
+export function TabPBLOverview({ interview, projectMeta, readOnly, onEdit }: TabPBLCommonProps) {
   const overview = interview?.overview;
 
   async function patchOverview(key: string, value: string): Promise<void> {
@@ -71,8 +66,8 @@ export function TabPBLOverview({
       >
         {isAllAutoFieldsEmpty(projectMeta) ? (
           <p className="text-sm text-gray-500">
-            프로젝트 메타에 입력된 신청서 자동표출 정보가 없습니다. 운영관리자에게
-            업데이트를 요청하세요.
+            프로젝트 메타에 입력된 신청서 자동표출 정보가 없습니다. 운영관리자에게 업데이트를
+            요청하세요.
           </p>
         ) : (
           <FormTable
@@ -86,12 +81,10 @@ export function TabPBLOverview({
               },
               {
                 cells: [
-                  { content: '업종', header: true },
+                  { content: '주요 업종', header: true },
                   {
                     content: `${displayOrDash(projectMeta?.industry)}${
-                      projectMeta?.industryCode
-                        ? ` (코드: ${projectMeta.industryCode})`
-                        : ''
+                      projectMeta?.industryCode ? ` (코드: ${projectMeta.industryCode})` : ''
                     }`,
                     align: 'left',
                   },
@@ -99,7 +92,7 @@ export function TabPBLOverview({
               },
               {
                 cells: [
-                  { content: '주소(소재지)', header: true },
+                  { content: '주소', header: true },
                   { content: displayOrDash(projectMeta?.companyAddress), align: 'left' },
                 ],
               },
@@ -120,19 +113,20 @@ export function TabPBLOverview({
               },
               {
                 cells: [
-                  { content: '담당자', header: true },
+                  { content: '담당자 연락처', header: true },
                   {
-                    content: [
-                      displayOrDash(projectMeta?.contactName),
-                      projectMeta?.contactPosition
-                        ? `· ${projectMeta.contactPosition}`
-                        : '',
-                      projectMeta?.contactPhone ? `· ${projectMeta.contactPhone}` : '',
-                      projectMeta?.contactEmail ? `· ${projectMeta.contactEmail}` : '',
-                    ]
-                      .filter((v) => v && v !== '—' || v === displayOrDash(projectMeta?.contactName))
-                      .join(' ')
-                      .trim() || '—',
+                    content:
+                      [
+                        displayOrDash(projectMeta?.contactName),
+                        projectMeta?.contactPosition ? `· ${projectMeta.contactPosition}` : '',
+                        projectMeta?.contactPhone ? `· ${projectMeta.contactPhone}` : '',
+                        projectMeta?.contactEmail ? `· ${projectMeta.contactEmail}` : '',
+                      ]
+                        .filter(
+                          (v) => (v && v !== '—') || v === displayOrDash(projectMeta?.contactName)
+                        )
+                        .join(' ')
+                        .trim() || '—',
                     align: 'left',
                   },
                 ],
@@ -204,11 +198,7 @@ export function TabPBLOverview({
                 {
                   content: (
                     <InlineEditField
-                      value={
-                        overview?.trainingHours != null
-                          ? String(overview.trainingHours)
-                          : ''
-                      }
+                      value={overview?.trainingHours != null ? String(overview.trainingHours) : ''}
                       onSave={patchTrainingHours}
                       readOnly={readOnly}
                       placeholder="시간(정수)"
@@ -220,7 +210,7 @@ export function TabPBLOverview({
             },
             {
               cells: [
-                { content: '훈련대상', header: true },
+                { content: '훈련생', header: true },
                 {
                   content: (
                     <InlineEditField

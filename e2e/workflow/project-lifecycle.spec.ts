@@ -67,7 +67,7 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
 
     // 자가진단 결과 카드 헤더 확인
     await expect(
-      page.locator('[data-slot="card-title"]').filter({ hasText: '자가진단 결과' }),
+      page.locator('[data-slot="card-title"]').filter({ hasText: '자가진단 결과' })
     ).toBeVisible();
 
     // CollapsibleDirectInput이 접혀있으면 "운영자가 직접 입력하기" 클릭하여 폼 열기
@@ -131,7 +131,7 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
 
     // 컨설턴트 배정 카드 확인
     await expect(
-      page.locator('[data-slot="card-title"]').filter({ hasText: '컨설턴트 배정' }),
+      page.locator('[data-slot="card-title"]').filter({ hasText: '컨설턴트 배정' })
     ).toBeVisible();
 
     // "수동 매칭" 탭 클릭
@@ -181,11 +181,15 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
   });
 
   // ─── 4단계: 인터뷰 입력 (ASSIGNED → INTERVIEWED) ──────────────────────────
-  // V2 재설계 이후 로드맵 인터뷰는 산인공 양식 8스텝 + STT 첨부 선택 1스텝 = 총 9스텝
-  // (Ⅰ-1~3, Ⅱ-1~4, Ⅲ-1, 인터뷰 녹취 STT 첨부).
-  // Ⅱ-1 HRD이음 PDF · 9번째 STT 첨부는 optional 이라 업로드 없이 "다음" 으로 건너뛴다.
+  // 양식 v2(2026-07-13 개정) 이후 로드맵 인터뷰는 양식 7스텝 + STT 첨부 선택 1스텝 = 총 8스텝
+  // (Ⅰ-1~3, Ⅱ-1~4, 인터뷰 녹취 STT 첨부). 단일 출처는
+  // interview/_components/roadmap/RoadmapInterviewClient.tsx 의 ROADMAP_STEPS.
+  //   ⚠️ v1 의 Ⅲ-1 역량 모델링·NCS 스텝은 양식에서 통째로 삭제됐다.
+  // Ⅱ-1 HRD이음 PDF · 8번째 STT 첨부는 optional 이라 업로드 없이 "다음" 으로 건너뛴다.
   // 전체 진행은 기본 30초 timeout을 넘으므로 120초로 연장.
-  test('4단계: 인터뷰 입력 → INTERVIEWED 상태 (산인공 9-스텝 V2)', async ({ consultantPage: page }) => {
+  test('4단계: 인터뷰 입력 → INTERVIEWED 상태 (산인공 8-스텝 V2)', async ({
+    consultantPage: page,
+  }) => {
     test.skip(!projectId, '테스트 데이터 없음: 선행 프로젝트 생성 실패');
     test.skip(!isAssigned, '3단계(컨설턴트 배정) 미완료 — 인터뷰 입력 불가');
     test.setTimeout(120_000);
@@ -205,15 +209,17 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
       await page.getByRole('link', { name: '인터뷰 수정' }).click();
     }
 
-    await expect(page).toHaveURL(/\/consultant\/projects\/[a-f0-9-]+\/interview/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/consultant\/projects\/[a-f0-9-]+\/interview/, {
+      timeout: 10_000,
+    });
     await page.waitForLoadState('networkidle');
 
     const nextButton = () => page.getByRole('button', { name: /^다음/ });
 
     // ── 스텝 1: Ⅰ-1 수립 필요성 (LargeTextBox 단일 필드) ──
-    await expect(
-      page.getByRole('heading', { name: /수립 필요성/ }).first(),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: /수립 필요성/ }).first()).toBeVisible({
+      timeout: 10_000,
+    });
     await page
       .getByLabel(/^수립 필요성$/)
       .first()
@@ -221,9 +227,9 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await nextButton().click();
 
     // ── 스텝 2: Ⅰ-2 주요 활동 — 기본 3차수 프리필. 최소 1차수 내용만 채워 다음으로 진행 ──
-    await expect(
-      page.getByRole('heading', { name: /주요 활동/ }).first(),
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: /주요 활동/ }).first()).toBeVisible({
+      timeout: 5_000,
+    });
     // 차수별 표: 각 행에 "1차 수행 일시·내용 + PM 성명·내부전문가 성명" 필드가 노출된다.
     // 최소 1차수만 내용을 채워도 Strict 검증이 통과하므로 1차 필수 필드만 입력한다.
     await page.getByLabel('1차 수행 일시').fill('26.04.24\n09:00~11:00');
@@ -233,42 +239,36 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await nextButton().click();
 
     // ── 스텝 3: Ⅰ-3 수립 주요 결과 (AI 역량 수준 기본값 + 선정 과업) ──
-    await expect(
-      page.getByRole('heading', { name: /수립 주요 결과/ }).first(),
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: /수립 주요 결과/ }).first()).toBeVisible({
+      timeout: 5_000,
+    });
     await page.getByLabel('선정 과업').fill('E2E 테스트 과업 — 품질검사');
     await nextButton().click();
 
     // ── 스텝 4: Ⅱ-1 HRD이음 PDF (optional, 업로드 생략 후 넘어감) ──
-    await expect(
-      page.getByRole('heading', { name: /HRD이음/ }).first(),
-    ).toBeVisible({ timeout: 5_000 });
+    // v2 정본 정합 — 본문 h2 는 "기업 AI 역량 수준 진단 (PDF 첨부)".
+    // (스테퍼 라벨만 "HRD이음 PDF" 로 축약돼 있어 heading 을 /HRD이음/ 으로 찾으면 실패한다.)
+    await expect(page.getByRole('heading', { name: /기업 AI 역량 수준 진단/ }).first()).toBeVisible(
+      { timeout: 5_000 }
+    );
     await nextButton().click();
 
     // ── 스텝 5: Ⅱ-2 기업 요구분석 (기업 현황·주요 문제·추진 의지·기대 성과) ──
-    await expect(
-      page.getByRole('heading', { name: /기업 요구분석/ }).first(),
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: /기업 요구분석/ }).first()).toBeVisible({
+      timeout: 5_000,
+    });
     // exact: true — '기업 현황' / '주요 문제' / ... 비고 칼럼 (PR #45) 추가로
     // 같은 라벨이 substring 매칭되어 strict mode 위반이 되므로 정확 매치 필요.
-    await page
-      .getByLabel('기업 현황', { exact: true })
-      .fill('E2E 기업 현황: 제조업 중소기업');
-    await page
-      .getByLabel('주요 문제', { exact: true })
-      .fill('E2E 주요 문제: 수기 보고 과다');
-    await page
-      .getByLabel('추진 의지', { exact: true })
-      .fill('E2E 추진 의지: 대표 챔피언');
-    await page
-      .getByLabel('기대 성과', { exact: true })
-      .fill('E2E 기대 성과: 시간 단축 50%');
+    await page.getByLabel('기업 현황', { exact: true }).fill('E2E 기업 현황: 제조업 중소기업');
+    await page.getByLabel('주요 문제', { exact: true }).fill('E2E 주요 문제: 수기 보고 과다');
+    await page.getByLabel('추진 의지', { exact: true }).fill('E2E 추진 의지: 대표 챔피언');
+    await page.getByLabel('기대 성과', { exact: true }).fill('E2E 기대 성과: 시간 단축 50%');
     await nextButton().click();
 
     // ── 스텝 6: Ⅱ-3 과업·워크플로우 분석 (동적 행, 최소 1행 채움) ──
-    await expect(
-      page.getByRole('heading', { name: /과업.*워크플로우 분석/ }).first(),
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: /과업.*워크플로우 분석/ }).first()).toBeVisible({
+      timeout: 5_000,
+    });
     // 기본 첫 행이 프리필되지 않을 수 있어 "행 추가" 를 눌러 1행 확보
     const addRowBtn = page.getByRole('button', { name: '행 추가' });
     if (await addRowBtn.isVisible().catch(() => false)) {
@@ -277,16 +277,12 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
         await addRowBtn.click();
       }
     }
+    // v2 컬럼: 직무 · 과업 · 현행 방식 · 개선점 (4개)
+    // v1 의 "문제점"·"데이터 발생 시점" 컬럼과 "분석내용"(taskAnalysisNote) 은 삭제됨.
     await page.getByLabel('직무 1').fill('생산');
     await page.getByLabel('과업 1').fill('외관 검사');
     await page.getByLabel('현행 방식 1').fill('검사원 2명이 수작업 검사');
-    await page.getByLabel('문제점 1').fill('품질 편차 발생');
-    await page.getByLabel('데이터 발생 시점 1').fill('검사 이미지 DB, 불량 판정 로그');
-    // 분석내용 (taskAnalysisNote) 필수 — Strict 검증 통과 목적
-    const analysisNoteField = page.getByLabel(/분석.*내용|과업.*분석.*메모/).first();
-    if (await analysisNoteField.isVisible().catch(() => false)) {
-      await analysisNoteField.fill('E2E 과업 분석 — 외관 검사 자동화 우선');
-    }
+    await page.getByLabel('개선점 1').fill('AI 비전 검사로 1차 선별 후 작업자 최종 확인');
     // 프리필된 빈 행 제거 (있으면) — Strict 검증에서 빈 행이 fail 하는 것을 방지.
     // PR #72(#1 H5·H3) — 휴지통 클릭 시 AlertDialog 사전 확인 노출 → 다이얼로그 「삭제」 추가 클릭 필요.
     const deleteButtons = page.getByRole('button', { name: /과업 삭제 [2-9]|행 삭제 [2-9]/ });
@@ -303,56 +299,24 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     }
     await nextButton().click();
 
-    // ── 스텝 7: Ⅱ-4 훈련대상 과업 선정 ──
-    await expect(
-      page.getByRole('heading', { name: /훈련대상 과업/ }).first(),
-    ).toBeVisible({ timeout: 5_000 });
-    await page.getByLabel('훈련대상 과업').fill('외관 검사 자동화');
-    await page.getByLabel('선정 사유').fill('AI 도입 ROI 높음');
-    await page.getByLabel('기대 효과 현행').fill('수작업 검사');
-    await page
-      .getByLabel('기대 효과 개선')
-      .fill('AI 비전 검사 + 작업자 최종 확인');
-    await nextButton().click();
+    // ── 스텝 7: Ⅱ-4 AI 적용 대상 과업 선정 ──
+    // v2 정본 정합 — 제목·라벨이 "훈련대상 과업" → "AI 적용 대상 과업" 으로,
+    // aria-label 은 공백 없는 "선정사유"·"기대효과 현행/개선" 으로 바뀌었다.
+    await expect(page.getByRole('heading', { name: /AI 적용 대상 과업/ }).first()).toBeVisible({
+      timeout: 5_000,
+    });
+    await page.getByLabel('AI 적용 대상 과업').fill('외관 검사 자동화');
+    await page.getByLabel('선정사유').fill('AI 도입 ROI 높음');
+    await page.getByLabel('기대효과 현행').fill('수작업 검사');
+    await page.getByLabel('기대효과 개선').fill('AI 비전 검사 + 작업자 최종 확인');
 
-    // ── 스텝 8: Ⅲ-1 역량 모델링 (4행 프리필, 첫 행만 채움) + NCS 미활용 → 도출 방법 ──
-    await expect(
-      page.getByRole('heading', { name: /역량 모델링/ }).first(),
-    ).toBeVisible({ timeout: 5_000 });
-    await page.getByLabel('역량명 1').fill('외관 검사 데이터 해석 역량');
-    await page
-      .getByLabel('역량 정의 1')
-      .fill('검사 이미지에서 불량 패턴을 식별·분류할 수 있다');
-    await page.getByLabel('지식 1').fill('이미지 분류 기초, QMS 지표 체계');
-    await page.getByLabel('기술 1').fill('이미지 레이블링, 시각화 도구');
-    await page.getByLabel('태도 1').fill('데이터 기반 의사결정 선호');
-    // 프리필된 빈 역량 행(2~N) 제거 — Strict 검증은 배열 모든 요소를 요구하므로
-    // 빈 행이 남아 있으면 fail. index 역순으로 삭제해 index 변경 안전.
-    // PR #72(#1 H5·H3) — 휴지통 클릭 시 AlertDialog 사전 확인 노출 → 다이얼로그 「삭제」 추가 클릭 필요.
-    const competencyDeleteButtons = page.getByRole('button', { name: /역량 삭제 [2-9]/ });
-    const competencyDeleteCount = await competencyDeleteButtons.count();
-    for (let i = competencyDeleteCount - 1; i >= 0; i--) {
-      const btn = competencyDeleteButtons.nth(i);
-      if (await btn.isVisible().catch(() => false)) {
-        await btn.click();
-        const confirmDialog = page.getByRole('alertdialog');
-        await expect(confirmDialog).toBeVisible({ timeout: 5_000 });
-        await confirmDialog.getByRole('button', { name: '삭제' }).click();
-        await expect(confirmDialog).not.toBeVisible({ timeout: 5_000 });
-      }
-    }
-    // NCS 미활용 기본 → "역량별 도출 방법" textarea 필수
-    await page
-      .getByLabel('역량별 도출 방법')
-      .fill('3개 현장 인터뷰 + 업계 벤치마킹');
-
-    // ── 스텝 9: 인터뷰 녹취 STT 첨부 (선택, PR #77 추가) ──
+    // ── 스텝 8: 인터뷰 녹취 STT 첨부 (선택) ──
+    // v1 의 Ⅲ-1 역량 모델링 스텝이 삭제되어 Ⅱ-4 다음이 곧 마지막 sttAttach step 이다.
     // STT 는 optional 이라 파일 업로드 없이 그대로 통과해도 strict 검증 영향 없음.
-    // 8 → 9 step 으로 한 번 더 "다음" 클릭 → 마지막 sttAttach step 에 도달.
     await nextButton().click();
-    await expect(
-      page.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 })).toBeVisible(
+      { timeout: 5_000 }
+    );
 
     // V2 StickyFormNav — 마지막 스텝(sttAttach)에서 "최종 제출" 버튼이 노출된다.
     const submitButton = page.getByRole('button', { name: /최종 제출/ });
@@ -387,18 +351,15 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     // LLM 생성 완료 대기 — "버전 N" 헤더가 표시되거나 에러 토스트가 뜨거나.
     // 로컬·CI 환경별로 LLM 응답 형식이 달라 실패할 수 있으므로, 실패 시 graceful skip.
     const versionHeader = page.locator('h2').filter({ hasText: /^버전 \d+$/ });
-    const roadmapGenerated = await versionHeader
-      .isVisible({ timeout: 250_000 })
-      .catch(() => false);
-    test.skip(
-      !roadmapGenerated,
-      'LLM 응답 실패 또는 타임아웃 — 환경 의존성 (로드맵 생성 미완료)',
-    );
+    const roadmapGenerated = await versionHeader.isVisible({ timeout: 250_000 }).catch(() => false);
+    test.skip(!roadmapGenerated, 'LLM 응답 실패 또는 타임아웃 — 환경 의존성 (로드맵 생성 미완료)');
 
-    // 로드맵 콘텐츠 탭 — 산인공 양식 이후 첫 탭 라벨은 "역량 모델링"
-    await expect(page.getByRole('button', { name: '역량 모델링' })).toBeVisible({
+    // 로드맵 결과 탭 — 양식 v2 는 3섹션(Ⅰ. 개요 / Ⅱ. 요구분석 / Ⅲ. 훈련체계).
+    // 단일 출처: roadmap/_components/result-v2/RoadmapResultClient.tsx 의 tabs
+    await expect(page.getByRole('tab', { name: 'Ⅰ. 개요' })).toBeVisible({
       timeout: 10_000,
     });
+    await expect(page.getByRole('tab', { name: 'Ⅲ. 훈련체계' })).toBeVisible();
   });
 
   // ─── 6단계: 로드맵 확정 (ROADMAP_DRAFTED → FINALIZED) ─────────────────────
@@ -413,9 +374,7 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
 
     // 5단계에서 LLM 응답 실패로 skip된 경우 여기도 "버전 N" 헤더가 없음 → skip
     const versionHeader = page.locator('h2').filter({ hasText: /^버전 \d+$/ });
-    const hasVersion = await versionHeader
-      .isVisible({ timeout: 15_000 })
-      .catch(() => false);
+    const hasVersion = await versionHeader.isVisible({ timeout: 15_000 }).catch(() => false);
     test.skip(!hasVersion, '5단계(로드맵 생성) 미완료 — 확정 불가');
 
     // PR #50 (#2) — window.confirm 이 shadcn AlertDialog 로 교체됨.
@@ -429,9 +388,7 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     // AlertDialog 노출 확인
     const confirmDialog = page.getByRole('alertdialog');
     await expect(confirmDialog).toBeVisible({ timeout: 3_000 });
-    await expect(
-      confirmDialog.getByText('로드맵을 최종 확정하시겠습니까?'),
-    ).toBeVisible();
+    await expect(confirmDialog.getByText('로드맵을 최종 확정하시겠습니까?')).toBeVisible();
 
     // AlertDialog 내부의 destructive "최종 확정" 버튼 클릭
     await confirmDialog.getByRole('button', { name: '최종 확정' }).click();
@@ -446,8 +403,8 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     // FINALIZED 상태 라벨 — status.ts 상 stepper는 "로드맵 최종 확정",
     // stats 요약 카드는 "최종 확정", case/project 상세는 "로드맵 완료" 로 다양하다.
     // 페이지 내 어느 하나라도 노출되면 FINALIZED 도달로 본다.
-    await expect(
-      opsPage.getByText(/로드맵 최종 확정|최종 확정|로드맵 완료/).first(),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(opsPage.getByText(/로드맵 최종 확정|최종 확정|로드맵 완료/).first()).toBeVisible({
+      timeout: 10_000,
+    });
   });
 });

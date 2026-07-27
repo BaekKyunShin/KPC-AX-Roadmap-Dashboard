@@ -1,15 +1,13 @@
 // ============================================================================
-// 로드맵 서비스 — 공개 API re-export (산인공 공식 양식 기반 4섹션 구조)
+// 로드맵 서비스 — 공개 API re-export (산인공 공식 양식 v2 기반)
+//   Ⅰ장(인터뷰 입력) + Ⅲ 훈련과정 명세서(LLM 생성 6개)
+//   v1 의 역량 모델링·NCS·훈련체계도·연간 훈련계획은 양식에서 삭제됨
 // ============================================================================
 
 // 타입
 export type {
   TrainingLevel,
-  RoadmapCompetency,
   RoadmapOutcomeSummary,
-  RoadmapTrainingStructureItem,
-  RoadmapAnnualPlanItem,
-  RoadmapAnnualPlan,
   RoadmapCourseSubject,
   RoadmapCourseSpec,
   LLMRoadmapResult,
@@ -18,32 +16,16 @@ export type {
 } from './roadmap-types';
 
 // 상수
-export { TRAINING_LEVEL_LABEL } from './roadmap-types';
+export { TRAINING_LEVEL_LABEL, ROADMAP_COURSE_SPEC_COUNT } from './roadmap-types';
 
 // 검증
 export { validateRoadmap } from './roadmap-validator';
 
 // 빈 행 자동 정리 (저장 직전 호출)
-export {
-  isEmptyCompetency,
-  isEmptyAnnualPlanItem,
-  isEmptyCourseSubject,
-  isEmptyCourseSpec,
-  sanitizeRoadmapResult,
-} from './roadmap-sanitize';
+export { isEmptyCourseSubject, isEmptyCourseSpec, sanitizeRoadmapResult } from './roadmap-sanitize';
 
 // 프롬프트 빌더
 export { buildSystemPrompt, buildUserPrompt } from './roadmap-prompts';
-
-// 훈련체계도 매트릭스 빌더
-export {
-  buildTrainingStructureMatrix,
-  buildTrainingStructureTable,
-} from './roadmap-matrix-builder';
-export type {
-  TrainingStructureMatrixRow,
-  TrainingStructureTableRow,
-} from './roadmap-matrix-builder';
 
 // 시간 유틸
 export { sumModuleHours, normalizeRoadmapHours } from './roadmap-time-utils';

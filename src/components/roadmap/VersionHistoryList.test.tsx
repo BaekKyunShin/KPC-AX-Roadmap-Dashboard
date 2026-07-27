@@ -5,7 +5,7 @@ import { VersionHistoryList } from './VersionHistoryList';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 
 // ============================================================================
-// 테스트 데이터 헬퍼 (신규 4섹션 구조)
+// 테스트 데이터 헬퍼 (산인공 양식 v2 구조)
 // ============================================================================
 
 function makeVersion(overrides: Partial<RoadmapVersionUI> = {}): RoadmapVersionUI {
@@ -16,13 +16,6 @@ function makeVersion(overrides: Partial<RoadmapVersionUI> = {}): RoadmapVersionU
     diagnosis_summary: '진단 요약',
     setup_necessity: '',
     outcome_summary: { ai_competency_level: 'BEGINNER', selected_tasks: '', main_content: '' },
-    competencies: [],
-    ncs_used: false,
-    ncs_methodology: '',
-    ncs_derivation_method: '',
-    training_structure: [],
-    training_structure_method: '',
-    annual_plan: { items: [], usage_plan: '' },
     course_specs: [],
     revision_prompt: null,
     is_shared: false,
@@ -99,9 +92,7 @@ describe('VersionHistoryList', () => {
   describe('선택 상태 하이라이트', () => {
     it('선택된 버전에 하이라이트 스타일을 적용한다', () => {
       const versions = [makeVersion({ id: 'v1' }), makeVersion({ id: 'v2', version_number: 2 })];
-      render(
-        <VersionHistoryList {...defaultProps} versions={versions} selectedVersionId="v1" />
-      );
+      render(<VersionHistoryList {...defaultProps} versions={versions} selectedVersionId="v1" />);
       const selectedButton = screen.getByText(/버전 1/).closest('button');
       expect(selectedButton).toHaveClass('bg-purple-50');
       expect(selectedButton).toHaveClass('border-purple-500');
@@ -109,9 +100,7 @@ describe('VersionHistoryList', () => {
 
     it('선택되지 않은 버전에는 하이라이트 스타일을 적용하지 않는다', () => {
       const versions = [makeVersion({ id: 'v1' }), makeVersion({ id: 'v2', version_number: 2 })];
-      render(
-        <VersionHistoryList {...defaultProps} versions={versions} selectedVersionId="v1" />
-      );
+      render(<VersionHistoryList {...defaultProps} versions={versions} selectedVersionId="v1" />);
       const unselectedButton = screen.getByText(/버전 2/).closest('button');
       expect(unselectedButton).not.toHaveClass('bg-purple-50');
     });

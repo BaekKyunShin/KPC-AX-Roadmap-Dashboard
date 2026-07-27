@@ -3,9 +3,6 @@
 import { useState } from 'react';
 import { Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModelingTable';
-import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
-import { AnnualTrainingPlanTable } from '@/components/roadmap/AnnualTrainingPlanTable';
 import { CoursesList } from '@/components/roadmap/CoursesList';
 import { LikeButton } from '@/components/gallery/LikeButton';
 import { UseRoadmapDialog } from '@/components/gallery/UseRoadmapDialog';
@@ -19,10 +16,10 @@ interface GalleryDetailContentProps {
 }
 
 export function GalleryDetailContent({ detail, isConsultant }: GalleryDetailContentProps) {
-  const [activeTab, setActiveTab] = useState<RoadmapTabKey>('competencies');
+  const [activeTab, setActiveTab] = useState<RoadmapTabKey>('specs');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // DB legacy 컬럼(roadmap_matrix/pbl_course/courses) → 신규 4섹션 RoadmapResult
+  // DB legacy 컬럼(roadmap_matrix/pbl_course/courses) → RoadmapResult(v2)
   const result = fromRoadmapVersionColumns({
     diagnosis_summary: detail.diagnosisSummary,
     roadmap_matrix: detail.roadmapMatrix,
@@ -42,12 +39,8 @@ export function GalleryDetailContent({ detail, isConsultant }: GalleryDetailCont
           size="default"
         />
         {isConsultant && (
-          <Button
-            onClick={() => setIsDialogOpen(true)}
-            className="gap-1.5"
-          >
-            <Copy className="h-4 w-4" />
-            이 로드맵 사용하기
+          <Button onClick={() => setIsDialogOpen(true)} className="gap-1.5">
+            <Copy className="h-4 w-4" />이 로드맵 사용하기
           </Button>
         )}
       </div>
@@ -80,26 +73,7 @@ export function GalleryDetailContent({ detail, isConsultant }: GalleryDetailCont
         </div>
 
         <div className="p-6">
-          {activeTab === 'competencies' && (
-            <CompetencyModelingTable competencies={result.competencies} canEdit={false} />
-          )}
-          {activeTab === 'structure' && (
-            <RoadmapMatrix
-              competencies={result.competencies}
-              trainingStructure={result.training_structure}
-              canEdit={false}
-            />
-          )}
-          {activeTab === 'plan' && (
-            <AnnualTrainingPlanTable
-              plan={result.annual_plan}
-              competencies={result.competencies}
-              canEdit={false}
-            />
-          )}
-          {activeTab === 'specs' && (
-            <CoursesList specs={result.course_specs} canEdit={false} />
-          )}
+          {activeTab === 'specs' && <CoursesList specs={result.course_specs} canEdit={false} />}
         </div>
       </div>
 

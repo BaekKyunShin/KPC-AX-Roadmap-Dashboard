@@ -127,8 +127,10 @@ describe('formatNcsUsed', () => {
 describe('sumSubjectHours', () => {
   it('subjects의 시간 합계를 반환한다', () => {
     const spec: RoadmapCourseSpec = {
+      training_period: '2026년 1분기',
+      training_level: 'BEGINNER',
       course_name: 'C',
-      format: '-',
+      training_method: '-',
       recommended_program: '-',
       goal: '-',
       main_content: '-',
@@ -147,8 +149,10 @@ describe('sumSubjectHours', () => {
 
   it('빈 subjects는 0을 반환한다', () => {
     const spec: RoadmapCourseSpec = {
+      training_period: '2026년 1분기',
+      training_level: 'BEGINNER',
       course_name: '-',
-      format: '-',
+      training_method: '-',
       recommended_program: '-',
       goal: '-',
       main_content: '-',

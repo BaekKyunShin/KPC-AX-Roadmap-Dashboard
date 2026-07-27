@@ -11,9 +11,7 @@ import type { LLMRoadmapResult } from './roadmap-types';
 /**
  * 모듈/교과목 배열의 시간 합계 계산 (음수·비정상 값은 0으로 처리).
  */
-export function sumModuleHours(
-  items: { hours?: number | null }[] | undefined | null,
-): number {
+export function sumModuleHours(items: { hours?: number | null }[] | undefined | null): number {
   if (!items || items.length === 0) return 0;
   return items.reduce((sum, m) => {
     const h = m.hours;
@@ -35,9 +33,8 @@ function normalizeHours(h: unknown): number {
 /**
  * LLM 출력 결과의 시간 안전 보정.
  *
- * 처리 대상:
- * - course_specs[*].subjects[*].hours
- * - annual_plan.items[*].hours
+ * 처리 대상: course_specs[*].subjects[*].hours
+ * (v1 의 annual_plan.items[*].hours 는 양식에서 연간계획 표가 삭제되어 함께 제거)
  *
  * 음수 / NaN / undefined / Infinity → 0으로 보정. 정상 값은 보존.
  */
@@ -50,17 +47,8 @@ export function normalizeRoadmapHours(result: LLMRoadmapResult): LLMRoadmapResul
     })),
   }));
 
-  const nextAnnualPlan = {
-    ...result.annual_plan,
-    items: (result.annual_plan?.items ?? []).map((item) => ({
-      ...item,
-      hours: normalizeHours(item.hours),
-    })),
-  };
-
   return {
     ...result,
-    annual_plan: nextAnnualPlan,
     course_specs: nextCourseSpecs,
   };
 }

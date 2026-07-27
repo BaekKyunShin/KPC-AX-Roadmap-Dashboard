@@ -17,11 +17,7 @@ import type { PBLOverview } from '@/lib/schemas/interview-pbl';
  * 데이터 슬라이스: `PBLOverview` (companyName/courseName/ncsCode?/trainingHours/
  * trainingTarget/trainingForm/trainingPeriod/businessIssues).
  */
-export function StepOverview({
-  value,
-  onChange,
-  readOnly = false,
-}: PBLStepProps<PBLOverview>) {
+export function StepOverview({ value, onChange, readOnly = false }: PBLStepProps<PBLOverview>) {
   function update(patch: Partial<PBLOverview>) {
     onChange({ ...value, ...patch });
   }
@@ -110,11 +106,21 @@ export function StepOverview({
       </div>
 
       <ExampleAccordion
+        guideLabel="작성 가이드"
         guide={
-          <ul className="list-disc space-y-1 pl-4">
-            <li>기업명·훈련과정명은 신청서와 일치하도록 입력합니다.</li>
-            <li>NCS 분류 코드는 알고 있을 때만 입력 (선택). 없어도 저장 가능합니다.</li>
-            <li>훈련시간은 총 교육 시간 (시간 단위). 훈련기간은 &ldquo;YYYY.MM.DD ~ YYYY.MM.DD&rdquo; 서술체 허용.</li>
+          <ul className="list-none space-y-1">
+            <li>
+              ☞ (기업명/사업장관리번호/주요 업종/주소/훈련실시주소/관할 지부·지사) 신청서 기준으로
+              자동 불러옴 처리되며, 내용 수정이 불가
+            </li>
+            <li>☞ (담당자 연락처/NCS 분류) 신청서 기준으로 자동 불러옴 처리되며, 내용 수정 가능</li>
+            <li>
+              ☞ (훈련과정명/훈련시간/훈련생) 훈련 프로파일 기준으로 자동 불러옴 처리되며, 내용
+              수정이 불가
+            </li>
+            <li>☞ (훈련직무) 직접 입력</li>
+            <li>☞ (AI역량 수준) 현재 기업의 AI역량 수준을 체크</li>
+            <li>☞ (훈련 목표) 훈련을 통해 달성하고자 하는 목표를 선택(중복선택 가능)</li>
             <li>사업 쟁점은 이어지는 Ⅱ-1-가 기업 경영 이슈의 간결 요약본으로 사용됩니다.</li>
           </ul>
         }
@@ -136,14 +142,7 @@ interface LabeledInputProps {
   disabled?: boolean;
 }
 
-function LabeledInput({
-  label,
-  id,
-  value,
-  onChange,
-  placeholder,
-  disabled,
-}: LabeledInputProps) {
+function LabeledInput({ label, id, value, onChange, placeholder, disabled }: LabeledInputProps) {
   return (
     <div className="space-y-1">
       <label htmlFor={id} className="text-xs font-medium text-muted-foreground">
@@ -163,8 +162,7 @@ function LabeledInput({
   );
 }
 
-interface LabeledNumberInputProps
-  extends Omit<LabeledInputProps, 'value' | 'onChange'> {
+interface LabeledNumberInputProps extends Omit<LabeledInputProps, 'value' | 'onChange'> {
   value: number;
   onChange: (v: number) => void;
 }

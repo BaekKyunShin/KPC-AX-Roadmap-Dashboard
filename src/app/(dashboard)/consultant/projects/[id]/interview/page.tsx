@@ -2,10 +2,11 @@ import { redirect, notFound } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createClient } from '@/lib/supabase/server';
 import { resolveHrdSignedUrl } from '@/lib/services/storage/hrd-signed-url';
+import { fetchPBLInterviewV2, fetchRoadmapInterviewV2 } from './actions';
 import {
-  fetchPBLInterviewV2,
-  fetchRoadmapInterviewV2,
-} from './actions';
+  fetchLinkedRoadmapData,
+  hydrateRoadmapInterview,
+} from '@/lib/services/pbl/pbl-roadmap-link';
 import { RoadmapInterviewClient } from './_components/roadmap/RoadmapInterviewClient';
 import { PBLInterviewClient } from './_components/pbl/PBLInterviewClient';
 
@@ -26,7 +27,7 @@ const HRD_BUCKET = 'interview-attachments';
  * 버그가 있었다.
  */
 async function hydrateHrdReportSignedUrl(
-  initial: Record<string, unknown>,
+  initial: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
   const hrd = initial.hrdReportPdf as
     | {
@@ -85,24 +86,23 @@ export default async function InterviewPage({
   // 를 camelCase Partial 로 반환 → signed URL hydration 후 Client 에 주입.
   if (project.track === 'PBL' || sp.track === 'PBL') {
     const rawPbl = (await fetchPBLInterviewV2(project.id)) ?? {};
-    const hydratedPbl = await hydrateHrdReportSignedUrl(
-      rawPbl as Record<string, unknown>,
-    );
+    const hydratedPbl = await hydrateHrdReportSignedUrl(rawPbl as Record<string, unknown>);
+    // Ⅲ-3-가 훈련대상 업무 — 선행 로드맵 과업 목록을 읽기 전용으로 연계.
+    // 미연계 시 빈 배열 → StepTarget 이 "선행 로드맵 과업 미연결" 안내를 표시.
+    const linked = await fetchLinkedRoadmapData(project.id);
+    const roadmapTasks = hydrateRoadmapInterview(linked.interview)?.taskAnalysis ?? [];
     return (
       <PBLInterviewClient
         projectId={project.id}
-        initial={
-          hydratedPbl as Parameters<typeof PBLInterviewClient>[0]['initial']
-        }
+        initial={hydratedPbl as Parameters<typeof PBLInterviewClient>[0]['initial']}
+        roadmapTasks={roadmapTasks}
       />
     );
   }
 
   // 로드맵 트랙 — V2 Client (camelCase 스키마 + 9 스텝[양식 8 + STT 첨부 1] + 자동저장)
   const raw = (await fetchRoadmapInterviewV2(project.id)) ?? {};
-  const hydrated = await hydrateHrdReportSignedUrl(
-    raw as Record<string, unknown>,
-  );
+  const hydrated = await hydrateHrdReportSignedUrl(raw as Record<string, unknown>);
 
   return (
     <RoadmapInterviewClient

@@ -1,17 +1,14 @@
-import type {
-  RoadmapCompetency,
-  RoadmapAnnualPlanItem,
-  RoadmapCourseSubject,
-  RoadmapCourseSpec,
-  RoadmapResult,
-} from './roadmap-types';
+import type { RoadmapCourseSubject, RoadmapCourseSpec, RoadmapResult } from './roadmap-types';
 
 // ============================================================================
-// 빈 행 자동 정리 유틸리티
+// 빈 행 자동 정리 유틸리티 — 산인공 양식 v2
 // ----------------------------------------------------------------------------
 // "행 추가" 버튼을 눌러 빈 행을 만든 뒤 값을 채우지 않고 저장한 경우,
 // 저장 시점에 자동으로 제거하여 결과 화면 / 내보내기 / 검증 단계에서
 // 의미 없는 빈 행이 섞여 들어가지 않도록 한다.
+//
+// v1 의 역량(competencies)·연간계획(annual_plan) 정리 함수는 해당 표가 양식에서
+// 삭제되면서 함께 제거됐다. v2 의 정리 대상은 훈련과정 명세서와 교과목뿐이다.
 //
 // 적용 위치: Server Action → updateRoadmapManually(merged 완성 직후) 및
 //           LLM 생성 결과 저장 직전(방어적 호출).
@@ -20,27 +17,6 @@ import type {
 /** "의미 있는 문자"가 하나라도 있는지 확인 (공백·탭·줄바꿈만 있으면 false). */
 function hasText(value: string | undefined | null): boolean {
   return typeof value === 'string' && value.trim().length > 0;
-}
-
-/**
- * 역량 빈 행 판정.
- * name·definition 모두 공백 **이면서** knowledge/skills/attitudes가 모두 비어있을 때만 빈 행.
- */
-export function isEmptyCompetency(c: RoadmapCompetency): boolean {
-  if (hasText(c.name) || hasText(c.definition)) return false;
-  const hasAnyKsa =
-    (c.knowledge?.length ?? 0) > 0 ||
-    (c.skills?.length ?? 0) > 0 ||
-    (c.attitudes?.length ?? 0) > 0;
-  return !hasAnyKsa;
-}
-
-/**
- * 연간 훈련계획 항목 빈 행 판정.
- * competency_name·course_name 모두 공백이면 빈 행 (hours/notes 단독 입력은 빈 행으로 간주).
- */
-export function isEmptyAnnualPlanItem(item: RoadmapAnnualPlanItem): boolean {
-  return !hasText(item.competency_name) && !hasText(item.course_name);
 }
 
 /**
@@ -63,17 +39,10 @@ export function isEmptyCourseSpec(spec: RoadmapCourseSpec): boolean {
 
 /**
  * 저장 직전 전체 로드맵 결과를 정리한다 (불변).
- * - 역량·연간계획 항목·명세서·교과목 모두 빈 행 제거
+ * - 명세서·교과목의 빈 행 제거
+ * - v1 orphan 키가 입력에 섞여 있어도 결과에는 v2 구조만 담는다
  */
 export function sanitizeRoadmapResult(result: RoadmapResult): RoadmapResult {
-  const cleanedCompetencies = (result.competencies ?? []).filter(
-    (c) => !isEmptyCompetency(c),
-  );
-
-  const cleanedAnnualItems = (result.annual_plan?.items ?? []).filter(
-    (i) => !isEmptyAnnualPlanItem(i),
-  );
-
   const cleanedCourseSpecs = (result.course_specs ?? [])
     .map((spec) => ({
       ...spec,
@@ -82,12 +51,9 @@ export function sanitizeRoadmapResult(result: RoadmapResult): RoadmapResult {
     .filter((spec) => !isEmptyCourseSpec(spec));
 
   return {
-    ...result,
-    competencies: cleanedCompetencies,
-    annual_plan: {
-      items: cleanedAnnualItems,
-      usage_plan: result.annual_plan?.usage_plan ?? '',
-    },
+    diagnosis_summary: result.diagnosis_summary,
+    setup_necessity: result.setup_necessity,
+    outcome_summary: result.outcome_summary,
     course_specs: cleanedCourseSpecs,
   };
 }

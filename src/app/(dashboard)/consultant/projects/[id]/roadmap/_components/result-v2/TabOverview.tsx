@@ -3,7 +3,10 @@
 import { SectionCard } from '@/components/result/SectionCard';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { FormTable } from '@/components/forms/FormTable';
-import { AI_COMPETENCY_LEVEL_LABEL, AI_COMPETENCY_LEVEL_SUBTITLE } from '@/lib/schemas/interview-roadmap';
+import {
+  AI_COMPETENCY_LEVEL_LABEL,
+  AI_COMPETENCY_LEVEL_SUBTITLE,
+} from '@/lib/schemas/interview-roadmap';
 
 import type { TabCommonProps } from './types';
 
@@ -22,19 +25,12 @@ import type { TabCommonProps } from './types';
  * 편집 전략: Ⅰ-1 setup_necessity / Ⅰ-3 main_content 만 인라인 편집.
  *   활동 표·역량수준·선정과업은 인터뷰 페이지에서만 수정 가능 (읽기 전용).
  */
-export function TabOverview({
-  version,
-  interview,
-  readOnly,
-  onEdit,
-}: TabCommonProps) {
+export function TabOverview({ version, interview, readOnly, onEdit }: TabCommonProps) {
   const necessity = version?.setup_necessity ?? interview?.establishmentNecessity ?? '';
   const activities = interview?.performanceActivities ?? [];
 
-  const aiLevel =
-    version?.outcome_summary?.ai_competency_level ?? interview?.aiLevel ?? 'BEGINNER';
-  const selectedTask =
-    version?.outcome_summary?.selected_tasks ?? interview?.selectedTask ?? '';
+  const aiLevel = version?.outcome_summary?.ai_competency_level ?? interview?.aiLevel ?? 'BEGINNER';
+  const selectedTask = version?.outcome_summary?.selected_tasks ?? interview?.selectedTask ?? '';
   const mainContent = version?.outcome_summary?.main_content ?? '';
 
   return (
@@ -90,9 +86,7 @@ export function TabOverview({
                   },
                   {
                     content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {a.content || '-'}
-                      </span>
+                      <span className="whitespace-pre-wrap text-sm">{a.content || '-'}</span>
                     ),
                     align: 'left',
                   },
@@ -110,15 +104,15 @@ export function TabOverview({
         )}
       </SectionCard>
 
-      {/* Ⅰ-3 수립 주요 결과 — 양식 정합 (3행 표) */}
+      {/* Ⅰ-3 AI훈련로드맵 수립 주요 결과 — 양식 정합 (3행 표) */}
       <SectionCard
-        title="Ⅰ-3. 수립 주요 결과"
+        title="Ⅰ-3. AI훈련로드맵 수립 주요 결과"
         description="뒤쪽에서 작성된 훈련요구 분석 및 로드맵 수립 결과를 한 번에 확인할 수 있도록 1장 이내로 요약 — LLM 자동 생성, 직접 수정 가능"
         dataSource="ai"
       >
         <div className="overflow-x-auto">
           <FormTable
-            caption="수립 주요 결과"
+            caption="AI훈련로드맵 수립 주요 결과"
             bodyRows={[
               {
                 cells: [
@@ -131,9 +125,7 @@ export function TabOverview({
                   {
                     content: (
                       <span className="inline-flex items-center gap-2 rounded bg-muted px-2 py-1 text-sm">
-                        <span className="font-semibold">
-                          {AI_COMPETENCY_LEVEL_LABEL[aiLevel]}
-                        </span>
+                        <span className="font-semibold">{AI_COMPETENCY_LEVEL_LABEL[aiLevel]}</span>
                         <span className="text-xs text-muted-foreground">
                           ({AI_COMPETENCY_LEVEL_SUBTITLE[aiLevel]})
                         </span>
@@ -152,9 +144,7 @@ export function TabOverview({
                   },
                   {
                     content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {selectedTask || '-'}
-                      </span>
+                      <span className="whitespace-pre-wrap text-sm">{selectedTask || '-'}</span>
                     ),
                     align: 'left',
                   },

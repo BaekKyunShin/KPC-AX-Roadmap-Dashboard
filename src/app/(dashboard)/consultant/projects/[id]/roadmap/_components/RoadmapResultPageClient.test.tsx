@@ -11,35 +11,31 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 
 // ── Server Action 모킹 ────────────────────────────────────────────────
-const fetchRoadmapPageDataV2Mock = vi.fn(
-  (_projectId: string, _versionId?: string) =>
-    Promise.resolve({
-      success: true as const,
-      data: {
-        versions: [] as RoadmapVersionUI[],
-        selectedVersion: null,
-        interview: {},
-      },
-    }),
+const fetchRoadmapPageDataV2Mock = vi.fn((_projectId: string, _versionId?: string) =>
+  Promise.resolve({
+    success: true as const,
+    data: {
+      versions: [] as RoadmapVersionUI[],
+      selectedVersion: null,
+      interview: {},
+    },
+  })
 );
-const createRoadmapV2Mock = vi.fn(
-  (_projectId: string, _revisionPrompt?: string) =>
-    Promise.resolve({ success: true as const, data: { roadmapId: 'new-v' } }),
+const createRoadmapV2Mock = vi.fn((_projectId: string, _revisionPrompt?: string) =>
+  Promise.resolve({ success: true as const, data: { roadmapId: 'new-v' } })
 );
 const editRoadmapV2Mock = vi.fn((_roadmapId: string, _patch: unknown) =>
-  Promise.resolve({ success: true as const, data: undefined }),
+  Promise.resolve({ success: true as const, data: undefined })
 );
 const exportRoadmapHwpxV2Mock = vi.fn((_versionId: string) =>
   Promise.resolve({
     success: true as const,
     data: { fileName: 't.hwpx', contentBase64: '', mimeType: 'x' },
-  }),
+  })
 );
-const cancelRoadmapGenerationMock = vi.fn(() =>
-  Promise.resolve({ success: true as const }),
-);
+const cancelRoadmapGenerationMock = vi.fn(() => Promise.resolve({ success: true as const }));
 const confirmFinalRoadmapV2Mock = vi.fn((_versionId: string) =>
-  Promise.resolve({ success: true as const }),
+  Promise.resolve({ success: true as const })
 );
 
 vi.mock('../actions', () => ({
@@ -47,8 +43,7 @@ vi.mock('../actions', () => ({
     fetchRoadmapPageDataV2Mock(projectId, versionId),
   createRoadmapV2: (projectId: string, revisionPrompt?: string) =>
     createRoadmapV2Mock(projectId, revisionPrompt),
-  editRoadmapV2: (roadmapId: string, patch: unknown) =>
-    editRoadmapV2Mock(roadmapId, patch),
+  editRoadmapV2: (roadmapId: string, patch: unknown) => editRoadmapV2Mock(roadmapId, patch),
   exportRoadmapHwpxV2: (versionId: string) => exportRoadmapHwpxV2Mock(versionId),
   cancelRoadmapGeneration: () => cancelRoadmapGenerationMock(),
   confirmFinalRoadmapV2: (versionId: string) => confirmFinalRoadmapV2Mock(versionId),
@@ -140,13 +135,6 @@ function makeVersion(overrides: Partial<RoadmapVersionUI> = {}): RoadmapVersionU
       selected_tasks: '',
       main_content: '',
     },
-    competencies: [],
-    ncs_used: false,
-    ncs_methodology: '',
-    ncs_derivation_method: '',
-    training_structure: [],
-    training_structure_method: '',
-    annual_plan: { items: [], usage_plan: '' },
     course_specs: [],
     revision_prompt: null,
     is_shared: false,
@@ -174,7 +162,7 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialInterview={{}}
         initialSelfAssessmentExists={true}
         initialProjectStatus="INTERVIEWED"
-      />,
+      />
     );
     const root = screen.getByTestId('roadmap-result-client');
     expect(root.getAttribute('data-role')).toBe('CONSULTANT');
@@ -192,12 +180,10 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialInterview={{}}
         initialSelfAssessmentExists={true}
         initialProjectStatus="INTERVIEWED"
-      />,
+      />
     );
     fireEvent.click(screen.getByText('select'));
-    await waitFor(() =>
-      expect(fetchRoadmapPageDataV2Mock).toHaveBeenCalledWith('p-c', 'v-other'),
-    );
+    await waitFor(() => expect(fetchRoadmapPageDataV2Mock).toHaveBeenCalledWith('p-c', 'v-other'));
   });
 
   it('generate 클릭 시 createRoadmapV2 호출 + 성공 시 재fetch', async () => {
@@ -211,13 +197,13 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialInterview={{}}
         initialSelfAssessmentExists={true}
         initialProjectStatus="INTERVIEWED"
-      />,
+      />
     );
     await act(async () => {
       fireEvent.click(screen.getByText('generate'));
     });
     await vi.waitFor(() =>
-      expect(createRoadmapV2Mock).toHaveBeenCalledWith('p-c', 'revise please'),
+      expect(createRoadmapV2Mock).toHaveBeenCalledWith('p-c', 'revise please')
     );
     // completion setTimeout 경로까지 실행
     await act(async () => {
@@ -235,13 +221,13 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialInterview={{}}
         initialSelfAssessmentExists={true}
         initialProjectStatus="INTERVIEWED"
-      />,
+      />
     );
     fireEvent.click(screen.getByText('edit'));
     await waitFor(() =>
       expect(editRoadmapV2Mock).toHaveBeenCalledWith('v-selected', {
         diagnosisSummary: '수정본',
-      }),
+      })
     );
   });
 
@@ -259,7 +245,7 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialInterview={{}}
         initialSelfAssessmentExists={true}
         initialProjectStatus="INTERVIEWED"
-      />,
+      />
     );
     fireEvent.click(screen.getByText('edit'));
     await waitFor(() => expect(editRoadmapV2Mock).toHaveBeenCalled());
@@ -276,7 +262,7 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialInterview={{}}
         initialSelfAssessmentExists={true}
         initialProjectStatus="INTERVIEWED"
-      />,
+      />
     );
     fireEvent.click(screen.getByText('download-pdf'));
     fireEvent.click(screen.getByText('download-xlsx'));
@@ -298,7 +284,7 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialInterview={{}}
         initialSelfAssessmentExists={true}
         initialProjectStatus="INTERVIEWED"
-      />,
+      />
     );
     fireEvent.click(screen.getByText('cancel'));
     await waitFor(() => expect(cancelRoadmapGenerationMock).toHaveBeenCalled());
@@ -314,7 +300,7 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialInterview={{}}
         initialSelfAssessmentExists={true}
         initialProjectStatus="INTERVIEWED"
-      />,
+      />
     );
     fireEvent.click(screen.getByText('edit'));
     fireEvent.click(screen.getByText('download-pdf'));
@@ -336,7 +322,7 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialInterview={{}}
         initialSelfAssessmentExists={true}
         initialProjectStatus="INTERVIEWED"
-      />,
+      />
     );
     fireEvent.click(screen.getByText('generate'));
     await waitFor(() => expect(createRoadmapV2Mock).toHaveBeenCalled());
@@ -352,15 +338,13 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialInterview={{}}
         initialSelfAssessmentExists={true}
         initialProjectStatus="INTERVIEWED"
-      />,
+      />
     );
     await act(async () => {
       fireEvent.click(screen.getByText('finalize'));
     });
     await waitFor(() => expect(confirmFinalRoadmapV2Mock).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(fetchRoadmapPageDataV2Mock).toHaveBeenCalled(),
-    );
+    await waitFor(() => expect(fetchRoadmapPageDataV2Mock).toHaveBeenCalled());
   });
 
   it('finalize 실패 시 refresh 를 호출하지 않는다', async () => {
@@ -377,7 +361,7 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialInterview={{}}
         initialSelfAssessmentExists={true}
         initialProjectStatus="INTERVIEWED"
-      />,
+      />
     );
     fetchRoadmapPageDataV2Mock.mockClear();
     await act(async () => {

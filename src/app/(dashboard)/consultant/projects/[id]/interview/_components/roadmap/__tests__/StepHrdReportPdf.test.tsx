@@ -25,16 +25,8 @@ describe('StepHrdReportPdf', () => {
   });
 
   it('value=null 이면 업로드 안내 영역을 표시한다', () => {
-    render(
-      <StepHrdReportPdf
-        projectId="p1"
-        value={null}
-        onChange={() => {}}
-      />,
-    );
-    expect(
-      screen.getByText(/PDF 파일을 드래그하거나 클릭하여 선택/),
-    ).toBeInTheDocument();
+    render(<StepHrdReportPdf projectId="p1" value={null} onChange={() => {}} />);
+    expect(screen.getByText(/PDF 파일을 드래그하거나 클릭하여 선택/)).toBeInTheDocument();
   });
 
   it('value 가 있으면 파일명과 크기를 표시한다', () => {
@@ -47,7 +39,7 @@ describe('StepHrdReportPdf', () => {
           size: 1024 * 200,
         }}
         onChange={() => {}}
-      />,
+      />
     );
     expect(screen.getByText('hrd-report.pdf')).toBeInTheDocument();
     expect(screen.getByText(/200\.0 KB/)).toBeInTheDocument();
@@ -64,10 +56,10 @@ describe('StepHrdReportPdf', () => {
           parseError: '파일이 암호화되어 있습니다',
         }}
         onChange={() => {}}
-      />,
+      />
     );
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'PDF 본문 자동 추출 실패: 파일이 암호화되어 있습니다',
+      'PDF 본문 자동 추출 실패: 파일이 암호화되어 있습니다'
     );
   });
 
@@ -85,15 +77,9 @@ describe('StepHrdReportPdf', () => {
     });
     const onChange = vi.fn();
     const { container } = render(
-      <StepHrdReportPdf
-        projectId="proj-123"
-        value={null}
-        onChange={onChange}
-      />,
+      <StepHrdReportPdf projectId="proj-123" value={null} onChange={onChange} />
     );
-    const input = container.querySelector(
-      'input[type="file"]',
-    ) as HTMLInputElement;
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['dummy'], 'hrd-report.pdf', {
       type: 'application/pdf',
     });
@@ -119,20 +105,12 @@ describe('StepHrdReportPdf', () => {
     });
     const onChange = vi.fn();
     const { container } = render(
-      <StepHrdReportPdf
-        projectId="p1"
-        value={null}
-        onChange={onChange}
-      />,
+      <StepHrdReportPdf projectId="p1" value={null} onChange={onChange} />
     );
-    const input = container.querySelector(
-      'input[type="file"]',
-    ) as HTMLInputElement;
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['x'], 'hrd.pdf', { type: 'application/pdf' });
     fireEvent.change(input, { target: { files: [file] } });
-    await waitFor(() =>
-      expect(uploadInterviewAttachment).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(uploadInterviewAttachment).toHaveBeenCalledTimes(1));
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -147,9 +125,28 @@ describe('StepHrdReportPdf', () => {
           size: 1024,
         }}
         onChange={onChange}
-      />,
+      />
     );
     fireEvent.click(screen.getByLabelText('첨부 제거'));
     expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it('작성 안내에 정본 원문(□·※)을 그대로 표시한다', () => {
+    render(<StepHrdReportPdf projectId="p1" value={null} onChange={() => {}} />);
+    fireEvent.click(screen.getByText('작성 안내'));
+    expect(
+      screen.getByText('□ 기업HRD이음컨설팅 보고서의 AI역량 진단 결과 내용 첨부(별도 작성 불요)')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('- (초급) AI기초형 / (중급) AI탐구형 / (고급) AI활용형·AI선도형')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('※ [별첨] 중소기업 AI역량 측정 진단도구 내용 참조')
+    ).toBeInTheDocument();
+  });
+
+  it('섹션 제목이 정본 Ⅱ-1 "기업 AI 역량 수준 진단"과 일관된다', () => {
+    render(<StepHrdReportPdf projectId="p1" value={null} onChange={() => {}} />);
+    expect(screen.getByText('기업 AI 역량 수준 진단 (PDF 첨부)')).toBeInTheDocument();
   });
 });

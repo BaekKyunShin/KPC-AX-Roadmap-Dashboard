@@ -77,29 +77,7 @@ const PBL_ROW_BASE = {
   },
 };
 
-/** pblInterviewAutoSaveSchema 최소 유효 pbl_data (V1 legacy snake_case) */
-const VALID_PBL_DATA = {
-  courseOverview: {
-    course_name: 'AI PBL 과정',
-    training_job: '제조 직무',
-    training_hours: 16,
-    trainee_count: 10,
-    ai_level: 'AI기초형',
-    training_goals: ['기술문제 해결'],
-    company_name: '테스트기업',
-    industry_main: '제조업',
-    contact: { name: '홍길동', email: 'test@example.com', phone: '010-1234-5678' },
-  },
-  trainingEnvironment: {
-    training_needs_analysis: '분석 내용',
-  },
-  targetTasks: {
-    selection_reason: '선정 이유',
-    target_task_details: [],
-  },
-};
-
-/** V2 PBL 인터뷰 (PR #28 정본 + PR #5/#7 schema 확장) — camelCase. */
+/** V2 PBL 인터뷰 (양식 v2 정본) — camelCase. AI역량·우선순위·수행활동 자체입력 제거. */
 const VALID_PBL_DATA_V2 = {
   // Ⅰ 훈련과정 개요
   companyName: '테스트기업',
@@ -123,16 +101,11 @@ const VALID_PBL_DATA_V2 = {
   },
   hrdReportPdf: null,
   courseNecessity: 'AI훈련 필요성 V2',
-  // Ⅲ 과제 도출 (Ⅲ-1·Ⅲ-2 는 본 테스트 대상 외 — 단지 schema 통과를 위한 최소 fixture)
-  activities: [],
+  // Ⅲ 과제 도출
   problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
-  priority: { items: [], method: 'AHP' },
   target: {
-    name: '품질 검사 자동화',
-    code: 'NCS-001',
-    scope: '품질팀 5명',
+    taskSelections: [{ ai_necessity: '높음', training_selected: true }],
     necessity: 'V2 선정 사유',
-    necessity_score: 4,
     details: [
       {
         title: '검사 데이터 분석',
@@ -143,8 +116,6 @@ const VALID_PBL_DATA_V2 = {
       },
     ],
   },
-  currentAiLevel: { level: 'BASIC', note: '초기' },
-  expectedAiLevel: { level: 'USER', note: '6개월 후' },
 };
 
 /** V2 부분 입력 (Ⅲ-3 details 5 컬럼 일부 누락) — loose parse 통과 케이스 */
@@ -168,19 +139,14 @@ const PARTIAL_PBL_DATA_V2 = {
   },
   hrdReportPdf: null,
   courseNecessity: '',
-  activities: [],
   problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
-  priority: { items: [], method: '' },
   target: {
-    name: '부분 업무',
-    scope: '부분 부서',
+    taskSelections: [],
     necessity: '부분 사유',
-    necessity_score: 3,
-    // PR #7 5 컬럼 중 일부 누락 — title 만 채우고 나머지 빈 문자열 허용 (loose)
-    details: [{ title: '부분 항목', as_is: '', to_be: '', required_knowledge: '', required_skill: '' }],
+    details: [
+      { title: '부분 항목', as_is: '', to_be: '', required_knowledge: '', required_skill: '' },
+    ],
   },
-  currentAiLevel: { level: 'EXPLORER', note: '' },
-  expectedAiLevel: { level: 'LEADER', note: '' },
 };
 
 // ─── preparePBLExportData 테스트 ─────────────────────────────────────────────
@@ -297,14 +263,14 @@ describe('preparePBLExportData', () => {
     mock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
     vi.mocked(createClient).mockResolvedValue(mock.client as never);
     // admin: interviews 조회 → pbl_data 있음
-    adminMock.addResult({ data: { pbl_data: VALID_PBL_DATA }, error: null });
+    adminMock.addResult({ data: { pbl_data: VALID_PBL_DATA_V2 }, error: null });
 
     const result = await preparePBLExportData(PBL_ID);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.interviewOverview).toBeDefined();
-      expect(result.data.interviewOverview?.courseName).toBe('AI PBL 과정');
-      expect(result.data.interviewOverview?.trainingHours).toBe(16);
+      expect(result.data.interviewOverview?.courseName).toBe('AI PBL 과정 V2');
+      expect(result.data.interviewOverview?.trainingHours).toBe(24);
     }
   });
 
@@ -360,12 +326,12 @@ describe('preparePBLExportData', () => {
     expect(result.success).toBe(true);
   });
 
-  it('requirements 포함 여부 검증 (trainingEnvironment + targetTasks 있을 때)', async () => {
+  it('requirements 포함 여부 검증 (trainingEnv + target 있을 때)', async () => {
     const mock = createMockSupabase({ authUser: { id: USER_ID } });
     mock.addResult({ data: PBL_ROW_BASE, error: null });
     mock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
     vi.mocked(createClient).mockResolvedValue(mock.client as never);
-    adminMock.addResult({ data: { pbl_data: VALID_PBL_DATA }, error: null });
+    adminMock.addResult({ data: { pbl_data: VALID_PBL_DATA_V2 }, error: null });
 
     const result = await preparePBLExportData(PBL_ID);
     expect(result.success).toBe(true);
@@ -388,16 +354,14 @@ describe('preparePBLExportData', () => {
       expect(result.data.interviewOverview?.courseName).toBe('AI PBL 과정 V2');
       expect(result.data.interviewOverview?.trainingHours).toBe(24);
       expect(result.data.interviewOverview?.trainingJob).toBe('제조 현장 관리자');
-      // V2 의 BASIC enum → 양식 한글 라벨 'AI기초형' 으로 매핑되어야 한다.
-      expect(result.data.interviewOverview?.aiLevel).toBe('AI기초형');
+      // v2 양식: AI역량 자체입력 제거 → aiLevel 항상 빈 문자열 (로드맵 연계로만 표시).
+      expect(result.data.interviewOverview?.aiLevel).toBe('');
       expect(result.data.interviewOverview?.traineeCount).toBe(0);
       expect(result.data.interviewOverview?.trainingGoals).toEqual([]);
 
       expect(result.data.requirements).toBeDefined();
       // R8 PBL-자체-02 — 정형 객체. buildRequirementsFromV2 가 6 영역을 줄바꿈으로 결합
-      expect(result.data.requirements?.trainingNeedsAnalysis).toContain(
-        'V2 훈련환경 분석 결과',
-      );
+      expect(result.data.requirements?.trainingNeedsAnalysis).toContain('V2 훈련환경 분석 결과');
       expect(result.data.requirements?.selectionReason).toBe('V2 선정 사유');
       expect(result.data.requirements?.targetTaskDetails).toEqual([
         {
@@ -422,7 +386,7 @@ describe('preparePBLExportData', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.interviewOverview?.courseName).toBe('부분 V2 과정');
-      expect(result.data.interviewOverview?.aiLevel).toBe('AI탐구형');
+      expect(result.data.interviewOverview?.aiLevel).toBe('');
       expect(result.data.requirements?.targetTaskDetails).toEqual([
         {
           task_name: '부분 항목',
@@ -469,7 +433,7 @@ describe('preparePBLExportData', () => {
     }
   });
 
-  it('V1 인터뷰 부분 입력 (ai_level/training_goals 누락 + trainingEnvironment 없음 + diagnosis_summary null) → fallback 커버', async () => {
+  it('diagnosis_summary null → 빈 문자열 fallback', async () => {
     const mock = createMockSupabase({ authUser: { id: USER_ID } });
     mock.addResult({
       data: { ...PBL_ROW_BASE, diagnosis_summary: null },
@@ -477,43 +441,21 @@ describe('preparePBLExportData', () => {
     });
     mock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
     vi.mocked(createClient).mockResolvedValue(mock.client as never);
-    // V1 키 + ai_level/training_goals 미입력 + trainingEnvironment 없음 (targetTasks 만 존재)
-    adminMock.addResult({
-      data: {
-        pbl_data: {
-          courseOverview: {
-            course_name: '부분 V1 과정',
-            training_hours: 8,
-            trainee_count: 5,
-            training_job: '제조',
-            // ai_level / training_goals 의도적 누락
-          },
-          targetTasks: {
-            selection_reason: '부분 V1 사유',
-            target_task_details: [],
-          },
-        },
-      },
-      error: null,
-    });
+    adminMock.addResult({ data: null, error: null });
 
     const result = await preparePBLExportData(PBL_ID);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.diagnosisSummary).toBe('');
-      expect(result.data.interviewOverview?.aiLevel).toBe('');
-      expect(result.data.interviewOverview?.trainingGoals).toEqual([]);
-      expect(result.data.requirements?.trainingNeedsAnalysis).toBeUndefined();
-      expect(result.data.requirements?.selectionReason).toBe('부분 V1 사유');
     }
   });
 
-  it('V1 인터뷰지만 courseOverview 누락 → interviewOverview undefined', async () => {
+  it('V2 키가 없는 pbl_data → interviewOverview/requirements undefined (V1 fallback 제거)', async () => {
     const mock = createMockSupabase({ authUser: { id: USER_ID } });
     mock.addResult({ data: PBL_ROW_BASE, error: null });
     mock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
     vi.mocked(createClient).mockResolvedValue(mock.client as never);
-    // V1 키 (companyStatus) 만 존재 — courseOverview/trainingEnvironment/targetTasks 모두 누락
+    // 구 V1 키(companyStatus)만 존재 — V2 정본만 처리하므로 무시된다.
     adminMock.addResult({
       data: { pbl_data: { companyStatus: { business_issues: 'X' } } },
       error: null,

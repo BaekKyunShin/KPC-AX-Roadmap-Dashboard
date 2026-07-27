@@ -1,7 +1,11 @@
 'use server';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess } from '@/lib/actions/auth-helpers';
+import {
+  requireAuth,
+  requireAuthWithRole,
+  requireConsultantProjectAccess,
+} from '@/lib/actions/auth-helpers';
 import {
   roadmapInterviewSchema,
   roadmapInterviewAutoSaveSchema,
@@ -46,7 +50,7 @@ import type { ProjectStatus, ProjectTrack } from '@/types/database';
  * @returns 인증된 사용자 정보 또는 에러
  */
 async function verifyProjectAccess(
-  projectId: string,
+  projectId: string
 ): Promise<{ user: { id: string } } | { error: string }> {
   const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
     roleError: '컨설턴트만 접근 가능합니다.',
@@ -54,8 +58,10 @@ async function verifyProjectAccess(
   if ('error' in auth) return auth;
 
   const accessCheck = await requireConsultantProjectAccess(
-    auth.supabase, auth.user.id, projectId,
-    '해당 프로젝트에 대한 접근 권한이 없습니다.',
+    auth.supabase,
+    auth.user.id,
+    projectId,
+    '해당 프로젝트에 대한 접근 권한이 없습니다.'
   );
   if (accessCheck !== true) return accessCheck;
 
@@ -70,9 +76,7 @@ async function verifyProjectAccess(
 // 분리 전용 컬럼(roadmap_data JSONB)은 Step 12에서 도입 검토.
 // ============================================================================
 
-function mapRoadmapToLegacyColumns(
-  data: RoadmapInterviewInput | RoadmapInterviewAutoSaveInput,
-): {
+function mapRoadmapToLegacyColumns(data: RoadmapInterviewInput | RoadmapInterviewAutoSaveInput): {
   interview_date: string | null;
   interview_round: number;
   interview_time: string | null;
@@ -117,9 +121,7 @@ function mapRoadmapToLegacyColumns(
       roadmap_analysis_notes: an,
       // Ⅰ장 개요 (OFA-06.5 신규 — HRD이음 첨부 메타 포함)
       roadmap_overview: data.overview ?? null,
-      // Ⅲ-1 역량 모델링 + NCS 활용 (ISSUE-04, 2026-04-21 신규)
-      roadmap_competency_models: data.competency_models ?? [],
-      roadmap_ncs_usage: data.ncs_usage ?? null,
+      // 양식 v2: Ⅲ-1 역량 모델링(competency_models)·NCS(ncs_usage) 는 삭제됨.
       // ISSUE-10 Step C-2: 시작/종료 시간 JSONB
       roadmap_interview_time: { start: startTime, end: endTime },
     },
@@ -128,13 +130,12 @@ function mapRoadmapToLegacyColumns(
       task_name: t.task_name,
       task_description: t.as_is,
       roadmap_job: t.job,
-      roadmap_problems: t.problems,
-      roadmap_data_availability: t.data_availability,
-      roadmap_ai_necessity: t.ai_necessity,
+      // v2: 문제점·데이터·AI필요도 3필드가 roadmap_improvement 로 통합됨
+      roadmap_improvement: t.roadmap_improvement,
     })),
     pain_points: tasks.map((t) => ({
       id: t.id,
-      description: t.problems ?? '',
+      description: t.roadmap_improvement ?? '',
       severity: 'MEDIUM' as const,
     })),
     constraints: [],
@@ -159,7 +160,7 @@ function mapRoadmapToLegacyColumns(
 export async function saveRoadmapInterview(
   projectId: string,
   data: RoadmapInterviewInput | RoadmapInterviewAutoSaveInput,
-  options?: { autoSave?: boolean },
+  options?: { autoSave?: boolean }
 ): Promise<SimpleActionResult> {
   try {
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
@@ -241,10 +242,7 @@ export async function saveRoadmapInterview(
 
     let statusTransitioned = false;
     if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
-      await adminSupabase
-        .from('projects')
-        .update({ status: 'INTERVIEWED' })
-        .eq('id', projectId);
+      await adminSupabase.from('projects').update({ status: 'INTERVIEWED' }).eq('id', projectId);
       statusTransitioned = true;
     }
 
@@ -271,9 +269,10 @@ export async function saveRoadmapInterview(
       });
 
       if (!options?.autoSave) {
-        const logContent = auditAction === 'INTERVIEW_CREATE'
-          ? '인터뷰가 저장되었습니다.'
-          : '인터뷰가 수정되었습니다.';
+        const logContent =
+          auditAction === 'INTERVIEW_CREATE'
+            ? '인터뷰가 저장되었습니다.'
+            : '인터뷰가 수정되었습니다.';
         await insertSystemActivityLog(projectId, user.id, logContent);
       }
     });
@@ -315,7 +314,7 @@ export interface HrdReportUploadResult {
 /** HRD이음 진단 보고서 업로드 (Storage 'interview-attachments' 버킷) */
 export async function uploadHrdReportAttachment(
   projectId: string,
-  formData: FormData,
+  formData: FormData
 ): Promise<ActionResult<HrdReportUploadResult>> {
   try {
     const access = await verifyProjectAccess(projectId);
@@ -377,7 +376,7 @@ export async function uploadHrdReportAttachment(
 /** HRD이음 첨부 삭제 + signed URL 생성을 위한 헬퍼 */
 export async function removeHrdReportAttachment(
   projectId: string,
-  storagePath: string,
+  storagePath: string
 ): Promise<SimpleActionResult> {
   try {
     const access = await verifyProjectAccess(projectId);
@@ -444,7 +443,7 @@ const INTERVIEW_ATTACHMENT_BUCKET = 'interview-attachments';
  */
 export async function uploadInterviewAttachment(
   projectId: string,
-  formData: FormData,
+  formData: FormData
 ): Promise<ActionResult<HrdReportAttachment>> {
   try {
     // (1) 인증·역할
@@ -458,7 +457,7 @@ export async function uploadInterviewAttachment(
       auth.supabase,
       auth.user.id,
       projectId,
-      '해당 프로젝트에 대한 접근 권한이 없습니다.',
+      '해당 프로젝트에 대한 접근 권한이 없습니다.'
     );
     if (accessCheck !== true) return { success: false, error: accessCheck.error };
 
@@ -486,9 +485,7 @@ export async function uploadInterviewAttachment(
 
     // 안전 파일명: 한글 보존을 위해 file_name 은 원본을 메타에 보관하고,
     // storage path 는 UUID + 확장자만 사용한다.
-    const ext = (file.name.split('.').pop() ?? 'bin')
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '');
+    const ext = (file.name.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
     const safeExt = ext ? `.${ext}` : '';
     const random = crypto.randomUUID();
     const storagePath = `${projectId}/note-${random}${safeExt}`;
@@ -529,7 +526,7 @@ export async function uploadInterviewAttachment(
 /** 인터뷰 첨부 삭제 — 컨설턴트 배정 검증 + 경로 가드 */
 export async function removeInterviewAttachment(
   projectId: string,
-  storagePath: string,
+  storagePath: string
 ): Promise<SimpleActionResult> {
   try {
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
@@ -541,7 +538,7 @@ export async function removeInterviewAttachment(
       auth.supabase,
       auth.user.id,
       projectId,
-      '해당 프로젝트에 대한 접근 권한이 없습니다.',
+      '해당 프로젝트에 대한 접근 권한이 없습니다.'
     );
     if (accessCheck !== true) return { success: false, error: accessCheck.error };
 
@@ -567,13 +564,12 @@ export async function removeInterviewAttachment(
 /** HRD이음 첨부의 1시간 짜리 signed URL 발급 (다운로드/미리보기용) */
 export async function createHrdReportSignedUrl(
   projectId: string,
-  storagePath: string,
+  storagePath: string
 ): Promise<ActionResult<{ url: string }>> {
   try {
-    const auth = await requireAuthWithRole(
-      ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'],
-      { roleError: '첨부 파일 조회 권한이 없습니다.' },
-    );
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'], {
+      roleError: '첨부 파일 조회 권한이 없습니다.',
+    });
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, role, supabase: serverSupabase } = auth;
 
@@ -586,7 +582,7 @@ export async function createHrdReportSignedUrl(
         serverSupabase,
         user.id,
         projectId,
-        '해당 프로젝트의 첨부 파일 접근 권한이 없습니다.',
+        '해당 프로젝트의 첨부 파일 접근 권한이 없습니다.'
       );
       if (accessCheck !== true) return { success: false, error: accessCheck.error };
     }
@@ -616,7 +612,7 @@ export async function createHrdReportSignedUrl(
  * PBL 인터뷰 조회 — 컨설턴트 전용 (배정된 프로젝트에 한함)
  */
 export async function fetchPBLInterview(
-  projectId: string,
+  projectId: string
 ): Promise<{ pbl_data: Record<string, unknown> } | null> {
   try {
     const auth = await requireAuth();
@@ -666,7 +662,9 @@ export async function fetchInterview(projectId: string) {
 
     const { data: interview } = await supabase
       .from('interviews')
-      .select('id, project_id, interview_date, interview_round, interview_time, participants, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements, stt_insights')
+      .select(
+        'id, project_id, interview_date, interview_round, interview_time, participants, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements, stt_insights'
+      )
       .eq('project_id', projectId)
       .single();
 
@@ -755,7 +753,7 @@ export async function processSttFile(
  */
 export async function extractSttInsights(
   projectId: string,
-  sttText: string,
+  sttText: string
 ): Promise<ActionResult<SttInsights>> {
   try {
     const authResult = await verifyProjectAccess(projectId);
@@ -837,9 +835,7 @@ export async function deleteSttInsights(projectId: string): Promise<SimpleAction
  * is_test_mode) 를 조회하는 보조 함수. `verifyProjectAccess` 가 역할 + 배정을
  * 이미 검증했다는 전제하에 호출한다 (중복 검증 회피).
  */
-async function fetchProjectMetaForInterview(
-  projectId: string,
-): Promise<
+async function fetchProjectMetaForInterview(projectId: string): Promise<
   | {
       id: string;
       status: ProjectStatus;
@@ -878,7 +874,7 @@ async function fetchProjectMetaForInterview(
 export async function saveRoadmapInterviewV2(
   projectId: string,
   data: unknown,
-  options?: { autoSave?: boolean },
+  options?: { autoSave?: boolean }
 ): Promise<SimpleActionResult> {
   try {
     // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용
@@ -972,10 +968,7 @@ export async function saveRoadmapInterviewV2(
 
     let statusTransitioned = false;
     if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
-      await adminSupabase
-        .from('projects')
-        .update({ status: 'INTERVIEWED' })
-        .eq('id', projectId);
+      await adminSupabase.from('projects').update({ status: 'INTERVIEWED' }).eq('id', projectId);
       statusTransitioned = true;
     }
 
@@ -1023,7 +1016,7 @@ export async function saveRoadmapInterviewV2(
  */
 export async function submitRoadmapInterviewV2(
   projectId: string,
-  data: unknown,
+  data: unknown
 ): Promise<SimpleActionResult> {
   return saveRoadmapInterviewV2(projectId, data, { autoSave: false });
 }
@@ -1034,7 +1027,7 @@ export async function submitRoadmapInterviewV2(
  * 컨설턴트 배정 프로젝트만 조회 가능. 조회 실패/미존재 시 null.
  */
 export async function fetchRoadmapInterviewV2(
-  projectId: string,
+  projectId: string
 ): Promise<Partial<RoadmapInterviewStrict> | null> {
   try {
     // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용. 실패 시 null (UI 조회는 조용히 실패).
@@ -1071,7 +1064,7 @@ export async function fetchRoadmapInterviewV2(
 export async function savePBLInterviewV2(
   projectId: string,
   data: unknown,
-  options?: { autoSave?: boolean },
+  options?: { autoSave?: boolean }
 ): Promise<SimpleActionResult> {
   try {
     // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용
@@ -1091,9 +1084,7 @@ export async function savePBLInterviewV2(
       };
     }
 
-    const schema = options?.autoSave
-      ? PBLInterviewAutoSaveSchema
-      : PBLInterviewStrictSchema;
+    const schema = options?.autoSave ? PBLInterviewAutoSaveSchema : PBLInterviewStrictSchema;
     const validation = schema.safeParse(data);
     if (!validation.success) {
       // #001 — 모든 zod 에러를 join 해 사용자가 비어있는 필드를 한 번에 파악할 수 있게 한다.
@@ -1155,10 +1146,7 @@ export async function savePBLInterviewV2(
 
     let statusTransitioned = false;
     if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
-      await adminSupabase
-        .from('projects')
-        .update({ status: 'INTERVIEWED' })
-        .eq('id', projectId);
+      await adminSupabase.from('projects').update({ status: 'INTERVIEWED' }).eq('id', projectId);
       statusTransitioned = true;
     }
 
@@ -1185,11 +1173,7 @@ export async function savePBLInterviewV2(
       });
 
       if (!options?.autoSave) {
-        await insertSystemActivityLog(
-          projectId,
-          user.id,
-          'PBL 인터뷰가 저장되었습니다.',
-        );
+        await insertSystemActivityLog(projectId, user.id, 'PBL 인터뷰가 저장되었습니다.');
       }
     });
 
@@ -1205,7 +1189,7 @@ export async function savePBLInterviewV2(
  */
 export async function submitPBLInterviewV2(
   projectId: string,
-  data: unknown,
+  data: unknown
 ): Promise<SimpleActionResult> {
   return savePBLInterviewV2(projectId, data, { autoSave: false });
 }
@@ -1214,7 +1198,7 @@ export async function submitPBLInterviewV2(
  * PBL 인터뷰 조회 — DB pbl_data JSONB → camelCase Partial 반환.
  */
 export async function fetchPBLInterviewV2(
-  projectId: string,
+  projectId: string
 ): Promise<Partial<PBLInterviewStrict> | null> {
   try {
     // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용

@@ -26,14 +26,16 @@
  * | Ⅱ-1-가 기업 경영 이슈           | [인터뷰]   | PBLAnalysis.companyIssues |
  * | Ⅱ-1-나 조직 및 주요 업무        | [인터뷰]   | PBLAnalysis.organization.{orgTree, mainWork} |
  * | Ⅱ-2 기업 훈련환경 분석          | [인터뷰]   | PBLAnalysis.trainingEnv |
- * | Ⅱ-3-가 HRD이음 컨설팅 결과 PDF  | [PDF 첨부] | PBLAnalysis.hrdReportPdf |
- * | Ⅱ-3-나 AI훈련과정 개발 필요성   | [인터뷰]   | PBLAnalysis.courseNecessity |
- * | Ⅲ-1 훈련과제 도출 수행활동      | [인터뷰]   | PBLTasks.activities[] |
- * | Ⅲ-2-가 문제 도출                | [인터뷰]   | PBLTasks.problems[] |
- * | Ⅲ-2-나 문제 우선순위 결정       | [인터뷰]   | PBLTasks.priority |
- * | Ⅲ-3 가·나·다 훈련대상 업무      | [인터뷰]   | PBLTasks.target |
- * | Ⅲ-4-가 현재 AI역량 수준         | [인터뷰]   | PBLTasks.currentAiLevel (BASIC|EXPLORER|USER|LEADER) |
- * | Ⅲ-4-나 예상 AI역량 수준         | [인터뷰]   | PBLTasks.expectedAiLevel (동일 enum) |
+ * | Ⅱ-3-가 HRD이음 컨설팅 결과 PDF  | [PDF 첨부]    | PBLAnalysis.hrdReportPdf |
+ * | Ⅱ-3-나 AI훈련과정 개발 필요성   | [인터뷰]      | PBLAnalysis.courseNecessity |
+ * | Ⅲ-1 훈련과제 도출 수행활동      | [로드맵 연동] | PBL 미입력 — 직전 로드맵 Ⅲ-1 수행활동 자동 연결 |
+ * | Ⅲ-2-가 문제 정의서              | [인터뷰]      | PBLTasks.problemDefinitionSheet |
+ * | Ⅲ-3-가 훈련대상 과업 선정       | [인터뷰+연동] | PBLTasks.target.taskSelections[] — 4열 로드맵 과업 연동 + 2열 PBL 입력(AI도입·활용 필요도·훈련 선정) |
+ * | Ⅲ-3-나 AI기반 문제해결 필요성   | [인터뷰]      | PBLTasks.target.necessity |
+ * | Ⅲ-3-다 훈련대상 업무 세부내용   | [인터뷰]      | PBLTasks.target.details[] |
+ *
+ * (V2 제거: Ⅲ-2-나 문제 우선순위 매트릭스 · Ⅲ-4 AI역량 수준 진단 — AI역량은
+ *  로드맵 연동으로만 표출하며 PBL 에서 자체 입력하지 않는다.)
  *
  * ============================================================================
  * 이중 검증 구조:
@@ -479,25 +481,6 @@ export function createEmptyRecommendation() {
 // Ⅳ-4-나 결과평가 계획 은 [고정 양식·결과 화면 제외] 이므로 어떤 스키마에도 포함 안 함.
 // ============================================================================
 
-// -- AI역량 수준 enum (4종) ---------------------------------------------------
-// 양식 원문 한글 라벨(AI기초형·AI탐구형·AI활용형·AI선도형)은 기존 `AI_LEVEL`
-// 에서 계속 유지한다. 신규 camelCase 스키마는 영문 enum 을 사용해 HWPX/LLM
-// 페이로드에서 표기 흔들림을 방지하고, UI 라벨 매핑은 별도 상수로 제공한다.
-//
-// BASIC    = AI기초형 (기초) — AI 인식은 있으나 활용 거의 없음
-// EXPLORER = AI탐구형 (초급) — 학습·파일럿 검토 중
-// USER     = AI활용형 (중급) — 부서 단위 활용, 데이터 기반 개선 시작
-// LEADER   = AI선도형 (고급) — 조직 전반 내재화, AX 전환 완료
-export const PBL_AI_LEVEL_ENUM = z.enum(['BASIC', 'EXPLORER', 'USER', 'LEADER']);
-export type PBLAILevel = z.infer<typeof PBL_AI_LEVEL_ENUM>;
-
-export const PBL_AI_LEVEL_LABEL: Record<PBLAILevel, string> = {
-  BASIC: 'AI기초형',
-  EXPLORER: 'AI탐구형',
-  USER: 'AI활용형',
-  LEADER: 'AI선도형',
-};
-
 // -- Ⅰ 훈련과정 개요 [인터뷰] -------------------------------------------------
 // 양식 Ⅰ 의 표 (기업명·훈련과정명·NCS·시간·대상 등) 중 인터뷰 단계에서 입력
 // 받는 핵심 필드만 추린다. 주소·관할 등 신청서 자동 불러옴 항목은 결과 화면에서
@@ -647,6 +630,63 @@ export const PBLTrainingEnvSchema = z.object({
 });
 export type PBLTrainingEnv = z.infer<typeof PBLTrainingEnvSchema>;
 
+// -- Ⅱ-1-나 / Ⅱ-2 로드맵 연계 항목의 PBL 측 수정값 ---------------------------
+//
+// 정본은 Ⅱ장을 선행 로드맵 보고서에서 "자동 연계 / 전산 자동 표출" 하도록 지정한다.
+// 다만 로드맵 확정 후 PBL 착수까지 시간이 흘러 기업 현황·과업 범위가 달라질 수 있고,
+// 오타 하나를 고치려 로드맵으로 되돌아가는 것도 비효율이므로 **PBL 에서 수정 가능**하게
+// 한다. 이때 로드맵 값을 복사(snapshot)하지 않고 **덮어쓴 필드만** 여기에 보관한다:
+//
+//   ⓐ 로드맵 원본 불변이 구조적으로 보장된다 (PBL 은 자기 pbl_data 만 쓴다)
+//   ⓑ 로드맵이 나중에 갱신되면 미수정 항목은 자동으로 최신값을 따른다
+//   ⓒ 무엇을 고쳤는지 추적 가능하고, 되돌리기가 키 삭제로 끝난다
+//
+// 병합은 `mergeRoadmapOverrides`(`services/pbl/pbl-roadmap-link.ts`) 한 곳에서만
+// 수행한다 — 화면과 HWPX payload 가 같은 함수를 통과하므로 값이 어긋날 수 없다.
+//
+// ⚠️ Ⅱ-1-나 "주요 활동"(performanceActivities) 은 override 대상이 아니다. 로드맵
+// 컨설팅을 어떻게 수행했는지의 **이력**이라 PBL 이 고칠 성질이 아니고, 로드맵 결과
+// 화면에서도 읽기 전용이다. PBL 자체 활동은 Ⅲ-1(performanceActivities) 에 따로 있다.
+export const PBLRoadmapOverridesSchema = z.object({
+  // Ⅱ-1-나 수립 배경 (로드맵 Ⅰ-1 수립 필요성)
+  establishmentNecessity: z.string().optional(),
+  // Ⅱ-1-나 수립 결과 — 기업 AI 역량 수준 / 선정 과업 (로드맵 Ⅰ-3)
+  aiLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional(),
+  selectedTask: z.string().optional(),
+  // Ⅱ-1-나 수립 주요내용(요약) — 로드맵 FINAL outcome_summary.main_content
+  roadmapSummary: z.string().optional(),
+  // Ⅱ-2-나 기업 요구분석 4행 (로드맵 Ⅱ-2)
+  companyRequirements: z
+    .object({
+      status: z.string().optional(),
+      problem: z.string().optional(),
+      will: z.string().optional(),
+      outcomes: z.string().optional(),
+    })
+    .optional(),
+  // Ⅱ-2-다 과업(Task)·워크플로우 분석표 (로드맵 Ⅱ-3) — 행 index 기준 부분 덮어쓰기
+  taskAnalysis: z
+    .array(
+      z.object({
+        domain: z.string().optional(),
+        task: z.string().optional(),
+        asIs: z.string().optional(),
+        improvement: z.string().optional(),
+      })
+    )
+    .optional(),
+  // Ⅱ-2 훈련대상 과업 선정 (로드맵 Ⅱ-4)
+  targetTask: z
+    .object({
+      name: z.string().optional(),
+      reason: z.string().optional(),
+      expectedAsIs: z.string().optional(),
+      expectedToBe: z.string().optional(),
+    })
+    .optional(),
+});
+export type PBLRoadmapOverrides = z.infer<typeof PBLRoadmapOverridesSchema>;
+
 // -- Ⅱ 훈련 요구 분석 [인터뷰 + PDF 첨부] ----------------------------------
 export const PBLAnalysisSchema = z.object({
   // Ⅱ-1-가 기업 경영 이슈
@@ -664,89 +704,15 @@ export const PBLAnalysisSchema = z.object({
   hrdReportPdf: PBLHrdReportPdfSchema.nullish(),
   // Ⅱ-3-나 AI훈련과정 개발 필요성
   courseNecessity: z.string().min(1, 'AI훈련과정 개발 필요성을 입력하세요.'),
+  // Ⅱ-1-나 / Ⅱ-2 로드맵 연계 항목의 **PBL 측 수정값**. 아래 주석 참조.
+  roadmapOverrides: PBLRoadmapOverridesSchema.optional(),
 });
 export type PBLAnalysis = z.infer<typeof PBLAnalysisSchema>;
 
-// -- Ⅲ-1 수행활동 행 ---------------------------------------------------------
-// 양식 Ⅲ-1 의 표는 "차수 × 4행(참석자) 병합" 구조 — col 4 가 4 역할 라벨
-// (컨설팅책임자(PM)·외부전문가·내부전문가·능력개발전담주치의), col 5 가
-// 각 역할의 성명. 따라서 참석자는 4 역할별 성명 4 필드 object 로 저장한다.
-//
-// PR #5 Phase F-4 (사용자 한컴 재검증 후 회귀 보고): 이전에는 participants 가
-// 단일 string 이라 4 행 모두 첫 행(PM) 에 몰려 출력 — 양식과 정합 X. 본
-// schema 변경으로 4 역할 분리 입력 가능하게 한다.
-//
-// 기존 DB JSONB 데이터 호환: z.preprocess 로 string 입력 시 PM 필드에 채워
-// object 로 정규화. 마이그레이션 SQL 불요.
-// R8 PBL-자체-03 — PBLActivityParticipantsSchema 폐기 (옵션 B). 외부 참조 없음 확인.
-
-// R8 PBL-자체-03 — 기존 PBLActivityItem (차수당 1행 + participants 4 person dict)
-// 폐기 (옵션 B 평면 4행 배열로 전환). PBLActivityParticipantsSchema 는
-// 다른 코드(외부 참조 없음 확인) 가 import 하지 않으므로 함께 제거.
-
-// -- Ⅲ-1 평면 4행 배열 (R8 PBL-자체-03, 옵션 B) -----------------------------
-// 양식 13×6 = 차수당 4 역할 (PM/외부전문가/내부전문가/주치의) × 일자/내용/방법.
-// `PBLActivityItem` 은 차수당 1행이라 역할별 일자·내용·방법 분리 불가.
-// 평면 4행 배열은 한 행 = 하나의 (차수, 역할) 조합 → 양식 1:1 정합.
-//
-// `superRefine` 제약:
-//   - 같은 round 내에서 정확히 4 role 행이 있어야 한다 (양식 정형).
-//   - 빈 round 는 기본값 채움이 아니라 사용자가 차수 추가 버튼으로 명시 추가.
-export const PBL_ACTIVITY_ROLE = z.enum([
-  'PM',
-  'EXTERNAL_EXPERT',
-  'INTERNAL_EXPERT',
-  'JURISDICTION_MANAGER',
-]);
-export type PBLActivityRole = z.infer<typeof PBL_ACTIVITY_ROLE>;
-export const PBL_ACTIVITY_ROLES_ORDERED: ReadonlyArray<PBLActivityRole> = [
-  'PM',
-  'EXTERNAL_EXPERT',
-  'INTERNAL_EXPERT',
-  'JURISDICTION_MANAGER',
-];
-export const PBL_ACTIVITY_ROLE_LABEL: Record<PBLActivityRole, string> = {
-  PM: 'PM',
-  EXTERNAL_EXPERT: '외부전문가',
-  INTERNAL_EXPERT: '기업내부전문가',
-  JURISDICTION_MANAGER: '능력개발전담주치의',
-};
-
-export const PBLActivityRowSchema = z.object({
-  round: z
-    .number({ message: '차수는 숫자여야 합니다.' })
-    .int({ message: '차수는 정수여야 합니다.' })
-    .positive({ message: '차수는 1 이상이어야 합니다.' }),
-  role: PBL_ACTIVITY_ROLE,
-  personName: z.string().default(''), // 역할 담당자 성명
-  date: z.string().default(''),
-  content: z.string().default(''),
-  method: z.string().default(''),
-});
-export type PBLActivityRow = z.infer<typeof PBLActivityRowSchema>;
-
-export const PBLActivitiesSchema = z.array(PBLActivityRowSchema).superRefine((rows, ctx) => {
-  if (rows.length === 0) return;
-  // round 별 그룹핑 → 각 round 마다 정확히 4 role 행이 있어야 한다.
-  const byRound = new Map<number, Set<PBLActivityRole>>();
-  rows.forEach((r) => {
-    const set = byRound.get(r.round) ?? new Set<PBLActivityRole>();
-    set.add(r.role);
-    byRound.set(r.round, set);
-  });
-  byRound.forEach((roleSet, round) => {
-    const missing = PBL_ACTIVITY_ROLES_ORDERED.filter((r) => !roleSet.has(r));
-    if (missing.length > 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `${round}차의 ${missing
-          .map((r) => PBL_ACTIVITY_ROLE_LABEL[r])
-          .join('/')} 행이 누락되었습니다.`,
-        path: [],
-      });
-    }
-  });
-});
+// -- Ⅲ-1 수행활동 (V2: 로드맵 연동) ------------------------------------------
+// PBL 은 더 이상 Ⅲ-1 수행활동을 자체 입력하지 않는다. 직전 로드맵의 Ⅲ-1
+// 수행활동을 자동 연결해 표출하므로 PBL 스키마에서 관련 심볼
+// (PBL_ACTIVITY_ROLE·PBLActivityRowSchema·PBLActivitiesSchema 등) 을 제거한다.
 
 // -- Ⅲ-2-가 문제 정의서 V2 (R8 PBL-자체-04) ----------------------------------
 // 양식 Ⅲ-2-가 의 5×2 "문제 정의서" 표 — 4 정형 항목 (구분/내용) 단일 세트.
@@ -767,27 +733,8 @@ export const PBLProblemDefinitionSheetSchema = z.object({
 });
 export type PBLProblemDefinitionSheet = z.infer<typeof PBLProblemDefinitionSheetSchema>;
 
-// -- Ⅲ-2-나 문제 우선순위 행 -----------------------------------------------
-export const PBLPriorityItemSchema = z.object({
-  problem: z.string().min(1, '문제명을 입력하세요.'),
-  score: z
-    .number({ message: '우선순위 점수는 숫자여야 합니다.' })
-    .int({ message: '우선순위 점수는 정수여야 합니다 (소수 불가).' })
-    .min(1, { message: '우선순위 점수는 1 이상이어야 합니다.' })
-    .max(5, { message: '우선순위 점수는 5 이하여야 합니다.' }),
-  rank: z
-    .number({ message: '순위는 숫자여야 합니다.' })
-    .int({ message: '순위는 정수여야 합니다.' })
-    .positive({ message: '순위는 1 이상이어야 합니다.' }),
-});
-export type PBLPriorityItem = z.infer<typeof PBLPriorityItemSchema>;
-
-// -- Ⅲ-2-나 문제 우선순위 결정 -----------------------------------------------
-export const PBLPrioritySchema = z.object({
-  items: z.array(PBLPriorityItemSchema).min(1, '문제 우선순위 행을 최소 1개 입력하세요.'),
-  method: z.string().min(1, '우선순위 결정 방법(AHP·협의 등)을 입력하세요.'),
-});
-export type PBLPriority = z.infer<typeof PBLPrioritySchema>;
+// -- Ⅲ-2-나 문제 우선순위 (V2: 제거) -----------------------------------------
+// 문제 우선순위 매트릭스는 V2 양식에서 삭제됨 — PBLPrioritySchema 등 제거.
 
 // -- Ⅲ-3 다. 훈련대상 업무 세부내용 (PR #7: 양식 4×5 의 5 컬럼 1:1 정합) ---
 // 양식 PDF Ⅲ-3-다 표 5 컬럼: 업무명 | AS-IS | TO-BE | 요구지식 | 기술
@@ -813,44 +760,63 @@ export const PBLTargetDetailSchema = z.preprocess((raw) => {
 }, PBLTargetDetailObject);
 export type PBLTargetDetail = z.infer<typeof PBLTargetDetailSchema>;
 
+// -- Ⅲ-3-가 로드맵 과업별 PBL 선정 입력 (로드맵 과업 목록과 순서 1:1) ---------
+// 양식 Ⅲ-3-가 6열 표 = 4열(로드맵 과업 자동 연동) + 2열(PBL 컨설턴트 입력).
+// taskSelections[] 는 로드맵 과업 순서와 1:1 로 대응하며, 각 원소가 PBL 이
+// 입력하는 2열(AI도입·활용 필요도 서술 + 훈련 선정 여부)을 담는다.
+export const PBLTaskSelectionSchema = z.object({
+  ai_necessity: z.string().default(''), // AI도입·활용 필요도 (서술)
+  training_selected: z.boolean().default(false), // 훈련 선정 여부
+});
+export type PBLTaskSelection = z.infer<typeof PBLTaskSelectionSchema>;
+
 // -- Ⅲ-3 가·나·다 훈련대상 업무 통합 ----------------------------------------
-// 양식 Ⅲ-3 가(선정), 나(선정 사유), 다(세부내용) 를 단일 객체로 통합.
-// `code` 는 NCS 분류 자동 채움 경로 대비 optional.
-// `necessity_score` (1~5): 양식 Ⅲ-3-가 6×7 표의 col 1~5 점수 체크칸.
-//   - 사용자 한컴 검증 (PR #5) 에서 점수 칸 누락이 회귀로 보고됨.
-//   - 기존 데이터 호환성을 위해 default(3) — 기존 DB JSONB row 도 strict
-//     parse 가 자동으로 점수를 채움.
+// 양식 Ⅲ-3 가(로드맵 과업별 선정), 나(선정 사유), 다(세부내용) 를 단일 객체로 통합.
+//   - 가: taskSelections[] — 로드맵 과업 순서 1:1 (PBL 은 2열만 입력)
+//   - 나: necessity — AI기반 문제해결 필요성(선정 사유)
+//   - 다: details[] — 훈련대상 업무 세부내용 (업무명은 details[].title 이 보유)
 export const PBLTargetSchema = z.object({
-  name: z.string().min(1, '훈련대상 업무명을 입력하세요.'),
-  code: z.string().optional(),
-  scope: z.string().min(1, '업무 범위(부서·인원 등)를 입력하세요.'),
-  necessity: z.string().min(1, 'AI기반 문제해결 필요성(선정 사유)을 입력하세요.'),
-  necessity_score: z.number().int().min(1).max(5).default(3),
-  details: z.array(PBLTargetDetailSchema),
+  taskSelections: z.array(PBLTaskSelectionSchema).default([]), // Ⅲ-3-가 (로드맵 과업 1:1)
+  necessity: z.string().min(1, 'AI기반 문제해결 필요성(선정 사유)을 입력하세요.'), // Ⅲ-3-나
+  details: z.array(PBLTargetDetailSchema), // Ⅲ-3-다 (keep as-is)
 });
 export type PBLTarget = z.infer<typeof PBLTargetSchema>;
 
-// -- Ⅲ-4 가·나 AI역량 수준 (현재/예상 공통 구조) ----------------------------
-export const PBLAiLevelAssessmentSchema = z.object({
-  level: PBL_AI_LEVEL_ENUM,
-  note: z.string().default(''),
+// -- Ⅲ-1 훈련과제 도출 수행활동 [PBL 자체 입력] ------------------------------
+// 정본 T19 는 **참석자 4역할**(PM·외부전문가(직무,HRD)·기업내부전문가·능력개발전담
+// 주치의) · **수행 일자(날짜만)** 로, 로드맵 Ⅰ-2(2역할·일시)와 구조가 다른 별개 표다.
+// PBL 인터뷰는 로드맵 인터뷰와 별도 일정이므로 로드맵 활동을 재사용하면 날짜가 틀리고
+// 참석자 2행이 공란으로 출력된다(과거 결함) → PBL 이 직접 입력한다.
+//
+// 4역할 정의는 V1 `performanceParticipantsSchema` 를 그대로 재사용한다(이미 정본 정합).
+export const PBLPerformanceActivitySchema = z.object({
+  round: z.number().int().min(1, '차수는 1 이상이어야 합니다.'),
+  date: z.string().default(''), // 양식 표기 '25/00/00' — 날짜만 (시간 칸 없음)
+  content: z.string().default(''),
+  method: z.string().default('ONSITE'), // ONSITE | VIDEO | WORKSHOP | OTHER
+  participants: performanceParticipantsSchema.default({
+    pm: '',
+    external_expert: '',
+    internal_expert: '',
+    jurisdiction_manager: '',
+  }),
 });
-export type PBLAiLevelAssessment = z.infer<typeof PBLAiLevelAssessmentSchema>;
+export type PBLPerformanceActivity = z.infer<typeof PBLPerformanceActivitySchema>;
 
 // -- Ⅲ AI기반 훈련과제 도출 [인터뷰] ---------------------------------------
+// V2: Ⅲ-2-나 우선순위·Ⅲ-4 AI역량 은 PBL 자체입력에서 제거(AI역량은 로드맵 연동).
+// Ⅲ-1 수행활동은 정본 표 구조가 로드맵과 달라 **PBL 자체 입력으로 복원**했다.
 export const PBLTasksSchema = z.object({
-  // Ⅲ-1 수행활동 (R8 PBL-자체-03 — 평면 4행 배열)
-  activities: PBLActivitiesSchema,
+  // Ⅲ-1 훈련과제 도출 수행활동 (PBL 자체 입력 — 차수당 4역할).
+  // default([]) — Ⅲ-1 도입 전에 저장된 기존 인터뷰도 strict 검증을 통과해야 한다.
+  performanceActivities: z
+    .array(PBLPerformanceActivitySchema)
+    .max(15, '수행활동은 최대 15차까지 입력할 수 있습니다.')
+    .default([]),
   // Ⅲ-2-가 문제 정의서 (R8 PBL-자체-04 — 4 정형 항목 단일 세트)
   problemDefinitionSheet: PBLProblemDefinitionSheetSchema,
-  // Ⅲ-2-나 문제 우선순위 결정
-  priority: PBLPrioritySchema,
-  // Ⅲ-3 훈련대상 업무 (가·나·다 통합)
+  // Ⅲ-3 훈련대상 업무 (가: 로드맵 과업별 선정 · 나: 선정 사유 · 다: 세부내용)
   target: PBLTargetSchema,
-  // Ⅲ-4-가 현재 AI역량 수준
-  currentAiLevel: PBLAiLevelAssessmentSchema,
-  // Ⅲ-4-나 예상 AI역량 수준
-  expectedAiLevel: PBLAiLevelAssessmentSchema,
 });
 
 // -- 통합 스키마: Ⅰ + Ⅱ + Ⅲ --------------------------------------------------
@@ -872,7 +838,7 @@ export type PBLInterviewStrict = z.infer<typeof PBLInterviewSchema>;
 // V2 PBL autoSave 전용 (#011 fix — PBL 측 동일 패턴).
 //
 // PBL 은 ROADMAP 보다 nested 가 깊고 schema 도 더 복잡 (PBLOrganizationSchema,
-// PBLActivityItemSchema 의 다단 nested 등). ROADMAP 처럼 explicit deep-loose
+// PBLOrgTreeNodeSchema 의 재귀 nested 등). ROADMAP 처럼 explicit deep-loose
 // 재정의는 비용 큼. PBLInterviewSchema.partial() 의 shallow 한계로 인한 silent
 // fail 을 단순 `passthrough` 로 차단한다 (자동저장 입력은 모두 통과 + 클라이언트
 // type 신뢰 + converters.ts 의 mapPBLInterviewToDb 가 모든 필드에 fallback 기본값
@@ -894,7 +860,7 @@ export const PBLInterviewStrictSchema = PBLInterviewSchema.superRefine((d, ctx) 
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          'Ⅱ-3-가 HRD이음 보고서 PDF 첨부 또는 Ⅱ-3-나 AI훈련과정 개발 필요성 작성 중 하나는 필수입니다.',
+          'Ⅱ-1-가 HRD이음 보고서 PDF 첨부 또는 Ⅱ-1-다 AI훈련과정 개발 필요성 작성 중 하나는 필수입니다.',
         path: ['courseNecessity'],
       });
     }

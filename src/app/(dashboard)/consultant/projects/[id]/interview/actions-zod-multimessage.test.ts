@@ -21,11 +21,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  saveRoadmapInterview,
-  saveRoadmapInterviewV2,
-  savePBLInterviewV2,
-} from './actions';
+import { saveRoadmapInterview, saveRoadmapInterviewV2, savePBLInterviewV2 } from './actions';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
@@ -63,17 +59,17 @@ async function mockCachedAuth({
 }: { authed?: boolean; role?: string | null; status?: string | null } = {}) {
   const cached = await import('@/lib/supabase/cached');
   vi.mocked(cached.getCachedUser).mockResolvedValue(
-    (authed ? { id: USER_A, email: 'consultant@example.com' } : null) as never,
+    (authed ? { id: USER_A, email: 'consultant@example.com' } : null) as never
   );
   vi.mocked(cached.getCachedProfile).mockResolvedValue(
-    (authed ? { id: USER_A, role, status } : null) as never,
+    (authed ? { id: USER_A, role, status } : null) as never
   );
 }
 
 /** V2 — requireConsultantProjectAccess 의 server side projects select */
 function mockProjectAssignmentCheck(
   serverMock: ReturnType<typeof createMockSupabase>,
-  { assigned = true }: { assigned?: boolean } = {},
+  { assigned = true }: { assigned?: boolean } = {}
 ) {
   serverMock.addResult({
     data: assigned ? { id: PROJECT_ID } : null,
@@ -89,7 +85,7 @@ function mockProjectMeta(
     status?: string;
     company_name?: string;
     is_test_mode?: boolean;
-  } = {},
+  } = {}
 ) {
   adminMock.addResult({
     data: {
@@ -155,10 +151,7 @@ describe('Server Action Zod 다중 메시지 (#1)', () => {
       training_targets: [],
     };
 
-    const r = await saveRoadmapInterview(
-      PROJECT_ID,
-      invalid as never,
-    );
+    const r = await saveRoadmapInterview(PROJECT_ID, invalid as never);
     expect(r.success).toBe(false);
     if (!r.success) {
       const lines = r.error.split('\n');
@@ -249,29 +242,17 @@ describe('Server Action Zod 다중 메시지 (#1)', () => {
         push_willingness: '적극 지원',
         expected_outcomes: '15% 개선',
       },
-      task_workflow_items: [{
-        id: 't1',
-        job: '생산',
-        task_name: '검사',
-        as_is: '육안',
-        problems: '편차',
-        data_availability: '2년치',
-        ai_necessity: 4,
-      }],
+      task_workflow_items: [
+        {
+          id: 't1',
+          job: '생산',
+          task_name: '검사',
+          as_is: '육안',
+          roadmap_improvement: '편차 → 2년치 데이터로 Vision AI 1차 선별 (필요도 높음)',
+        },
+      ],
       analysis_notes: { text: '', attachment_files: [] },
       training_targets: [], // 단일 누락
-      competency_models: [{
-        id: 'cm1',
-        competency_name: '품질 검사 데이터 해석',
-        competency_definition: '검사 이미지 데이터에서 불량 패턴을 식별',
-        knowledge: '이미지 분류 기초',
-        skill: '이미지 레이블링',
-        attitude: '데이터 기반 의사결정',
-      }],
-      ncs_usage: {
-        uses_ncs: false,
-        competency_derivation_method: '현장 인터뷰 + 벤치마킹',
-      },
       notes: '',
     };
 
@@ -283,5 +264,4 @@ describe('Server Action Zod 다중 메시지 (#1)', () => {
       expect(lines[0].trim().length).toBeGreaterThan(0);
     }
   });
-
 });

@@ -36,12 +36,19 @@ import { generatePBLContent, PBLGenerationError } from '@/lib/services/pbl/pbl-g
 import { pblContentSchema } from '@/lib/services/pbl/pbl-validator';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 import { buildPBLHwpxPayload, generatePBLHwpx } from '@/lib/services/export/hwpx';
+import {
+  extractLinkedRoadmapSummary,
+  fetchLinkedRoadmapData,
+  hydrateRoadmapInterview,
+  mergeRoadmapOverrides,
+} from '@/lib/services/pbl/pbl-roadmap-link';
 import { fetchPBLInterviewV2 } from '../interview/actions';
 import {
   mapDbToPBLInterview,
   mapPBLInterviewToDb,
   mergeTrainingEnv,
   mergeProblemDefinitionSheet,
+  mergeRoadmapOverridePatch,
 } from '@/lib/services/interview/converters';
 import type { ConsultantProfile } from '@/types/database';
 import type {
@@ -672,6 +679,21 @@ export async function exportPBLAsHwpxAction(
       };
     }
 
+    // 선행 로드맵 연계 데이터 (Ⅱ장 수립·요구분석 · Ⅲ-3-가 과업 목록).
+    // Ⅲ-1 수행활동은 연계 대상이 아니다 — PBL 인터뷰 자체 입력(정본 4역할·수행 일자).
+    const linked = await fetchLinkedRoadmapData(access.data.projectId, admin);
+    // PBL 측 수정값(roadmapOverrides)을 얹는다 — 결과 페이지(`page.tsx`)와 동일 병합 함수.
+    const overrides = mapDbToPBLInterview(
+      (interviewRow as { pbl_data: Record<string, unknown> | null } | null) ?? null
+    ).roadmapOverrides;
+    const linkedRoadmap = mergeRoadmapOverrides(
+      hydrateRoadmapInterview(linked.interview),
+      overrides
+    );
+    // Ⅱ-1-나 r2 요약 — 선행 로드맵 결과 outcome_summary.main_content (이미 조회된 linked 재사용).
+    // PBL 에서 요약을 보정했으면 그 값이 우선한다.
+    const linkedRoadmapSummary = overrides?.roadmapSummary ?? extractLinkedRoadmapSummary(linked);
+
     // 5) payload 변환 + Python 함수 호출
     const payload = buildPBLHwpxPayload({
       pbl: pblRow as unknown as Parameters<typeof buildPBLHwpxPayload>[0]['pbl'],
@@ -679,6 +701,8 @@ export async function exportPBLAsHwpxAction(
       interview: (interviewRow ?? null) as unknown as Parameters<
         typeof buildPBLHwpxPayload
       >[0]['interview'],
+      linkedRoadmap,
+      linkedRoadmapSummary,
       signerMeta,
     });
 
@@ -822,14 +846,11 @@ function toPBLInterviewSnapshot(
   }
 
   // Ⅲ 훈련과제 도출 — flat 그대로 전달
-  if (interview.activities !== undefined) out.activities = interview.activities;
-  // R8 PBL-자체-04 — problems[] 폐기, problemDefinitionSheet 단일 객체로 대체
+  // V2: activities(수행활동)·priority(우선순위)·currentAiLevel/expectedAiLevel(AI역량)은
+  // 양식에서 제거됐다(로드맵 연동). 문제 정의서 + 훈련대상 두 슬라이스만 전달.
   if (interview.problemDefinitionSheet !== undefined)
     out.problemDefinitionSheet = interview.problemDefinitionSheet;
-  if (interview.priority !== undefined) out.priority = interview.priority;
   if (interview.target !== undefined) out.target = interview.target;
-  if (interview.currentAiLevel !== undefined) out.currentAiLevel = interview.currentAiLevel;
-  if (interview.expectedAiLevel !== undefined) out.expectedAiLevel = interview.expectedAiLevel;
 
   return out;
 }
@@ -886,14 +907,9 @@ export async function editPBLV2(
       patch.companyIssues !== undefined ||
       patch.organization !== undefined ||
       patch.trainingEnv !== undefined ||
-      patch.courseNecessity !== undefined;
-    const hasTasks =
-      patch.activities !== undefined ||
-      patch.problemDefinitionSheet !== undefined ||
-      patch.priority !== undefined ||
-      patch.target !== undefined ||
-      patch.currentAiLevel !== undefined ||
-      patch.expectedAiLevel !== undefined;
+      patch.courseNecessity !== undefined ||
+      patch.roadmapOverrides !== undefined;
+    const hasTasks = patch.problemDefinitionSheet !== undefined || patch.target !== undefined;
     const hasInterviewSlice = hasOverview || hasAnalysis || hasTasks;
     const hasOperationsSlice = patch.operations !== undefined;
 
@@ -1035,7 +1051,6 @@ export async function editPBLV2(
           }
         : {}),
       ...(patch.courseNecessity !== undefined ? { courseNecessity: patch.courseNecessity } : {}),
-      ...(patch.activities !== undefined ? { activities: patch.activities } : {}),
       // R8 PBL-자체-04 — Partial<PBLProblemDefinitionSheet> 를 기존 시트와 병합.
       // 4 필드 default('') 충전·검증은 아래 partial().safeParse 가 담당.
       ...(patch.problemDefinitionSheet !== undefined
@@ -1046,17 +1061,18 @@ export async function editPBLV2(
             ) as PBLInterviewStrict['problemDefinitionSheet'],
           }
         : {}),
-      ...(patch.priority !== undefined
-        ? { priority: patch.priority as PBLInterviewStrict['priority'] }
-        : {}),
       ...(patch.target !== undefined
         ? { target: patch.target as PBLInterviewStrict['target'] }
         : {}),
-      ...(patch.currentAiLevel !== undefined
-        ? { currentAiLevel: patch.currentAiLevel as PBLInterviewStrict['currentAiLevel'] }
-        : {}),
-      ...(patch.expectedAiLevel !== undefined
-        ? { expectedAiLevel: patch.expectedAiLevel as PBLInterviewStrict['expectedAiLevel'] }
+      // Ⅱ장 로드맵 연계 항목의 PBL 수정값 — 기존 override 와 부분 병합(다른 필드 보존).
+      // 로드맵 원본은 건드리지 않는다: 여기 저장된 값만 mergeRoadmapOverrides 가 얹는다.
+      ...(patch.roadmapOverrides !== undefined
+        ? {
+            roadmapOverrides: mergeRoadmapOverridePatch(
+              current.roadmapOverrides,
+              patch.roadmapOverrides
+            ),
+          }
         : {}),
     };
 

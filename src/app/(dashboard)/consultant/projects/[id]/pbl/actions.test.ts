@@ -52,7 +52,7 @@ vi.mock('@/lib/services/activity-log', () => ({
 
 vi.mock('@/lib/services/llm', () => ({
   getLLMUserFriendlyError: vi.fn((err: unknown) =>
-    err instanceof Error ? err.message : 'LLM 호출에 실패했습니다.',
+    err instanceof Error ? err.message : 'LLM 호출에 실패했습니다.'
   ),
 }));
 
@@ -105,6 +105,17 @@ const { mockAfter } = vi.hoisted(() => {
   return { mockAfter };
 });
 vi.mock('next/server', () => ({ after: mockAfter }));
+
+// 선행 로드맵 연계는 pbl-roadmap-link.test.ts 로 별도 검증. 여기서는 미연계(null)로 고정해
+// exportPBLAsHwpxAction 의 admin 쿼리 큐에 영향을 주지 않게 한다.
+vi.mock('@/lib/services/pbl/pbl-roadmap-link', () => ({
+  fetchLinkedRoadmapData: vi.fn().mockResolvedValue({ roadmap: null, interview: null }),
+  hydrateRoadmapInterview: vi.fn().mockReturnValue(null),
+  extractLinkedRoadmapSummary: vi.fn().mockReturnValue(''),
+  // Ⅱ장 override 병합 — 병합 로직 자체는 pbl-roadmap-link.test.ts 가 검증한다.
+  // 여기서는 미연계(null) 고정이라 병합 결과도 null 이다.
+  mergeRoadmapOverrides: vi.fn().mockReturnValue(null),
+}));
 
 vi.mock('next/headers', () => ({
   headers: vi.fn(async () => ({
@@ -217,7 +228,12 @@ describe('fetchPBLProjectInfo', () => {
   it('CONSULTANT_APPROVED + 타 컨설턴트 프로젝트 → error', async () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
-      data: { company_name: '다른기업', track: 'PBL', status: 'PBL_DRAFTED', assigned_consultant_id: USER_B_ID },
+      data: {
+        company_name: '다른기업',
+        track: 'PBL',
+        status: 'PBL_DRAFTED',
+        assigned_consultant_id: USER_B_ID,
+      },
       error: null,
     });
 
@@ -229,7 +245,12 @@ describe('fetchPBLProjectInfo', () => {
   it('CONSULTANT_APPROVED + 본인 프로젝트 → success', async () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
-      data: { company_name: '테스트기업', track: 'PBL', status: 'PBL_DRAFTED', assigned_consultant_id: USER_A_ID },
+      data: {
+        company_name: '테스트기업',
+        track: 'PBL',
+        status: 'PBL_DRAFTED',
+        assigned_consultant_id: USER_A_ID,
+      },
       error: null,
     });
 
@@ -244,7 +265,12 @@ describe('fetchPBLProjectInfo', () => {
   it('OPS_ADMIN → 배정 검증 없이 success', async () => {
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
-      data: { company_name: '운영기업', track: 'PBL', status: 'FINALIZED', assigned_consultant_id: USER_B_ID },
+      data: {
+        company_name: '운영기업',
+        track: 'PBL',
+        status: 'FINALIZED',
+        assigned_consultant_id: USER_B_ID,
+      },
       error: null,
     });
 
@@ -256,7 +282,12 @@ describe('fetchPBLProjectInfo', () => {
   it('허용되지 않은 역할(USER_PENDING) → error', async () => {
     serverMock.addResult({ data: { role: 'USER_PENDING', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
-      data: { company_name: '테스트기업', track: 'PBL', status: 'PBL_DRAFTED', assigned_consultant_id: USER_A_ID },
+      data: {
+        company_name: '테스트기업',
+        track: 'PBL',
+        status: 'PBL_DRAFTED',
+        assigned_consultant_id: USER_A_ID,
+      },
       error: null,
     });
 
@@ -516,9 +547,16 @@ describe('generatePBLAction', () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
       data: {
-        id: PROJECT_ID, status: 'INTERVIEWED', track: 'PBL',
-        assigned_consultant_id: USER_B_ID, company_name: '기업', is_test_mode: false,
-        industry: '제조업', sub_industries: [], company_size: 'medium', customer_comment: null,
+        id: PROJECT_ID,
+        status: 'INTERVIEWED',
+        track: 'PBL',
+        assigned_consultant_id: USER_B_ID,
+        company_name: '기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
       },
       error: null,
     });
@@ -532,9 +570,16 @@ describe('generatePBLAction', () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
       data: {
-        id: PROJECT_ID, status: 'INTERVIEWED', track: 'ROADMAP',
-        assigned_consultant_id: USER_A_ID, company_name: '기업', is_test_mode: false,
-        industry: '제조업', sub_industries: [], company_size: 'medium', customer_comment: null,
+        id: PROJECT_ID,
+        status: 'INTERVIEWED',
+        track: 'ROADMAP',
+        assigned_consultant_id: USER_A_ID,
+        company_name: '기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
       },
       error: null,
     });
@@ -548,9 +593,16 @@ describe('generatePBLAction', () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
       data: {
-        id: PROJECT_ID, status: 'NEW', track: 'PBL',
-        assigned_consultant_id: USER_A_ID, company_name: '기업', is_test_mode: false,
-        industry: '제조업', sub_industries: [], company_size: 'medium', customer_comment: null,
+        id: PROJECT_ID,
+        status: 'NEW',
+        track: 'PBL',
+        assigned_consultant_id: USER_A_ID,
+        company_name: '기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
       },
       error: null,
     });
@@ -564,9 +616,16 @@ describe('generatePBLAction', () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
       data: {
-        id: PROJECT_ID, status: 'INTERVIEWED', track: 'PBL',
-        assigned_consultant_id: USER_A_ID, company_name: '기업', is_test_mode: false,
-        industry: '제조업', sub_industries: [], company_size: 'medium', customer_comment: null,
+        id: PROJECT_ID,
+        status: 'INTERVIEWED',
+        track: 'PBL',
+        assigned_consultant_id: USER_A_ID,
+        company_name: '기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
       },
       error: null,
     });
@@ -582,9 +641,16 @@ describe('generatePBLAction', () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
       data: {
-        id: PROJECT_ID, status: 'INTERVIEWED', track: 'PBL',
-        assigned_consultant_id: USER_A_ID, company_name: '기업', is_test_mode: false,
-        industry: '제조업', sub_industries: [], company_size: 'medium', customer_comment: null,
+        id: PROJECT_ID,
+        status: 'INTERVIEWED',
+        track: 'PBL',
+        assigned_consultant_id: USER_A_ID,
+        company_name: '기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
       },
       error: null,
     });
@@ -603,9 +669,16 @@ describe('generatePBLAction', () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
       data: {
-        id: PROJECT_ID, status: 'INTERVIEWED', track: 'PBL',
-        assigned_consultant_id: USER_A_ID, company_name: '기업', is_test_mode: false,
-        industry: '제조업', sub_industries: [], company_size: 'medium', customer_comment: null,
+        id: PROJECT_ID,
+        status: 'INTERVIEWED',
+        track: 'PBL',
+        assigned_consultant_id: USER_A_ID,
+        company_name: '기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
       },
       error: null,
     });
@@ -625,15 +698,25 @@ describe('generatePBLAction', () => {
     const { generatePBLContent } = await import('@/lib/services/pbl/pbl-generator');
     const { createDraftVersion } = await import('@/lib/services/pbl/pbl-crud');
     const { insertSystemActivityLog } = await import('@/lib/services/activity-log');
-    vi.mocked(createDraftVersion).mockResolvedValueOnce({ id: 'draft-id', version_number: 1 } as never);
+    vi.mocked(createDraftVersion).mockResolvedValueOnce({
+      id: 'draft-id',
+      version_number: 1,
+    } as never);
     vi.mocked(generatePBLContent).mockResolvedValueOnce({ content: VALID_PBL_CONTENT } as never);
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
       data: {
-        id: PROJECT_ID, status: 'INTERVIEWED', track: 'PBL',
-        assigned_consultant_id: USER_A_ID, company_name: '테스트기업', is_test_mode: false,
-        industry: '제조업', sub_industries: [], company_size: 'medium', customer_comment: null,
+        id: PROJECT_ID,
+        status: 'INTERVIEWED',
+        track: 'PBL',
+        assigned_consultant_id: USER_A_ID,
+        company_name: '테스트기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
       },
       error: null,
     });
@@ -652,7 +735,7 @@ describe('generatePBLAction', () => {
     expect(insertSystemActivityLog).toHaveBeenCalledWith(
       PROJECT_ID,
       USER_A_ID,
-      'PBL 보고서가 생성되었습니다.',
+      'PBL 보고서가 생성되었습니다.'
     );
   });
 
@@ -660,15 +743,25 @@ describe('generatePBLAction', () => {
     const { generatePBLContent } = await import('@/lib/services/pbl/pbl-generator');
     const { createDraftVersion } = await import('@/lib/services/pbl/pbl-crud');
     const { revalidatePath } = await import('next/cache');
-    vi.mocked(createDraftVersion).mockResolvedValueOnce({ id: 'draft-id', version_number: 1 } as never);
+    vi.mocked(createDraftVersion).mockResolvedValueOnce({
+      id: 'draft-id',
+      version_number: 1,
+    } as never);
     vi.mocked(generatePBLContent).mockResolvedValueOnce({ content: VALID_PBL_CONTENT } as never);
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
       data: {
-        id: PROJECT_ID, status: 'INTERVIEWED', track: 'PBL',
-        assigned_consultant_id: USER_A_ID, company_name: '테스트기업', is_test_mode: false,
-        industry: '제조업', sub_industries: [], company_size: 'medium', customer_comment: null,
+        id: PROJECT_ID,
+        status: 'INTERVIEWED',
+        track: 'PBL',
+        assigned_consultant_id: USER_A_ID,
+        company_name: '테스트기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
       },
       error: null,
     });
@@ -687,15 +780,25 @@ describe('generatePBLAction', () => {
     const { generatePBLContent } = await import('@/lib/services/pbl/pbl-generator');
     const { createDraftVersion } = await import('@/lib/services/pbl/pbl-crud');
     const { insertSystemActivityLog } = await import('@/lib/services/activity-log');
-    vi.mocked(createDraftVersion).mockResolvedValueOnce({ id: 'rev-draft-id', version_number: 2 } as never);
+    vi.mocked(createDraftVersion).mockResolvedValueOnce({
+      id: 'rev-draft-id',
+      version_number: 2,
+    } as never);
     vi.mocked(generatePBLContent).mockResolvedValueOnce({ content: VALID_PBL_CONTENT } as never);
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
       data: {
-        id: PROJECT_ID, status: 'PBL_DRAFTED', track: 'PBL',
-        assigned_consultant_id: USER_A_ID, company_name: '테스트기업', is_test_mode: false,
-        industry: '제조업', sub_industries: [], company_size: 'medium', customer_comment: null,
+        id: PROJECT_ID,
+        status: 'PBL_DRAFTED',
+        track: 'PBL',
+        assigned_consultant_id: USER_A_ID,
+        company_name: '테스트기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
       },
       error: null,
     });
@@ -711,22 +814,30 @@ describe('generatePBLAction', () => {
     expect(insertSystemActivityLog).toHaveBeenCalledWith(
       PROJECT_ID,
       USER_A_ID,
-      '새 PBL 보고서 버전이 생성되었습니다.',
+      '새 PBL 보고서 버전이 생성되었습니다.'
     );
   });
 
   it('PBLGenerationError → 에러 메시지 반환', async () => {
-    const { generatePBLContent, PBLGenerationError } = await import('@/lib/services/pbl/pbl-generator');
+    const { generatePBLContent, PBLGenerationError } =
+      await import('@/lib/services/pbl/pbl-generator');
     vi.mocked(generatePBLContent).mockRejectedValueOnce(
-      new PBLGenerationError('PBL 생성 한도 초과'),
+      new PBLGenerationError('PBL 생성 한도 초과')
     );
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
       data: {
-        id: PROJECT_ID, status: 'INTERVIEWED', track: 'PBL',
-        assigned_consultant_id: USER_A_ID, company_name: '기업', is_test_mode: false,
-        industry: '제조업', sub_industries: [], company_size: 'medium', customer_comment: null,
+        id: PROJECT_ID,
+        status: 'INTERVIEWED',
+        track: 'PBL',
+        assigned_consultant_id: USER_A_ID,
+        company_name: '기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
       },
       error: null,
     });
@@ -793,8 +904,11 @@ describe('savePBLDraftAction', () => {
       data: {
         project_id: PROJECT_ID,
         projects: {
-          status: 'PBL_DRAFTED', track: 'PBL',
-          assigned_consultant_id: USER_B_ID, is_test_mode: false, company_name: '기업',
+          status: 'PBL_DRAFTED',
+          track: 'PBL',
+          assigned_consultant_id: USER_B_ID,
+          is_test_mode: false,
+          company_name: '기업',
         },
       },
       error: null,
@@ -811,8 +925,11 @@ describe('savePBLDraftAction', () => {
       data: {
         project_id: PROJECT_ID,
         projects: {
-          status: 'ROADMAP_DRAFTED', track: 'ROADMAP',
-          assigned_consultant_id: USER_A_ID, is_test_mode: false, company_name: '기업',
+          status: 'ROADMAP_DRAFTED',
+          track: 'ROADMAP',
+          assigned_consultant_id: USER_A_ID,
+          is_test_mode: false,
+          company_name: '기업',
         },
       },
       error: null,
@@ -915,7 +1032,7 @@ describe('finalizePBLAction', () => {
     expect(insertSystemActivityLog).toHaveBeenCalledWith(
       PROJECT_ID,
       USER_A_ID,
-      'PBL 보고서가 최종 확정되었습니다.',
+      'PBL 보고서가 최종 확정되었습니다.'
     );
   });
 
@@ -1067,7 +1184,7 @@ describe('togglePBLShareAction', () => {
       expect.objectContaining({
         action: 'PBL_REPORT_SHARED',
         meta: expect.objectContaining({ is_shared: true }),
-      }),
+      })
     );
   });
 
@@ -1190,8 +1307,11 @@ describe('exportPBLAsHwpxAction', () => {
       data: {
         project_id: PROJECT_ID,
         projects: {
-          status: 'PBL_DRAFTED', track: 'PBL',
-          assigned_consultant_id: USER_B_ID, is_test_mode: false, company_name: '기업',
+          status: 'PBL_DRAFTED',
+          track: 'PBL',
+          assigned_consultant_id: USER_B_ID,
+          is_test_mode: false,
+          company_name: '기업',
         },
       },
       error: null,
@@ -1232,7 +1352,9 @@ describe('exportPBLAsHwpxAction', () => {
       expect(result.data.fileName).toBe('PBL_v1.hwpx');
       expect(result.data.contentBase64).toBeTruthy();
       expect(result.data.mimeType).toBe('application/vnd.hancom.hwpx');
-      expect(Buffer.from(result.data.contentBase64, 'base64').toString()).toBe('dummy-pbl-hwpx-bytes');
+      expect(Buffer.from(result.data.contentBase64, 'base64').toString()).toBe(
+        'dummy-pbl-hwpx-bytes'
+      );
     }
   });
 
@@ -1258,7 +1380,7 @@ describe('exportPBLAsHwpxAction', () => {
       expect.objectContaining({
         action: 'PBL_HWPX_EXPORTED',
         actorUserId: USER_A_ID,
-      }),
+      })
     );
   });
 
@@ -1282,7 +1404,7 @@ describe('exportPBLAsHwpxAction', () => {
   it('로컬 dev 안내 메시지(Vercel Python 런타임) → 그대로 전달', async () => {
     const { generatePBLHwpx } = await import('@/lib/services/export/hwpx');
     vi.mocked(generatePBLHwpx).mockRejectedValueOnce(
-      new Error('Vercel Python 런타임 로컬에서 실행 불가'),
+      new Error('Vercel Python 런타임 로컬에서 실행 불가')
     );
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
@@ -1327,7 +1449,10 @@ describe('exportPBLAsHwpxAction', () => {
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     adminMock.addResult({ data: PBL_ACCESS_SUCCESS_ROW, error: null });
-    adminMock.addResult({ data: { id: PBL_ID, version_number: 1, pbl_content: VALID_PBL_CONTENT }, error: null });
+    adminMock.addResult({
+      data: { id: PBL_ID, version_number: 1, pbl_content: VALID_PBL_CONTENT },
+      error: null,
+    });
     adminMock.addResult({ data: { id: PROJECT_ID, company_name: '기업' }, error: null });
     adminMock.addResult({ data: null, error: null });
 

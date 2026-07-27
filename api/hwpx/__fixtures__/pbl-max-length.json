@@ -1,261 +1,356 @@
 {
-  "company_name": "주식회사 매우매우긴회사명을가진산업자동화전문기업한국지사글로벌협력본부",
-  "course_name": "AI+문제해결형 PBL — 비전 자동검사 + 시계열 예지 보전 + 데이터 분석 통합 마스터 과정 (2026 상반기 개설)",
-  "report_date": "2026.04.30.",
-  "cover": {
-    "pm": {
-      "affiliation": "한국생산성본부 디지털혁신컨설팅 본부",
-      "name": "홍길동 컨설팅책임자"
-    },
-    "external_experts": [
-      {
-        "affiliation": "AI연구소 컴퓨터비전 전공",
-        "name": "김전문 외부전문가"
-      }
-    ],
-    "internal_experts": [
-      {
-        "affiliation": "주식회사 매우매우긴회사명 QA팀 보고서과 디지털혁신",
-        "name": "박관리 내부전문가"
-      }
-    ],
-    "doctors": [
-      {
-        "affiliation": "능력개발센터 권역사업본부 컨설팅 담당",
-        "name": "이주치 능력개발전담주치의"
-      }
-    ]
-  },
+  "company_name": "주식회사 매우매우긴회사명가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가",
+  "course_name": "AI 비전 자동검사 PBL 과정",
+  "report_date": "2026. 05. 20.",
+  "pm_affiliation": "KPC컨설팅",
+  "pm_name": "홍PM",
+  "external_expert_affiliation": "외부AI연구소",
+  "external_expert_name": "김외부",
+  "internal_expert_affiliation": "㈜비전테크",
+  "internal_expert_name": "박내부",
+  "doctor_affiliation": "중소기업AI확산센터",
+  "doctor_name": "이주치",
   "business_registration_no": "123-45-67890",
   "industry_code": "C26",
-  "industry_main": "전자부품·컴퓨터·영상·음향·통신장비 제조업 — 자동차용 센서 모듈 분야 특화",
-  "address": "서울특별시 강남구 테헤란로 100길 100, 한국매우매우긴빌딩 12층 (역삼동 우편번호 06234)",
-  "training_address": "본사 3층 디지털혁신 교육장 + 분사 2층 실습공간 (생산현장 OJT 병행)",
-  "jurisdiction_office": "서울지방고용노동청 강남지청 직업능력개발과",
-  "contact_position": "교육담당 부장 (인재개발팀 1과 디지털전환 컨설팅 담당)",
-  "contact_name": "김담당성춘향이몽룡변학도김흥부이놀부심청이박씨부인",
+  "industry_main": "전자부품 제조",
+  "address": "서울 강남구 테헤란로 1",
+  "training_address": "본사 3층 교육장",
+  "jurisdiction_office": "서울지부",
+  "contact_position": "부장",
+  "contact_name": "최담당",
   "contact_phone": "010-1234-5678",
-  "contact_email": "edu-digital-transformation-2026@example-very-long-domain.com",
-  "ncs_code": "200107 인공지능 — 4개 능력단위 + 5개 능력단위요소 통합 적용",
-  "training_hours": 80,
-  "training_target_label": "QA 인력 5명 + 생산기술 인력 3명 + 기획 인력 2명 (총 10명, 평균 경력 5년)",
-  "training_form": "사내 집체교육 + 외부 위탁교육 + 현장 OJT 통합 운영형 PBL",
-  "training_period": "2026.04.01 ~ 2026.07.31 (16주, 분기 단위 KPI 검증 게이트 포함)",
-  "business_issues": "수작업 검사 공정의 비효율로 인해 분기별 평균 1.5억원의 추가 품질 비용이 발생하고 있으며, 신규 입사 인력의 OJT 기간이 평균 6개월에 달해 인당 약 3천만원의 교육 비용이 누적되고 있다. 또한 PLC 센서 로그가 시간당 약 12만 건씩 축적되고 있으나 분석·활용 인프라가 부재해 사실상 사장된 상태로 디지털 전환 마스터 플랜의 부재가 시급한 경영 이슈로 대두되고 있다.",
-  "proper_training_hours": 80,
-  "training_place_types": ["사내", "사외"],
-  "training_place_location": "본사 3층 디지털혁신 교육장 + 분사 2층 실습공간 (생산현장 OJT 병행)",
-  "training_place_special_notes": "사외 교육은 AI연구소 클라우드 환경에서 분기별 1회 실시 — 외부 전문가 강의 16시간 별도",
-  "internal_instructor_used": true,
-  "internal_instructor_name": "박관리홍길동임꺽정장길산 (도메인 전문가, 12년 경력)",
-  "internal_instructor_position": "선임연구원 (디지털혁신 컨설팅 담당)",
-  "target_count": 10,
-  "target_career": "평균 5년 — QA 인력 5명 (3~7년) + 생산기술 인력 3명 (5~10년) + 기획 인력 2명 (8~15년)",
-  "target_level": "중급 (Python 기초 + 엑셀 기반 데이터 분석 + 신규 입사자 5명 Python 사전 학습 보유)",
+  "contact_email": "contact@vt.co.kr",
+  "ncs_code": "200107 인공지능",
+  "training_hours": 40,
+  "training_target_label": "QA 인력 5명",
+  "training_form": "사내 집체",
+  "training_period": "2026.05.01 ~ 2026.06.30",
+  "business_issues": "수작업 검사 비효율",
+  "training_job": "AI 비전 기반 QA 검사 자동화",
+  "company_issues": "검사 정확도 저하로 인한 클레임 증가",
+  "organization": {
+    "orgTree": [],
+    "mainWork": []
+  },
+  "roadmap_setup_background": "AI 도입 배경 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 매우 긴 서술 ",
+  "roadmap_setup_activities": [
+    {
+      "round": 1,
+      "date": "26.04.01\n10:00~12:00",
+      "content": "킥오프 회의",
+      "method": "대면\n(인터뷰)",
+      "pm_name": "홍PM",
+      "expert_name": "박내부"
+    },
+    {
+      "round": 2,
+      "date": "26.04.08\n14:00~16:00",
+      "content": "현황 분석 워크숍",
+      "method": "비대면\n(화상)",
+      "pm_name": "홍PM",
+      "expert_name": "박내부"
+    },
+    {
+      "round": 3,
+      "date": "26.04.15\n10:00~12:00",
+      "content": "로드맵 초안 검토",
+      "method": "대면\n(워크숍)",
+      "pm_name": "홍PM",
+      "expert_name": "박내부"
+    }
+  ],
+  "roadmap_ai_level": "INTERMEDIATE",
+  "roadmap_selected_task": "AI 비전 검사 자동화",
+  "roadmap_summary": "본 기업은 제조 QA 공정의 수작업 의존과 검사 정확도 편차 문제를 해소하기 위해 AI 비전 검사 자동화를 핵심 과업으로 선정하였다. 진단 결과 AI 역량 수준은 중급(AI탐구형)으로 평가되었으며, 영상 데이터 기반 결함 분류 모델 구축과 현장 적용 역량 내재화를 우선 목표로 설정하였다. 이를 위해 데이터 수집·라벨링부터 모델 배포·운영까지 전 주기 역량을 단계적으로 확보하도록 훈련 로드맵을 수립하였다",
+  "roadmap_req_company_status": "제조 중견기업, 수작업 QA 운영",
+  "roadmap_req_main_problems": "검사 정확도 편차 및 인력 의존",
+  "roadmap_req_push_willingness": "경영진 강한 도입 의지",
+  "roadmap_req_expected_outcomes": "불량 유출 50% 감소",
+  "roadmap_task_analysis": [
+    {
+      "job": "생산",
+      "task": "외관 검사",
+      "as_is": "육안 검사",
+      "improvement": "개선점 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 AI 적용 상세 "
+    },
+    {
+      "job": "품질",
+      "task": "불량 분류",
+      "as_is": "수기 기록",
+      "improvement": "자동 분류"
+    },
+    {
+      "job": "설비",
+      "task": "설비 점검",
+      "as_is": "주기 점검",
+      "improvement": "예지 보전"
+    }
+  ],
+  "roadmap_target_task": {
+    "name": "외관 검사 자동화",
+    "reason": "불량 유출 최소화",
+    "as_is": "육안 100% 전수 검사",
+    "to_be": "AI 비전 1차 선별"
+  },
+  "pbl_perf_activities": [
+    {
+      "round": 1,
+      "date": "26/06/03",
+      "content": "1차 핵심문제 파악 워크숍 — 경영진·실무자 5명 참여, 공정별 병목 도출 및 문제 정의서 초안 합의까지 진행",
+      "method": "대면\n(워크숍)",
+      "pm_name": "홍길동컨설팅책임자",
+      "external_expert_name": "이직무외부전문가",
+      "internal_expert_name": "박내부전문가",
+      "jurisdiction_manager_name": "최능력개발전담주치의"
+    },
+    {
+      "round": 2,
+      "date": "26/06/10",
+      "content": "2차 핵심문제 파악 워크숍 — 경영진·실무자 5명 참여, 공정별 병목 도출 및 문제 정의서 초안 합의까지 진행",
+      "method": "대면\n(워크숍)",
+      "pm_name": "홍길동컨설팅책임자",
+      "external_expert_name": "이직무외부전문가",
+      "internal_expert_name": "박내부전문가",
+      "jurisdiction_manager_name": "최능력개발전담주치의"
+    },
+    {
+      "round": 3,
+      "date": "26/06/17",
+      "content": "3차 핵심문제 파악 워크숍 — 경영진·실무자 5명 참여, 공정별 병목 도출 및 문제 정의서 초안 합의까지 진행",
+      "method": "대면\n(워크숍)",
+      "pm_name": "홍길동컨설팅책임자",
+      "external_expert_name": "이직무외부전문가",
+      "internal_expert_name": "박내부전문가",
+      "jurisdiction_manager_name": "최능력개발전담주치의"
+    }
+  ],
+  "roadmap_task_selections": [
+    {
+      "job": "생산",
+      "task": "외관 검사",
+      "as_is": "육안 검사",
+      "improvement": "AI 비전 검사",
+      "ai_necessity": "높음",
+      "training_selected": true
+    },
+    {
+      "job": "품질",
+      "task": "불량 분류",
+      "as_is": "수기 기록",
+      "improvement": "자동 분류",
+      "ai_necessity": "중간",
+      "training_selected": false
+    },
+    {
+      "job": "설비",
+      "task": "설비 점검",
+      "as_is": "주기 점검",
+      "improvement": "예지 보전",
+      "ai_necessity": "낮음",
+      "training_selected": false
+    }
+  ],
+  "hrd_report_attachment": "https://x.example/hrd-report.pdf",
+  "proper_training_hours": 40,
+  "training_place_location": "본사 3층 교육장",
+  "training_place_special_notes": "추가 실습실 필요",
+  "internal_instructor_name": "정강사",
+  "internal_instructor_position": "수석",
   "ai_tools_status": "가능",
   "network_status": "양호",
   "pc_count": 10,
-  "etc_equipment": "Webcam (4K) × 10대 + GPU 워크스테이션 (RTX 4090) × 5대 + 산업용 카메라 × 3대",
-  "training_needs_analysis": "본 PBL 과정의 핵심 요구분석 결과는 (1) 수동 검사로 인한 품질 비용 절감 (2) 데이터 분석 역량 내재화 (3) 의사결정 가속화 3가지로 압축된다. 이를 위해 16주간 80시간의 통합 마스터 과정으로 객체 검출·시계열 분석·엣지 배포까지 end-to-end 학습한다.",
-  "expectation_as_is": "수동 검사 92% 정확도 (월 1500만원 추가 품질 비용) + 수기 보고서 평균 4시간 + QA 인력 의존도 高",
-  "expectation_to_be": "AI 비전 자동검사 96%+ 정확도 + 자동 보고서 1시간 + 검사 인력 30% 재배치 + 데이터 분석 자체 생산 역량 확보",
-  "company_issues": "Ⅱ-1-가 경영 이슈 본문 — 매출 정체(전년 대비 0.8% 감소) 및 품질 비용 증가(전년 대비 12% 상승)가 동시에 진행되고 있으며 이로 인해 영업이익률이 5%에서 3.2%로 1.8%p 하락한 상태다. 핵심 원인은 (1) 수작업 검사로 인한 품질 비용 증가 (2) 신규 인력 충원 비용 누적 (3) 데이터 미활용으로 인한 의사결정 지연 등 3가지로 압축된다. 이에 본 컨설팅을 통해 AI 비전 자동검사 도입과 데이터 분석 역량 내재화로 매출 회복 + 비용 절감 + 의사결정 가속화를 동시에 추진해 1년 내 영업이익률 5% 회복을 목표로 한다.",
-  "course_necessity": "Ⅱ-3-나 AI훈련과정 개발 필요성 본문 — 본 PBL 과정은 단순 강의식이 아니라 실제 사내 검사 데이터로 실습하여 학습 종료 직후 현업 적용이 가능한 형태로 설계된다. 동일 직무군의 학습자가 협업해 사내 실 데이터로 모델을 학습·검증하는 구조이므로 학습 완료 시점에 곧바로 PoC가 완성되며 현업 적용도가 일반 강의 대비 3배 이상 높은 것이 본 PBL의 핵심 차별점이다. 또한 학습 후 6개월 시점의 현업 적용도 추적 결과를 토대로 추가 보완 학습이 필요한 영역을 정량 도출할 수 있어 지속적 개선 사이클을 갖춘 과정 설계가 가능하다.",
-  "hrd_report_attachment": "https://x.example/매우매우긴파일경로/2026-04-30/hrd-pbl-기업HRD이음컨설팅보고서-주식회사매우매우긴회사명-final-v3.pdf",
-  "organization": [
-    {"department_name": "생산팀 품질관리과", "tasks": ["제품 생산 — 시간당 1500개", "품질 검사 — 전수 수동", "이상 분석 — 사후 분석"]},
-    {"department_name": "QA팀 보고서과", "tasks": ["검사 보고서 작성 — 일 평균 200건", "이상 분석 — 주간 리포트", "거래처 대응 — 클레임 처리"]},
-    {"department_name": "영업팀 마케팅과", "tasks": ["고객 응대 — 분기 350건", "거래처 관리 — 50개사", "신규 영업 — 분기 신규 5개사"]},
-    {"department_name": "설비기술팀", "tasks": ["설비 점검 — 월 1회 정기", "예지 보전 — 진동·온도 모니터링", "수리·교체 — 사후 대응"]}
-  ],
-  "activities": [
+  "etc_equipment": "고사양 GPU 워크스테이션",
+  "target_count": 5,
+  "target_career": "5년 이상",
+  "target_level": "중급",
+  "training_needs_analysis": "실습 중심 요구",
+  "expectation_as_is": "육안 검사",
+  "expectation_to_be": "AI 검사",
+  "internal_instructor_usage": "YES",
+  "internal_instructor_used": true,
+  "course_necessity": "AI 비전 기술 내재화 필요",
+  "problem_definition_sheet": {
+    "background": "검사 인력 부족",
+    "core": "핵심 문제 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 상세 ",
+    "scope": "외관 검사 공정",
+    "constraints": "라인 정지 최소화"
+  },
+  "target_necessity": "필요성 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 장문 서술 ",
+  "target_details": [
     {
-      "round": 1, "date": "26.04.10", "content": "킥오프 회의 — 본 PBL 추진 배경 공유 및 학습자 사전 진단 실시", "method": "대면",
-      "participants": {
-        "pm": "홍길동 컨설팅책임자",
-        "external_expert": "김전문 외부전문가 (직무·HRD 16년 경력)",
-        "internal_expert": "박관리 내부전문가 (도메인 12년)",
-        "jurisdiction_manager": "이주치 능력개발전담주치의"
-      }
+      "title": "데이터 수집",
+      "as_is": "수기 기록",
+      "to_be": "자동 수집",
+      "required_knowledge": "이미지 데이터 구조",
+      "required_skill": "Python OpenCV"
     },
     {
-      "round": 2, "date": "26.04.17", "content": "문제 정의 워크숍 — 학습자가 직접 사내 문제를 4개 도출하고 상호 토론을 통해 우선순위를 결정", "method": "대면",
-      "participants": {
-        "pm": "홍길동",
-        "external_expert": "",
-        "internal_expert": "박관리",
-        "jurisdiction_manager": "이주치"
-      }
-    },
-    {
-      "round": 3, "date": "26.04.24", "content": "초안 검토 — 1주차 ~ 2주차 학습 내용 점검 및 PoC 모델 초기 결과 검증", "method": "비대면",
-      "participants": {
-        "pm": "홍길동",
-        "external_expert": "김전문",
-        "internal_expert": "",
-        "jurisdiction_manager": ""
-      }
-    },
-    {
-      "round": 4, "date": "26.05.01", "content": "중간 점검 — 학습 진척도 50% 시점 KPI 정량 검토 및 보완 학습 영역 도출", "method": "대면",
-      "participants": {
-        "pm": "홍길동",
-        "external_expert": "김전문",
-        "internal_expert": "박관리",
-        "jurisdiction_manager": "이주치"
-      }
+      "title": "모델 학습",
+      "as_is": "규칙 기반",
+      "to_be": "CNN 분류",
+      "required_knowledge": "딥러닝 기초",
+      "required_skill": "PyTorch 실습"
     }
   ],
-  "problems": [
-    {"title": "검사 정확도 8% 미달 — 수동 검사로 인한 품질 비용 누적", "description": "수동 검사 프로세스에서 평균 92% 정확도가 관찰되며 이는 양산 라인 기준 8% 불량 누락을 의미한다. 특히 야간 시간대에는 정확도가 88%까지 하락하는 패턴이 확인되어 검사자 피로 누적이 핵심 원인으로 추정된다.", "impact": "월 1500만원 추가 품질 비용 + 거래처 클레임 분기 평균 5건"},
-    {"title": "리드타임 평균 4시간 — 수기 보고서 작성으로 인한 출하 지연", "description": "검사 결과 보고서를 검사자가 수기로 작성하고 결재 라우팅도 수동 처리하는 구조로 인해 검사 완료부터 출하 결정까지 평균 4시간이 소요된다.", "impact": "출하 지연 + 거래처 만족도 하락 (NPS -5)"},
-    {"title": "QA 인력 의존도 高 — 숙련 의존 구조로 인한 인력 리스크", "description": "현재 검사 정확도는 5년 이상 경력자 의존도가 높아 신규 입사자가 정상 수준에 도달하기까지 평균 6개월이 소요된다.", "impact": "신규 채용 비용 인당 3천만원 + 핵심 인력 이탈 리스크"},
-    {"title": "데이터 미활용 — 센서 로그 사장으로 인한 기회비용", "description": "PLC 센서 로그가 시간당 12만 건씩 축적되고 있으나 분석 인프라·인력 부재로 사실상 사장된 상태이다.", "impact": "기회비용 분기 평균 5천만원 + 의사결정 지연"}
-  ],
-  "priorities": [
-    {"problem": "검사 정확도 8% 미달", "score": 5, "rank": 1},
-    {"problem": "리드타임 평균 4시간", "score": 4, "rank": 2},
-    {"problem": "QA 인력 의존도 高", "score": 3, "rank": 3},
-    {"problem": "데이터 미활용", "score": 2, "rank": 4}
-  ],
-  "priority_method": "AHP(Analytic Hierarchy Process) + 경영진 협의를 결합한 복합 우선순위 도출 방식. 학습자 10명이 각 문제에 대해 1~5점 척도로 평가하고 그 결과를 경영진 의사결정과 가중 평균하여 최종 순위를 도출한다.",
-  "target": {
-    "name": "AI 비전 기반 품질 자동검사 시스템",
-    "code": "0204020107",
-    "scope": "QA 인력 5명 + 생산기술 인력 3명 (총 8명)",
-    "necessity": "정확도 96% 이상 + 리드타임 50% 단축 + 검사 인력 30% 재배치를 동시에 달성하여 분기별 1.5억원의 품질 비용을 5천만원 수준으로 감축하는 것이 본 훈련대상 업무의 직접적 필요성이다.",
-    "necessity_score": 5,
-    "details": [
-      {
-        "title": "데이터 수집·전처리 모듈 (E2E 파이프라인 통합 구축 + 운영 자동화)",
-        "as_is": "센서 데이터 + 영상 라벨링을 작업자가 수기 검수 → 작성자별 포맷 차이로 평균 2 영업일 소요 → 데이터셋 누락·중복 빈번 발생 → 학습 데이터 품질 편차로 모델 정확도 저하 + 분기별 재라벨링 비용 1500만원 이상 발생",
-        "to_be": "PLC 자동 수집 → AutoLabel 도구로 전처리 → 학습 데이터셋 생성까지의 end-to-end 자동화 파이프라인 구축 → 라벨링 시간 80% 단축 + 데이터셋 검증 자동화로 품질 KPI (Recall 95%, Precision 92%) 도달 + 분기별 재라벨링 비용 80% 절감",
-        "required_knowledge": "센서 데이터 구조·라벨링 가이드라인·통계적 공정관리(SPC) 개념·데이터셋 품질 평가 기준 (Recall/Precision/F1) · 결함 유형 카탈로그·검사 표준 작업 절차서 (SOP) · 자동화 파이프라인 운영 SLA·이상 데이터 탐지 기준",
-        "required_skill": "Python pandas/numpy 데이터 정제 + AutoLabel CLI 운영 + GitHub Actions 기반 ETL 파이프라인 구성 + Slack 알림 자동화 + 학습 데이터셋 버전 관리 (DVC) + 자동 품질 리포트 생성 (matplotlib + Jinja2)"
-      },
-      {
-        "title": "모델 운영·평가 모듈 (객체 검출 모델 통합 운영 + 결재 자동화)",
-        "as_is": "정확도 KPI 수기 검증 + 결과 보고서 수동 작성 → 검증 작업 평균 1 영업일 소요 + 보고서 포맷 부서별 상이 → 의사결정 지연 + 분기별 모델 업데이트 검증에 누락 빈번 발생",
-        "to_be": "객체 검출 모델 운영 + 정확도 KPI 자동 검증 + 결과 자동 보고서 생성 + 결재 시스템 통합 라우팅까지 통합 운영 → 검증 시간 90% 단축 + 보고서 표준화 + 결재 SLA 24시간 내 도달 + 모델 드리프트 자동 알림 체계 정착",
-        "required_knowledge": "객체 검출 모델 평가 지표 (mAP·Recall·Precision·IoU) · 모델 드리프트 탐지 방법론·A/B 테스트 설계·결재 시스템 워크플로우·MLOps 운영 SLA·모델 버전 관리 정책",
-        "required_skill": "PyTorch 모델 서빙 + FastAPI 추론 API + Prometheus + Grafana 모니터링 대시보드 구축 + 자동 보고서 생성 스크립트 + 결재 시스템 OAuth 통합 + Slack/Teams 알림 자동화 + 모델 자동 롤백 스크립트"
-      }
-    ]
-  },
-  "target_necessity": "정확도 96% 이상 + 리드타임 50% 단축 + 검사 인력 30% 재배치 + 분기별 품질 비용 5천만원 이하 달성",
-  "current_ai_level": "EXPLORER",
-  "current_ai_level_note": "사내 ChatGPT 일부 사용 (전체 직원의 약 35%). 비전 모델 미경험. 데이터 분석은 엑셀 기반 기초 통계 수준. 신규 입사자 5명은 Python 사전 학습 보유.",
-  "expected_ai_level": "USER",
-  "expected_ai_level_note": "6개월 내 객체 검출 자동화 운영 도달 + 사내 RAG 챗봇 운영 + 데이터 분석 결과 자체 생산 가능 수준. 부수적으로 사내 AI 추진위원회 구성·운영을 통한 거버넌스 체계 정착.",
-  "training_goal": "AI 활용형 도달 + 비전 검사 자동화 운영 + 데이터 분석 역량 내재화 + 사내 AI 추진위원회 정착",
+  "training_goal": "AI 비전 검사 역량 확보",
+  "training_goals": ["기술문제 해결", "불량률 감소"],
+  "quantitative_metrics": "불량 유출률 50% 감소",
+  "qualitative_metrics": "검사자 업무 만족도 향상",
   "ai_tool_usage_plan": [
-    {"stage": "1단계 (1~4주차)", "main_activity": "데이터 수집·라벨링", "ai_tools": ["LabelImg", "AutoLabel", "Roboflow"], "utilized_data": "검사 영상 50000장 + 센서 로그 6개월치", "purpose": "라벨링 자동화 + 학습 데이터셋 구축", "specific_method": "수동 라벨 1000장 → AutoLabel 추론 → 검수 워크플로우 → 학습 데이터셋"},
-    {"stage": "2단계 (5~8주차)", "main_activity": "모델 학습·평가", "ai_tools": ["YOLOv8", "Pytorch", "MLflow"], "utilized_data": "라벨 데이터 50000장", "purpose": "객체 검출 + 분류 모델 운영", "specific_method": "Transfer learning (사전학습 모델 미세조정) + Cross-validation + Model registry 운영"},
-    {"stage": "3단계 (9~12주차)", "main_activity": "엣지 배포·통합", "ai_tools": ["TensorRT", "ONNX", "Docker"], "utilized_data": "운영 모델 1개 + 추론 결과 로그", "purpose": "엣지 디바이스 배포 + ERP 연동", "specific_method": "ONNX 변환 + 양자화 + TensorRT 컴파일 + Docker 컨테이너 배포"},
-    {"stage": "4단계 (13~16주차)", "main_activity": "현업 적용·검증", "ai_tools": ["Grafana", "Slack 봇"], "utilized_data": "운영 환경 추론 결과 + KPI 지표", "purpose": "현업 적용도 추적 + 알람 자동화", "specific_method": "운영 KPI 대시보드 구성 + 이상 발생 시 Slack 자동 알람 + 주간 리포트 자동 생성"}
+    {
+      "stage": "1단계",
+      "main_activity": "데이터 수집",
+      "ai_tools": ["Roboflow", "LabelImg"],
+      "utilized_data": "불량 이미지",
+      "purpose": "학습 데이터 구축",
+      "specific_method": "라벨링 실습"
+    },
+    {
+      "stage": "2단계",
+      "main_activity": "모델 학습",
+      "ai_tools": ["PyTorch"],
+      "utilized_data": "라벨 데이터셋",
+      "purpose": "분류 모델 개발",
+      "specific_method": "CNN 학습"
+    },
+    {
+      "stage": "3단계",
+      "main_activity": "현장 적용",
+      "ai_tools": ["ONNX Runtime"],
+      "utilized_data": "실시간 카메라",
+      "purpose": "라인 통합",
+      "specific_method": "엣지 배포"
+    }
   ],
-  "training_plan_course_name": "AI 비전 자동검사 PBL 마스터 과정 (16주 80시간)",
-  "subject_profile_course_name": "AI 비전 자동검사 PBL 마스터 과정 (16주 80시간)",
-  "total_training_hours": "80",
-  "subject_training_goals": "기술문제 해결 (불량률 8% → 4% 감축)\n공정 최적화 (리드타임 4시간 → 2시간)\n인력 재배치 (검사 인력 30% 재배치)\n데이터 활용 역량 내재화\n사내 AI 추진위원회 정착",
-  "subject_ai_tools": "YOLOv8 — 객체 검출 모델\nLabelImg / AutoLabel / Roboflow — 라벨링\nMLflow — 모델 레지스트리\nTensorRT / ONNX — 엣지 배포\nGrafana — KPI 대시보드\nDocker — 배포 인프라",
-  "subject_utilized_data": "센서·영상 데이터 (PLC 시간당 12만 건 + 검사 영상 50000장 + 검사 이력 5년치)",
-  "subject_analysis_method": "객체 검출 + 분류 모델 + 시계열 이상 탐지 + KPI 대시보드 자동화",
-  "subject_total_sum_hours": "80",
-  "course_eval_course_name": "AI 비전 자동검사 PBL 마스터 과정",
-  "course_eval_target": "QA 인력 5명 + 생산기술 인력 3명 + 기획 인력 2명 총 10명",
-  "course_eval_date": "2026.07.31",
-  "course_eval_criteria": "수행수준 3 이상 60% PASS + 현업 적용 PoC 1개 이상 완성 + 학습자 만족도 4.0 이상",
-  "course_eval_result": "예정 — 분기 종료 시점에 정량 평가 실시",
-  "course_eval_overall_comment": "본 평가는 학습 직후 평가 + 6개월 후 현업 적용도 추적 평가의 2단계 구조로 운영된다.",
-  "course_evaluation_methods": ["포트폴리오", "수행평가", "지필고사"],
+  "training_plan_course_name": "AI 비전 자동검사 과정",
   "learning_group": {
     "instructors": [
       {
         "type": "외부",
-        "role": "팀장",
-        "affiliation": "AI연구소 디지털전환컨설팅 본부",
-        "position": "수석연구원 — 컴퓨터비전 전공",
-        "name": "김전문성춘향이몽룡변학도김흥부"
-      },
-      {
-        "type": "외부",
         "role": "팀원",
-        "affiliation": "AI연구소 데이터분석 본부",
-        "position": "책임연구원 — 시계열 분석",
-        "name": "이전문장보고이순신김유신"
+        "affiliation": "외부AI연구소",
+        "position": "책임",
+        "name": "김강사"
       },
       {
         "type": "내부",
         "role": "팀장",
-        "affiliation": "QA팀 보고서과 디지털혁신",
-        "position": "선임연구원 — 도메인 전문가",
-        "name": "박관리홍길동임꺽정장길산"
+        "affiliation": "㈜비전테크",
+        "position": "수석",
+        "name": "정강사"
       }
     ],
     "trainees": [
-      {"role": "팀원", "affiliation": "QA팀", "position": "사원", "name": "이검사"},
-      {"role": "팀원", "affiliation": "QA팀", "position": "사원", "name": "박품질"},
-      {"role": "팀장", "affiliation": "생산기술팀", "position": "선임", "name": "최기술"}
+      {
+        "role": "팀원",
+        "affiliation": "㈜비전테크",
+        "position": "사원",
+        "name": "훈련생A"
+      },
+      {
+        "role": "팀원",
+        "affiliation": "㈜비전테크",
+        "position": "대리",
+        "name": "훈련생B"
+      },
+      {
+        "role": "팀원",
+        "affiliation": "㈜비전테크",
+        "position": "주임",
+        "name": "훈련생C"
+      }
     ]
   },
+  "subject_profile_course_name": "AI 비전 자동검사 과정",
+  "total_training_hours": 40,
+  "subject_training_goals": "노코드 AI 도구로 제품 외관 이미지의 불량검사 모델을 학습·배포할 수 있다\n품질검사 데이터를 수집·정제하여 AI 학습 데이터셋을 구성할 수 있다\n모델 성능 지표를 해석하고 현장 검사 공정에 시범 적용해 개선점을 도출할 수 있다",
+  "subject_ai_tools": "Teachable Machine (무료: 전체)\nLabel Studio (무료: Community Edition)\nChatGPT (무료 플랜)\nPyTorch·OpenCV (오픈소스)",
+  "subject_utilized_data": "생산라인 제품 외관 이미지 데이터셋(불량·정상 1,000장 이상), 결함 유형별 라벨, 검사 이력 로그",
+  "subject_analysis_method": "노코드 이미지 분류(Teachable Machine) 및 CNN 기반 불량 판정, LLM(ChatGPT)을 활용한 성능 지표 해석·개선점 도출",
+  "subject_total_sum_hours": 40,
   "training_contents": [
     {
-      "unit_name": "CV 기초 — 영상 처리·라벨링·데이터 증강 통합",
-      "detail": "1단원: 영상 처리 기본 + 라벨링 도구 실습 + 데이터 증강 기법 + 학습 데이터셋 구축",
-      "training_hours": "16",
-      "instructor_hours": {"external": "12", "internal": "4"}
+      "unit_name": "데이터 수집·라벨링",
+      "detail": "AI/머신러닝 기본 개념 강의 및 자사 품질검사 기준 분석 워크숍\nLabel Studio 환경에 자사 불량·정상 이미지 200장 업로드 및 라벨링 실습\n결함 유형별(스크래치·이물·치수불량) 클래스 정의 및 라벨링 가이드라인 공동 작성\n검사자 간 라벨링 일치율 80% 이상 달성 및 학습 데이터셋(CSV+이미지) 산출\n데이터 증강(회전·밝기 변형) 기법으로 학습 샘플 확대 및 클래스 불균형 보정 실습",
+      "training_hours": 8,
+      "instructor_hours": {
+        "external": 5,
+        "internal": 3
+      }
     },
     {
-      "unit_name": "객체 검출 — YOLO 실습·Transfer learning·MLflow 운영",
-      "detail": "2단원: YOLOv8 실습 + Transfer learning + MLflow 모델 레지스트리 + Cross-validation 검증",
-      "training_hours": "24",
-      "instructor_hours": {"external": "18", "internal": "6"}
+      "unit_name": "모델 학습",
+      "detail": "Teachable Machine으로 불량/정상 이미지 분류 모델 학습 시연 및 하이퍼파라미터 튜닝 실습\n학습된 모델을 브라우저 inference 환경으로 export 하여 자사 데이터셋 평가\nChatGPT에 confusion matrix를 붙여넣고 정확도·재현율·정밀도 개선점 질의\n부서별 모델 성능 비교 발표 및 개선 제안서 작성(정확도 90% 이상 목표)\n재학습 주기·성능 저하 임계값 기준 수립 및 모델 버전·이력 관리 실습",
+      "training_hours": 16,
+      "instructor_hours": {
+        "external": 10,
+        "internal": 6
+      }
     },
     {
-      "unit_name": "엣지 배포·통합 — ONNX·TensorRT·Docker",
-      "detail": "3단원: ONNX 변환 + 양자화 + TensorRT 컴파일 + Docker 컨테이너 배포 + ERP 연동",
-      "training_hours": "20",
-      "instructor_hours": {"external": "16", "internal": "4"}
+      "unit_name": "현장 적용",
+      "detail": "사내 PC와 산업용 카메라로 실시간 inference 시범 운영 환경 구축(2주)\n매일 검사 결과와 모델 판정을 비교하고 주 단위 정합도 측정(85% 목표)\n경영진 보고용 자료(PPT) 및 6개월 사내 확산 로드맵 공동 작성\n타 라인 적용 가능성 검토 및 사내 표준화 매뉴얼 초안 작성\n현장 작업자 대상 사용 교육 및 오탐·미탐 피드백 수렴 세션 운영(월 1회)",
+      "training_hours": 16,
+      "instructor_hours": {
+        "external": 8,
+        "internal": 8
+      }
     }
   ],
   "facilities": [
     {
-      "seq": "1",
-      "category": "AI 인프라 — GPU",
-      "name": "고사양 PC + RTX 4090 클러스터",
-      "spec": "RTX 4090 × 10대 + 256GB RAM + 1TB NVMe + 10Gbps 백본",
-      "location": "본사 3층 디지털혁신 교육장 + 분사 2층 실습공간"
+      "seq": 1,
+      "category": "시설",
+      "name": "AI 실습실",
+      "spec": "20석 GPU PC",
+      "location": "본사 3층"
     },
     {
-      "seq": "2",
-      "category": "AI 도구 라이선스",
-      "name": "YOLOv8 Enterprise + Roboflow Pro + MLflow + Grafana",
-      "spec": "Enterprise 라이선스 + 클라우드 기반 협업 환경",
-      "location": "클라우드 (AWS Seoul Region)"
+      "seq": 2,
+      "category": "장비",
+      "name": "산업용 카메라",
+      "spec": "5MP 라인스캔",
+      "location": "생산 라인"
     }
   ],
   "training_instructors": [
     {
-      "name": "김전문성춘향이몽룡변학도김흥부",
+      "name": "김강사",
       "internal_external": "외부",
-      "career_years": "15",
-      "work_name": "비전 모델 강의 + Transfer learning 실습 강의",
-      "detailed_training_content": [
-        "객체 검출 실습 — YOLOv8 기반 16시간",
-        "Transfer learning 실습 — 사전학습 미세조정 8시간",
-        "Cross-validation 검증 워크숍 4시간"
-      ]
+      "career_years": 10,
+      "work_name": "AI 비전 컨설팅",
+      "detailed_training_content": ["딥러닝 기초", "비전 실습"]
     },
     {
-      "name": "박관리홍길동임꺽정장길산",
+      "name": "정강사",
       "internal_external": "내부",
-      "career_years": "8",
-      "work_name": "OJT 멘토링 + 현장 적용 가이드",
-      "detailed_training_content": [
-        "현장 적용 가이드 12시간",
-        "사내 데이터 분석 멘토링 8시간"
-      ]
+      "career_years": 7,
+      "work_name": "QA 공정 개선",
+      "detailed_training_content": ["현장 데이터", "라인 통합"]
+    }
+  ],
+  "course_eval_course_name": "AI 비전 자동검사 과정",
+  "course_eval_target": "훈련생 5명",
+  "course_eval_date": "2026. 06. 30.",
+  "course_eval_criteria": "14개 중 8개 이상 수행수준 4",
+  "course_eval_result": "예정",
+  "course_eval_overall_comment": "전원 수행수준 우수 예상",
+  "course_evaluation_methods": ["포트폴리오", "작업장 평가"],
+  "performance_checklist": [
+    {
+      "unit_name": "데이터 수집",
+      "evaluation_criteria": "100건 이상 라벨링",
+      "performance_level": 4
+    },
+    {
+      "unit_name": "모델 학습",
+      "evaluation_criteria": "정확도 90% 이상",
+      "performance_level": 5
+    },
+    {
+      "unit_name": "현장 적용",
+      "evaluation_criteria": "라인 통합 완료",
+      "performance_level": 3
     }
   ]
 }

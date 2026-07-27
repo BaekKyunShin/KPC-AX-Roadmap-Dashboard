@@ -55,43 +55,42 @@ vi.mock(
     StepOverview: ({ value }: { value: { courseName: string } }) => (
       <div data-testid="course-name-display">{value.courseName}</div>
     ),
-  }),
+  })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCompanyIssues',
-  () => ({ StepCompanyIssues: () => <div>StepCompanyIssues</div> }),
+  () => ({ StepCompanyIssues: () => <div>StepCompanyIssues</div> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepOrganization',
-  () => ({ StepOrganization: () => <div>StepOrganization</div> }),
+  () => ({ StepOrganization: () => <div>StepOrganization</div> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTrainingEnv',
-  () => ({ StepTrainingEnv: () => <div>StepTrainingEnv</div> }),
+  () => ({ StepTrainingEnv: () => <div>StepTrainingEnv</div> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCourseNecessity',
-  () => ({ StepCourseNecessity: () => <div>StepCourseNecessity</div> }),
+  () => ({ StepCourseNecessity: () => <div>StepCourseNecessity</div> })
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepActivities',
-  () => ({ StepActivities: () => <div>StepActivities</div> }),
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPerformanceActivities',
+  () => ({ StepPerformanceActivities: () => <div>StepPerformanceActivities</div> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepProblems',
-  () => ({ StepProblems: () => <div>StepProblems</div> }),
+  () => ({ StepProblems: () => <div>StepProblems</div> })
 );
-vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTargetAndLevel',
-  () => ({ StepTargetAndLevel: () => <div>StepTargetAndLevel</div> }),
-);
+vi.mock('@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTarget', () => ({
+  StepTarget: () => <div>StepTarget</div>,
+}));
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper',
-  () => ({ default: () => <nav aria-label="Progress">stepper</nav> }),
+  () => ({ default: () => <nav aria-label="Progress">stepper</nav> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/PBLResultClient',
-  () => ({ PBLResultClient: () => <div>PBLResultClient</div> }),
+  () => ({ PBLResultClient: () => <div>PBLResultClient</div> })
 );
 
 const baseUser = {
@@ -101,6 +100,47 @@ const baseUser = {
   role: 'CONSULTANT_APPROVED',
   status: 'ACTIVE',
 };
+
+describe('TestPBLClient — 스텝 구성 (실제 인터뷰와 정합)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * 실제 PBL 인터뷰(PBL_STEPS)는 10스텝이고, 테스트 모드가 제외하는 것은 파일 업로드가
+   * 불가한 `hrdReport`(Ⅱ-1-가)·`sttAttach` **2개뿐**이므로 **8스텝**이어야 한다.
+   *
+   * 회귀 배경: Ⅲ-1 수행활동 스텝을 신설(PBL 자체 입력 전환)할 때 이 페이지 반영이
+   * 누락되어 7스텝으로 운영됐다. 데이터 필드는 이미 있어 타입 검사로는 잡히지 않았다.
+   */
+  it('8스텝이며 Ⅲ-1 수행활동을 포함한다 (HRD PDF·STT 만 제외)', async () => {
+    render(<TestPBLClient user={baseUser} canAccess={true} />);
+    await screen.findByTestId('course-name-display');
+
+    const next = () => screen.getByRole('button', { name: /^다음/ });
+
+    // 1 Ⅰ → 2 Ⅱ-1 → 3 Ⅱ-1-다 → 4 Ⅱ-3-a → 5 Ⅱ-3-b → 6 Ⅲ-1
+    for (let i = 0; i < 5; i += 1) {
+      await act(async () => {
+        await userEvent.click(next());
+      });
+    }
+    expect(screen.getByText('StepPerformanceActivities')).toBeInTheDocument();
+
+    // 7 Ⅲ-2 문제 정의서
+    await act(async () => {
+      await userEvent.click(next());
+    });
+    expect(screen.getByText('StepProblems')).toBeInTheDocument();
+
+    // 8 Ⅲ-3 훈련대상 업무 — 마지막 스텝이므로 "다음" 이 사라진다
+    await act(async () => {
+      await userEvent.click(next());
+    });
+    expect(screen.getByText('StepTarget')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^다음/ })).not.toBeInTheDocument();
+  });
+});
 
 describe('TestPBLClient — 샘플 데이터 채우기 (V2)', () => {
   beforeEach(() => {
@@ -132,9 +172,7 @@ describe('TestPBLClient — 샘플 데이터 채우기 (V2)', () => {
       expect(screen.getByTestId('course-name-display')).toHaveTextContent(/PBL 과정/);
     });
     // ConfirmDialog 가 열리지 않아야 한다
-    expect(
-      screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?')).not.toBeInTheDocument();
   });
 
   it('이미 입력값이 있을 때 ConfirmDialog "취소" 시 state 가 유지된다', async () => {
@@ -153,9 +191,7 @@ describe('TestPBLClient — 샘플 데이터 채우기 (V2)', () => {
     await act(async () => {
       await userEvent.click(btn);
     });
-    expect(
-      await screen.findByText('샘플 데이터로 덮어쓰시겠습니까?'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('샘플 데이터로 덮어쓰시겠습니까?')).toBeInTheDocument();
 
     // "취소" 클릭
     await act(async () => {
@@ -164,9 +200,7 @@ describe('TestPBLClient — 샘플 데이터 채우기 (V2)', () => {
 
     // 다이얼로그가 닫히고 기존 state 가 유지되어야 한다
     await waitFor(() => {
-      expect(
-        screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?')).not.toBeInTheDocument();
     });
     expect(screen.getByTestId('course-name-display')).toHaveTextContent(/PBL 과정/);
   });
@@ -187,18 +221,14 @@ describe('TestPBLClient — 샘플 데이터 채우기 (V2)', () => {
     await act(async () => {
       await userEvent.click(btn);
     });
-    expect(
-      await screen.findByText('샘플 데이터로 덮어쓰시겠습니까?'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('샘플 데이터로 덮어쓰시겠습니까?')).toBeInTheDocument();
 
     // "덮어쓰기" 클릭 → 다이얼로그 닫히고 샘플 값 유지 (재적용)
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: '덮어쓰기' }));
     });
     await waitFor(() => {
-      expect(
-        screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?')).not.toBeInTheDocument();
     });
     expect(screen.getByTestId('course-name-display')).toHaveTextContent(/PBL 과정/);
   });
@@ -255,12 +285,8 @@ describe('buildTestPBLExportPayload', () => {
     expect(payload.versionNumber).toBe(1);
     expect(payload.status).toBe('DRAFT');
     expect(payload.pblContent).toBeDefined();
-    expect(payload.interviewOverview?.courseName).toBe(
-      PBL_INTERVIEW_SAMPLE.courseName,
-    );
-    expect(payload.interviewOverview?.trainingHours).toBe(
-      PBL_INTERVIEW_SAMPLE.trainingHours,
-    );
+    expect(payload.interviewOverview?.courseName).toBe(PBL_INTERVIEW_SAMPLE.courseName);
+    expect(payload.interviewOverview?.trainingHours).toBe(PBL_INTERVIEW_SAMPLE.trainingHours);
   });
 
   it('finalizedAt 은 null, createdAt 은 ISO 문자열', () => {

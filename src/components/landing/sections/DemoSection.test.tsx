@@ -37,35 +37,51 @@ vi.mock('gsap/ScrollTrigger', () => ({
 // Next.js Link 모킹
 import '@/test/helpers/mock-next-link';
 
-// 4섹션 컴포넌트 모킹
-vi.mock('@/components/roadmap/CompetencyModelingTable', () => ({
-  CompetencyModelingTable: () => (
-    <div data-testid="competency-modeling-table">역량 모델링 컴포넌트</div>
-  ),
-}));
-
-vi.mock('@/components/roadmap/RoadmapMatrix', () => ({
-  RoadmapMatrix: () => <div data-testid="roadmap-matrix">훈련체계도 컴포넌트</div>,
-}));
-
-vi.mock('@/components/roadmap/AnnualTrainingPlanTable', () => ({
-  AnnualTrainingPlanTable: () => (
-    <div data-testid="annual-plan">연간 훈련계획 컴포넌트</div>
-  ),
-}));
-
+// v2 로드맵 Ⅲ장 — 훈련과정 명세서 단일 컴포넌트
 vi.mock('@/components/roadmap/CoursesList', () => ({
   CoursesList: () => <div data-testid="courses-list">훈련과정 명세서 컴포넌트</div>,
 }));
 
-// demo-sample 데이터 모킹
+// demo-sample 데이터 모킹 (2-트랙: 로드맵 + PBL)
+// CoursesList 는 별도 모킹하지만 DemoPblOperation 은 실제 렌더되므로,
+// SAMPLE_PBL_OPERATION 은 렌더가 참조하는 필드를 실제 shape 로 제공한다.
 vi.mock('@/lib/data/demo-sample', () => ({
   SAMPLE_ROADMAP_RESULT: {
     diagnosis_summary: '샘플 진단 요약',
-    competencies: [],
-    training_structure: [],
-    annual_plan: { items: [], usage_plan: '' },
+    setup_necessity: '샘플 수립 배경',
+    outcome_summary: {
+      ai_competency_level: 'INTERMEDIATE',
+      selected_tasks: '샘플 과업',
+      main_content: '샘플 주요 내용',
+    },
     course_specs: [],
+  },
+  SAMPLE_PBL_OPERATION: {
+    training_goal: '샘플 PBL 훈련 목표',
+    outcome_metrics: {
+      selected_goals: ['불량률 감소', '공정 최적화'],
+      quantitative: '샘플 정량 지표',
+      qualitative: '샘플 정성 지표',
+    },
+    ai_tool_usage_plan: [
+      {
+        stage: '1단계',
+        main_activity: '데이터 수집',
+        ai_tools: ['ChatGPT'],
+        utilized_data: '샘플 데이터',
+        purpose: '샘플 활용 목적',
+        specific_method: '샘플 활용 방법',
+      },
+    ],
+    training_plan: {
+      subject_profile: {
+        course_name: 'AI 품질관리 실무',
+        total_hours: 24,
+        training_contents: [
+          { unit_name: '데이터 수집·정제', detail: '샘플 세부 내용', training_hours: 8 },
+        ],
+      },
+    },
   },
 }));
 
@@ -117,7 +133,7 @@ describe('DemoSection', () => {
     it('섹션 설명 텍스트를 표시한다', () => {
       render(<DemoSection />);
       expect(
-        screen.getByText(/산인공 공식 양식에 맞춘 기업 맞춤형 교육 로드맵/),
+        screen.getByText(/산인공 공식 양식에 맞춘 기업 맞춤형 교육 로드맵/)
       ).toBeInTheDocument();
     });
 
@@ -145,20 +161,39 @@ describe('DemoSection', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 2. 4개 탭(슬라이드) 렌더링
+  // 2. 슬라이드 렌더링 (2-트랙: ① 로드맵 훈련과정 명세서 · ② PBL 운영계획)
   // --------------------------------------------------------------------------
   describe('슬라이드 네비게이션 탭 렌더링', () => {
-    it('4개의 슬라이드 탭 라벨이 모두 표시된다', () => {
+    it('"[로드맵] 훈련과정 명세서" 슬라이드 탭 라벨이 표시된다', () => {
       render(<DemoSection />);
-      expect(screen.getAllByText('역량 모델링').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('훈련체계도').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('연간 훈련계획').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('훈련과정 명세서').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/훈련과정 명세서/).length).toBeGreaterThanOrEqual(1);
     });
 
-    it('슬라이드 카운터가 초기에 "1 / 4"을 표시한다', () => {
+    it('"[PBL] 운영계획" 슬라이드 탭 라벨이 표시된다', () => {
       render(<DemoSection />);
-      expect(screen.getByText('1 / 4')).toBeInTheDocument();
+      expect(screen.getAllByText(/운영계획/).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('삭제된 v1 탭 라벨(역량 모델링·훈련체계도·연간 훈련계획)은 표시되지 않는다', () => {
+      render(<DemoSection />);
+      expect(screen.queryByText('역량 모델링')).not.toBeInTheDocument();
+      expect(screen.queryByText('훈련체계도')).not.toBeInTheDocument();
+      expect(screen.queryByText('연간 훈련계획')).not.toBeInTheDocument();
+    });
+
+    it('슬라이드 카운터가 "1 / 2"를 표시한다', () => {
+      render(<DemoSection />);
+      expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    });
+
+    it('CoursesList(로드맵) 콘텐츠가 렌더링된다', () => {
+      render(<DemoSection />);
+      expect(screen.getByTestId('courses-list')).toBeInTheDocument();
+    });
+
+    it('PBL 운영계획 콘텐츠(AI 도구 활용 계획)가 렌더링된다', () => {
+      render(<DemoSection />);
+      expect(screen.getByText('AI 도구 활용 계획')).toBeInTheDocument();
     });
 
     it('이전/다음 슬라이드 화살표 버튼이 표시된다', () => {
@@ -169,110 +204,48 @@ describe('DemoSection', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 3. 탭 클릭 시 콘텐츠 전환
-  // --------------------------------------------------------------------------
-  describe('탭 클릭 시 콘텐츠 전환', () => {
-    it('첫 번째 슬라이드(역량 모델링)가 초기에 표시된다', () => {
-      render(<DemoSection />);
-      expect(screen.getByText('1 / 4')).toBeInTheDocument();
-    });
-
-    it('"훈련체계도" 탭 클릭 시 슬라이드 카운터가 "2 / 4"으로 변경된다', () => {
-      render(<DemoSection />);
-      const tabButtons = screen.getAllByRole('button').filter((btn) =>
-        btn.textContent?.includes('훈련체계도'),
-      );
-      fireEvent.click(tabButtons[0]);
-      expect(screen.getByText('2 / 4')).toBeInTheDocument();
-    });
-
-    it('"연간 훈련계획" 탭 클릭 시 슬라이드 카운터가 "3 / 4"으로 변경된다', () => {
-      render(<DemoSection />);
-      const tabButtons = screen.getAllByRole('button').filter((btn) =>
-        btn.textContent?.includes('연간 훈련계획'),
-      );
-      fireEvent.click(tabButtons[0]);
-      expect(screen.getByText('3 / 4')).toBeInTheDocument();
-    });
-
-    it('"훈련과정 명세서" 탭 클릭 시 슬라이드 카운터가 "4 / 4"으로 변경된다', () => {
-      render(<DemoSection />);
-      const tabButtons = screen.getAllByRole('button').filter((btn) =>
-        btn.textContent?.includes('훈련과정 명세서'),
-      );
-      fireEvent.click(tabButtons[0]);
-      expect(screen.getByText('4 / 4')).toBeInTheDocument();
-    });
-  });
-
-  // --------------------------------------------------------------------------
-  // 4. 화살표 네비게이션
+  // 3. 화살표 네비게이션 (슬라이드 2개 → 1↔2 순환)
   // --------------------------------------------------------------------------
   describe('화살표 네비게이션', () => {
-    it('다음 슬라이드 버튼 클릭 시 슬라이드가 진행된다', () => {
-      render(<DemoSection />);
-      expect(screen.getByText('1 / 4')).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: '다음 슬라이드' }));
-      expect(screen.getByText('2 / 4')).toBeInTheDocument();
-    });
-
-    it('이전 슬라이드 버튼 클릭 시 슬라이드가 역방향으로 이동한다', () => {
+    it('다음 슬라이드 버튼 클릭 시 두 번째 슬라이드("2 / 2")로 이동한다', () => {
       render(<DemoSection />);
       fireEvent.click(screen.getByRole('button', { name: '다음 슬라이드' }));
-      expect(screen.getByText('2 / 4')).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: '이전 슬라이드' }));
-      expect(screen.getByText('1 / 4')).toBeInTheDocument();
+      expect(screen.getByText('2 / 2')).toBeInTheDocument();
     });
 
-    it('첫 번째 슬라이드에서 이전 버튼 클릭 시 마지막 슬라이드로 순환한다', () => {
+    it('이전 슬라이드 버튼 클릭 시 마지막 슬라이드("2 / 2")로 순환한다', () => {
       render(<DemoSection />);
       fireEvent.click(screen.getByRole('button', { name: '이전 슬라이드' }));
-      expect(screen.getByText('4 / 4')).toBeInTheDocument();
-    });
-
-    it('마지막 슬라이드에서 다음 버튼 클릭 시 첫 번째 슬라이드로 순환한다', () => {
-      render(<DemoSection />);
-      fireEvent.click(screen.getByRole('button', { name: '다음 슬라이드' }));
-      fireEvent.click(screen.getByRole('button', { name: '다음 슬라이드' }));
-      fireEvent.click(screen.getByRole('button', { name: '다음 슬라이드' }));
-      expect(screen.getByText('4 / 4')).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: '다음 슬라이드' }));
-      expect(screen.getByText('1 / 4')).toBeInTheDocument();
+      expect(screen.getByText('2 / 2')).toBeInTheDocument();
     });
   });
 
   // --------------------------------------------------------------------------
-  // 5. 명시적 일시정지 토글 버튼 (#008)
+  // 4. 명시적 일시정지 토글 버튼 (#008)
   // --------------------------------------------------------------------------
   describe('#008 — 일시정지 토글 버튼', () => {
     it('초기에는 "자동 전환 일시정지" 라벨의 버튼이 노출된다', () => {
       render(<DemoSection />);
-      expect(
-        screen.getByRole('button', { name: '자동 전환 일시정지' }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '자동 전환 일시정지' })).toBeInTheDocument();
     });
 
     it('일시정지 버튼 클릭 시 라벨이 "자동 전환 재생"으로 변경된다', () => {
       render(<DemoSection />);
       const pauseBtn = screen.getByRole('button', { name: '자동 전환 일시정지' });
       fireEvent.click(pauseBtn);
-      expect(
-        screen.getByRole('button', { name: '자동 전환 재생' }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '자동 전환 재생' })).toBeInTheDocument();
     });
 
     it('일시정지 → 재생 토글 시 다시 "자동 전환 일시정지" 라벨로 돌아온다', () => {
       render(<DemoSection />);
       fireEvent.click(screen.getByRole('button', { name: '자동 전환 일시정지' }));
       fireEvent.click(screen.getByRole('button', { name: '자동 전환 재생' }));
-      expect(
-        screen.getByRole('button', { name: '자동 전환 일시정지' }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '자동 전환 일시정지' })).toBeInTheDocument();
     });
   });
 
   // --------------------------------------------------------------------------
-  // 5b. 마우스 호버 시 자동재생 일시정지
+  // 4b. 마우스 호버 시 자동재생 일시정지
   // --------------------------------------------------------------------------
   describe('마우스 호버 일시정지', () => {
     it('mockup 컨테이너에 마우스 진입 시 자동재생이 일시정지된다', async () => {
@@ -286,10 +259,12 @@ describe('DemoSection', () => {
         fireEvent.mouseEnter(mockupContainer);
 
         await act(async () => {
-          await vi.advanceTimersByTimeAsync(6000);
+          await vi.advanceTimersByTimeAsync(10000);
         });
 
-        expect(screen.getByText('1 / 4')).toBeInTheDocument();
+        // 일시정지가 없다면 8s(슬라이드1 duration) 경과 시 "2 / 2"로 넘어감.
+        // 여전히 "1 / 2"라면 자동 전환이 멈춘 것.
+        expect(screen.getByText('1 / 2')).toBeInTheDocument();
       }
 
       teardownFakeTimers();
@@ -297,31 +272,17 @@ describe('DemoSection', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 6. Description Bar
+  // 5. Description Bar
   // --------------------------------------------------------------------------
   describe('Description Bar', () => {
-    it('첫 번째 슬라이드 설명을 표시한다', () => {
+    it('훈련과정 명세서 슬라이드 설명을 표시한다', () => {
       render(<DemoSection />);
-      expect(
-        screen.getAllByText(/NCS 기반 역량 모델링/).length,
-      ).toBeGreaterThanOrEqual(1);
-    });
-
-    it('탭 클릭 시 해당 슬라이드 설명으로 업데이트된다', () => {
-      render(<DemoSection />);
-      const tabButtons = screen.getAllByRole('button').filter((btn) =>
-        btn.textContent?.includes('훈련과정 명세서'),
-      );
-      fireEvent.click(tabButtons[0]);
-      expect(
-        screen.getAllByText(/훈련과정별 상세 명세서/).length,
-      ).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/훈련과정 명세서 6종/).length).toBeGreaterThanOrEqual(1);
     });
 
     it('현재 슬라이드 라벨 뱃지가 표시된다', () => {
       render(<DemoSection />);
-      const labels = screen.getAllByText('역량 모델링');
-      expect(labels.length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/훈련과정 명세서/).length).toBeGreaterThanOrEqual(1);
     });
   });
 });

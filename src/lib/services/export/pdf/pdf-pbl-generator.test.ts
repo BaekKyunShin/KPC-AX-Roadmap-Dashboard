@@ -38,7 +38,7 @@ let capturedJsPDFOpts: unknown;
 
 vi.mock('jspdf', () => {
   // vi.fn() 화살표 함수는 new 생성자로 사용 불가 → function 키워드로 정의
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   function MockJsPDF(opts: unknown) {
     capturedJsPDFOpts = opts;
     mockDocInstance = createMockDoc();
@@ -72,6 +72,7 @@ function baseExportData(): PBLExportData {
     pblContent: {
       operation_plan: {
         training_goal: '업무 생산성 향상',
+        outcome_metrics: createEmptyOutcomeAnalysis(),
         ai_tool_usage_plan: [
           {
             stage: '1단계',
@@ -121,7 +122,6 @@ function baseExportData(): PBLExportData {
           },
         },
       },
-      outcome_analysis: createEmptyOutcomeAnalysis(),
     },
   };
 }
@@ -185,9 +185,9 @@ describe('generatePBLPDF', () => {
     const { generatePBLPDF } = await import('./pdf-pbl-generator');
     await generatePBLPDF(baseExportData());
     const allText = mockDocInstance.text.mock.calls.map((c) => c[0]);
-    expect(
-      allText.some((t) => typeof t === 'string' && t.includes('KPC AI PBL 보고서')),
-    ).toBe(true);
+    expect(allText.some((t) => typeof t === 'string' && t.includes('KPC AI PBL 보고서'))).toBe(
+      true
+    );
   });
 
   it('푸터에 페이지 번호 "1 / 2" 를 출력한다 (getNumberOfPages=2)', async () => {
@@ -241,9 +241,7 @@ describe('generatePBLPDF', () => {
     };
     await generatePBLPDF(data);
     const allText = mockDocInstance.text.mock.calls.map((c) => c[0]);
-    expect(allText.some((t) => typeof t === 'string' && t.includes('Ⅰ. 훈련과정 개요'))).toBe(
-      true,
-    );
+    expect(allText.some((t) => typeof t === 'string' && t.includes('Ⅰ. 훈련과정 개요'))).toBe(true);
   });
 
   // ── finalizedAt 전달 ─────────────────────────────────────────────────

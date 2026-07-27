@@ -35,6 +35,14 @@ export interface InlineEditFieldProps {
    * 예: 줄바꿈 텍스트에 머리기호 prepend.
    */
   displayTransform?: (raw: string) => string;
+  /**
+   * view 모드 버튼의 접근성 이름(예: "수립 배경 편집").
+   *
+   * 미지정 시 접근성 이름은 값 텍스트가 된다 — 한 화면에 편집 필드가 여러 개인 표에서는
+   * 스크린리더가 어느 항목인지 구분할 수 없으므로, 표·다항목 섹션에서는 지정할 것.
+   * `readOnly` 면 button role 자체가 없어 적용되지 않는다.
+   */
+  ariaLabel?: string;
 }
 
 type SavingState = 'idle' | 'saving' | 'saved' | 'error';
@@ -47,6 +55,7 @@ export function InlineEditField({
   className,
   multiline = false,
   displayTransform,
+  ariaLabel,
 }: InlineEditFieldProps) {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   // edit 모드 진입 시의 편집 버퍼. view 모드에서는 외부 value 를 직접 표시하므로
@@ -94,9 +103,7 @@ export function InlineEditField({
     }
   }, [editBuffer, onSave, value]);
 
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
       e.preventDefault();
       cancelEdit();
@@ -134,14 +141,11 @@ export function InlineEditField({
       'flex-1 border border-input bg-background text-sm',
       multiline
         ? 'min-h-[160px] resize-y rounded-md px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-        : 'rounded px-2 py-1',
+        : 'rounded px-2 py-1'
     );
 
     return (
-      <div
-        className={cn('flex items-start gap-2', className)}
-        data-saving-state={savingState}
-      >
+      <div className={cn('flex items-start gap-2', className)} data-saving-state={savingState}>
         {multiline ? (
           <textarea
             value={editBuffer}
@@ -185,9 +189,7 @@ export function InlineEditField({
         >
           <X className="size-4" />
         </button>
-        {errorIndicator && (
-          <div className="self-center">{errorIndicator}</div>
-        )}
+        {errorIndicator && <div className="self-center">{errorIndicator}</div>}
       </div>
     );
   }
@@ -195,9 +197,7 @@ export function InlineEditField({
   // view 모드
   const viewIndicator = (() => {
     if (savingState === 'saving') {
-      return (
-        <span className="text-xs text-muted-foreground">저장 중…</span>
-      );
+      return <span className="text-xs text-muted-foreground">저장 중…</span>;
     }
     if (savingState === 'saved') {
       return <span className="text-xs text-green-600">자동 저장됨</span>;
@@ -208,14 +208,11 @@ export function InlineEditField({
 
   return (
     <div
-      className={cn(
-        'group flex items-center gap-2',
-        !readOnly && 'cursor-pointer',
-        className,
-      )}
+      className={cn('group flex items-center gap-2', !readOnly && 'cursor-pointer', className)}
       data-saving-state={savingState}
       onClick={startEdit}
       role={readOnly ? undefined : 'button'}
+      aria-label={readOnly ? undefined : ariaLabel}
       tabIndex={readOnly ? undefined : 0}
       onKeyDown={(e) => {
         if (!readOnly && (e.key === 'Enter' || e.key === ' ')) {
@@ -228,7 +225,7 @@ export function InlineEditField({
         className={cn(
           'flex-1',
           multiline && 'whitespace-pre-line',
-          !value && 'text-muted-foreground',
+          !value && 'text-muted-foreground'
         )}
       >
         {value ? (displayTransform ? displayTransform(value) : value) : placeholder}

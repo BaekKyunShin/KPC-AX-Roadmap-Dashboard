@@ -1,21 +1,16 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createAuditLog } from '../audit';
 import { createNotificationForAdmins } from '../notification';
 import type {
-  RoadmapAnnualPlan,
-  RoadmapCompetency,
   RoadmapCourseSpec,
   RoadmapOutcomeSummary,
   RoadmapResult,
-  RoadmapTrainingStructureItem,
   ValidationResult,
 } from './roadmap-types';
 import { validateRoadmap } from './roadmap-validator';
 import { sanitizeRoadmapResult } from './roadmap-sanitize';
-import {
-  fromRoadmapVersionColumns,
-  toRoadmapVersionColumns,
-} from './roadmap-storage-mapper';
+import { fromRoadmapVersionColumns, toRoadmapVersionColumns } from './roadmap-storage-mapper';
 
 /** roadmap_versions 테이블의 공통 select 컬럼 (legacy 이름 유지; Step 12에서 변경 예정) */
 const ROADMAP_VERSION_COLUMNS =
@@ -34,10 +29,7 @@ type FinalizeRoadmapRpcResult =
  * 로드맵 최종 확정
  * RPC로 기존 FINAL→ARCHIVED + 현재→FINAL + 프로젝트 FINALIZED를 원자적 실행
  */
-export async function finalizeRoadmap(
-  roadmapId: string,
-  actorUserId: string,
-): Promise<void> {
+export async function finalizeRoadmap(roadmapId: string, actorUserId: string): Promise<void> {
   const supabase = createAdminClient();
 
   // 정책 이전 (2026-05-18): 확정 시점에 1회 sanitize.
@@ -52,7 +44,7 @@ export async function finalizeRoadmap(
 
     if (currentRow) {
       const current = fromRoadmapVersionColumns(
-        currentRow as Parameters<typeof fromRoadmapVersionColumns>[0],
+        currentRow as Parameters<typeof fromRoadmapVersionColumns>[0]
       );
       const sanitized = sanitizeRoadmapResult(current);
       const cols = toRoadmapVersionColumns(sanitized);
@@ -147,8 +139,31 @@ export async function fetchRoadmapVersion(roadmapId: string) {
   return data;
 }
 
-/** projects JOIN 포함 로드맵 조회 결과 타입 (legacy 컬럼은 unknown으로 두고 매퍼로 변환) */
-interface RoadmapWithProject {
+/**
+ * 프로젝트의 최신 FINAL 로드맵 버전 조회 (raw row 반환).
+ * pbl-crud.ts:getLatestFinal 과 동일 패턴 — 프로젝트당 FINAL은 최대 1개이나
+ * 방어적으로 version_number DESC LIMIT 1. 선택적 client 주입으로 테스트/연계 조회에서 재사용.
+ */
+export async function getLatestFinalRoadmap(
+  projectId: string,
+  supabase?: SupabaseClient
+): Promise<RoadmapVersionRow | null> {
+  const client = supabase ?? createAdminClient();
+
+  const { data } = await client
+    .from('roadmap_versions')
+    .select(ROADMAP_VERSION_COLUMNS)
+    .eq('project_id', projectId)
+    .eq('status', 'FINAL')
+    .order('version_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return (data as RoadmapVersionRow) ?? null;
+}
+
+/** roadmap_versions 원시 행 타입 (legacy 컬럼은 unknown으로 두고 fromRoadmapVersionColumns로 변환) */
+export interface RoadmapVersionRow {
   id: string;
   project_id: string;
   version_number: number;
@@ -168,6 +183,10 @@ interface RoadmapWithProject {
   finalized_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** projects JOIN 포함 로드맵 조회 결과 타입 */
+interface RoadmapWithProject extends RoadmapVersionRow {
   projects: { assigned_consultant_id: string };
 }
 
@@ -183,15 +202,8 @@ export async function updateRoadmapManually(
     diagnosis_summary?: string;
     setup_necessity?: string;
     outcome_summary?: RoadmapOutcomeSummary;
-    competencies?: RoadmapCompetency[];
-    ncs_used?: boolean;
-    ncs_methodology?: string;
-    ncs_derivation_method?: string;
-    training_structure?: RoadmapTrainingStructureItem[];
-    training_structure_method?: string;
-    annual_plan?: RoadmapAnnualPlan;
     course_specs?: RoadmapCourseSpec[];
-  },
+  }
 ): Promise<{ success: boolean; validation: ValidationResult; error?: string }> {
   const supabase = createAdminClient();
 
@@ -238,13 +250,6 @@ export async function updateRoadmapManually(
     diagnosis_summary: updates.diagnosis_summary ?? current.diagnosis_summary,
     setup_necessity: updates.setup_necessity ?? current.setup_necessity,
     outcome_summary: updates.outcome_summary ?? current.outcome_summary,
-    competencies: updates.competencies ?? current.competencies,
-    ncs_used: updates.ncs_used ?? current.ncs_used,
-    ncs_methodology: updates.ncs_methodology ?? current.ncs_methodology,
-    ncs_derivation_method: updates.ncs_derivation_method ?? current.ncs_derivation_method,
-    training_structure: updates.training_structure ?? current.training_structure,
-    training_structure_method: updates.training_structure_method ?? current.training_structure_method,
-    annual_plan: updates.annual_plan ?? current.annual_plan,
     course_specs: updates.course_specs ?? current.course_specs,
   };
 
@@ -317,7 +322,7 @@ const TEXT_PREVIEW_LENGTH = 100;
 function buildEditDiff(
   before: RoadmapResult,
   after: RoadmapResult,
-  changedKeys: Array<keyof RoadmapResult>,
+  changedKeys: Array<keyof RoadmapResult>
 ): Record<string, unknown> {
   const diff: Record<string, unknown> = {};
   for (const key of changedKeys) {

@@ -77,6 +77,15 @@ const { mockAfter, flushAfterCallbacks, pendingCallbacks } = vi.hoisted(() => {
   return { mockAfter: after, flushAfterCallbacks: flush, pendingCallbacks: pending };
 });
 vi.mock('next/server', () => ({ after: mockAfter }));
+
+// 선행 로드맵 연계는 pbl-roadmap-link.test.ts 로 별도 검증. 여기서는 미연계(null)로 고정.
+vi.mock('@/lib/services/pbl/pbl-roadmap-link', () => ({
+  fetchLinkedRoadmapData: vi.fn().mockResolvedValue({ roadmap: null, interview: null }),
+  hydrateRoadmapInterview: vi.fn().mockReturnValue(null),
+  extractLinkedRoadmapSummary: vi.fn().mockReturnValue(''),
+  // Ⅱ장 override 병합 — 미연계(null) 고정이므로 병합 결과도 null.
+  mergeRoadmapOverrides: vi.fn().mockReturnValue(null),
+}));
 vi.mock('next/headers', () => ({
   headers: vi.fn().mockResolvedValue({
     get: (key: string) => (key === 'host' ? 'localhost:3000' : null),
@@ -152,41 +161,6 @@ function validPBLInterview() {
     },
     hrdReportPdf: null,
     courseNecessity: 'AI 역량 내재화 필요',
-    // R8 PBL-자체-03 — 평면 4행 배열
-    activities: [
-      {
-        round: 1,
-        role: 'PM' as const,
-        personName: '홍길동',
-        date: '2026-05-01',
-        content: '인터뷰',
-        method: 'ONSITE',
-      },
-      {
-        round: 1,
-        role: 'EXTERNAL_EXPERT' as const,
-        personName: '',
-        date: '2026-05-01',
-        content: '인터뷰',
-        method: 'ONSITE',
-      },
-      {
-        round: 1,
-        role: 'INTERNAL_EXPERT' as const,
-        personName: '',
-        date: '2026-05-01',
-        content: '인터뷰',
-        method: 'ONSITE',
-      },
-      {
-        round: 1,
-        role: 'JURISDICTION_MANAGER' as const,
-        personName: '',
-        date: '2026-05-01',
-        content: '인터뷰',
-        method: 'ONSITE',
-      },
-    ],
     // R8 PBL-자체-04 — 4 정형 항목
     problemDefinitionSheet: {
       background: '문제1',
@@ -194,18 +168,23 @@ function validPBLInterview() {
       scope: '범위',
       constraints: '제약',
     },
-    priority: {
-      items: [{ problem: '문제1', score: 5, rank: 1 }],
-      method: 'AHP 설문 평균',
-    },
+    // V2: Ⅲ-3 훈련대상 업무 (로드맵 과업 선정 + 선정 사유 + 세부내용)
     target: {
-      name: '훈련대상 업무',
-      scope: '생산팀 20명',
+      taskSelections: [
+        { ai_necessity: '높음', training_selected: true },
+        { ai_necessity: '중간', training_selected: false },
+      ],
       necessity: '품질 편차 해소',
-      details: [],
+      details: [
+        {
+          title: '품질 검사 자동화',
+          as_is: '육안 검사',
+          to_be: 'AI 비전',
+          required_knowledge: '결함 유형',
+          required_skill: 'CV 모델',
+        },
+      ],
     },
-    currentAiLevel: { level: 'BASIC' as const, note: '' },
-    expectedAiLevel: { level: 'USER' as const, note: '' },
   };
 }
 
@@ -410,6 +389,72 @@ describe('editPBLV2', () => {
     expect(sheet.background).toBe('기존 배경');
     expect(sheet.scope).toBe('기존 범위');
     expect(sheet.constraints).toBe('기존 제약');
+  });
+
+  // ── Ⅱ장 로드맵 연계 항목의 PBL 수정값 (roadmapOverrides) ────────────────
+  it('roadmapOverrides patch — pbl_data.roadmapOverrides 에 저장된다', async () => {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+    adminMock.addResult({
+      data: { id: 'interview-1', pbl_data: { companyIssues: '기존 이슈' } },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null });
+
+    const r = await editPBLV2(VERSION_ID, {
+      roadmapOverrides: { establishmentNecessity: 'PBL 에서 보정한 수립 배경' },
+    });
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
+    const pblData = updateCalls[0][0].pbl_data as Record<string, unknown>;
+    const overrides = pblData.roadmapOverrides as Record<string, unknown>;
+    expect(overrides.establishmentNecessity).toBe('PBL 에서 보정한 수립 배경');
+    // 다른 인터뷰 값은 보존
+    expect(pblData.companyIssues).toBe('기존 이슈');
+  });
+
+  it('roadmapOverrides patch — 기존 override 와 부분 병합 (다른 필드 보존)', async () => {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+    adminMock.addResult({
+      data: {
+        id: 'interview-1',
+        pbl_data: {
+          roadmapOverrides: {
+            establishmentNecessity: '기존 보정 배경',
+            selectedTask: '기존 보정 과업',
+          },
+        },
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null });
+
+    const r = await editPBLV2(VERSION_ID, {
+      roadmapOverrides: { selectedTask: '신규 보정 과업' },
+    });
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
+    const pblData = updateCalls[0][0].pbl_data as Record<string, unknown>;
+    const overrides = pblData.roadmapOverrides as Record<string, unknown>;
+    expect(overrides.selectedTask).toBe('신규 보정 과업');
+    expect(overrides.establishmentNecessity).toBe('기존 보정 배경');
+  });
+
+  it('roadmapOverrides 는 인터뷰 슬라이스이므로 operations 와 동시 patch 시 차단된다', async () => {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+
+    const r = await editPBLV2(VERSION_ID, {
+      roadmapOverrides: { selectedTask: 'x' },
+      operations: { training_plan: { training_instructors: [] } },
+    });
+    expect(r.success).toBe(false);
+    expect(r.success === false && r.error).toContain('한 번에 한 슬라이스만');
   });
 
   it('Ⅰ overview patch — 루트 필드로 병합', async () => {
@@ -1024,10 +1069,9 @@ describe('fetchPBLPageDataV2', () => {
     expect(r.data.interview.overview?.trainingHours).toBe(40);
     expect(r.data.interview.analysis?.companyIssues).toBe('품질 편차 심각');
     expect(r.data.interview.analysis?.hrdReportPdf?.url).toBe('https://signed.example/hrd.pdf');
-    // Ⅲ flat
-    // R8 PBL-자체-03 — 평면 4행 배열로 변경됨 (1차 × 4 역할)
-    expect(r.data.interview.activities).toHaveLength(4);
-    expect(r.data.interview.priority?.method).toBe('AHP 설문 평균');
+    // Ⅲ flat — V2: 훈련대상 업무 (로드맵 과업 선정 + 선정 사유)
+    expect(r.data.interview.target?.taskSelections).toHaveLength(2);
+    expect(r.data.interview.target?.necessity).toBe('품질 편차 해소');
   });
 
   it('versionId 지정 → 해당 버전 우선 선택', async () => {
