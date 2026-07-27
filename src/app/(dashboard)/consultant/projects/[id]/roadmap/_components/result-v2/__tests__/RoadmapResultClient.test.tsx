@@ -19,7 +19,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/consultant/projects/p1/roadmap',
 }));
 
-// ShareToggle — Server Action 의존 모킹 (OPS FINAL 상태에서만 렌더되는 경로 검증용)
+// ShareToggle — Server Action 의존 모킹 (CONSULTANT FINAL 상태에서만 렌더되는 경로 검증용)
 vi.mock('@/components/gallery/ShareToggle', () => ({
   ShareToggle: ({ roadmapVersionId }: { roadmapVersionId: string }) => (
     <div data-testid="share-toggle" data-version-id={roadmapVersionId}>
@@ -489,7 +489,7 @@ describe('RoadmapResultClient — OPS role', () => {
     expect(editButtons.length).toBe(0);
   });
 
-  it('role="OPS" + FINAL 상태에서만 ShareToggle 노출, DRAFT 에는 미노출', () => {
+  it('role="OPS" + FINAL 상태에서 읽기 전용 공유 배지를 노출하고, 토글은 렌더하지 않는다', () => {
     const { rerender } = render(
       <RoadmapResultClient
         role="OPS"
@@ -504,13 +504,14 @@ describe('RoadmapResultClient — OPS role', () => {
       />
     );
     expect(screen.queryByTestId('share-toggle')).toBeNull();
+    expect(screen.queryByText(/^갤러리 (공유됨|미공유)$/)).toBeNull();
 
     rerender(
       <RoadmapResultClient
         role="OPS"
         projectId="p1"
-        versions={[makeVersion({ status: 'FINAL' })]}
-        selectedVersion={makeVersion({ status: 'FINAL' })}
+        versions={[makeVersion({ status: 'FINAL', is_shared: true })]}
+        selectedVersion={makeVersion({ status: 'FINAL', is_shared: true })}
         interview={baseInterview}
         onSelectVersion={vi.fn()}
         onEdit={vi.fn()}
@@ -518,10 +519,29 @@ describe('RoadmapResultClient — OPS role', () => {
         onDownload={vi.fn()}
       />
     );
-    expect(screen.getByTestId('share-toggle')).toBeInTheDocument();
+    expect(screen.getByText('갤러리 공유됨')).toBeInTheDocument();
+    // Ops 는 공유 설정을 변경할 권한이 없으므로 토글이 렌더되어서는 안 된다.
+    expect(screen.queryByTestId('share-toggle')).toBeNull();
   });
 
-  it('role="CONSULTANT" 에는 ShareToggle 이 노출되지 않는다 (Ops 전용)', () => {
+  it('role="OPS" + FINAL + is_shared=false 이면 "갤러리 미공유" 배지를 노출한다', () => {
+    render(
+      <RoadmapResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'FINAL', is_shared: false })]}
+        selectedVersion={makeVersion({ status: 'FINAL', is_shared: false })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
+    expect(screen.getByText('갤러리 미공유')).toBeInTheDocument();
+  });
+
+  it('role="CONSULTANT" + FINAL 에는 ShareToggle 이 노출된다 (작성 컨설턴트가 공유 주체)', () => {
     render(
       <RoadmapResultClient
         role="CONSULTANT"
@@ -535,7 +555,27 @@ describe('RoadmapResultClient — OPS role', () => {
         onDownload={vi.fn()}
       />
     );
+    expect(screen.getByTestId('share-toggle')).toBeInTheDocument();
+    // 컨설턴트는 직접 변경 가능하므로 읽기 전용 배지는 노출하지 않는다.
+    expect(screen.queryByText(/^갤러리 (공유됨|미공유)$/)).toBeNull();
+  });
+
+  it('role="CONSULTANT" + DRAFT 에는 토글·배지 모두 노출되지 않는다', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
     expect(screen.queryByTestId('share-toggle')).toBeNull();
+    expect(screen.queryByText(/^갤러리 (공유됨|미공유)$/)).toBeNull();
   });
 
   it('role="OPS" 에는 "최종 확정" 버튼이 렌더되지 않는다', () => {
