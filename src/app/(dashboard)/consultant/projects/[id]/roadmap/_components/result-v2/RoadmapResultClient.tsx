@@ -8,14 +8,12 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
 import { VersionSelector } from '@/components/common/VersionSelector';
 import { VersionStatusBadge } from '@/components/common/VersionStatusBadge';
-import {
-  DownloadButtonGroup,
-  type DownloadType,
-} from '@/components/result/DownloadButtonGroup';
+import { DownloadButtonGroup, type DownloadType } from '@/components/result/DownloadButtonGroup';
 import { ResultTabs, type ResultTabItem } from '@/components/result/ResultTabs';
 import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
 import RoadmapLoadingOverlay from '@/components/roadmap/RoadmapLoadingOverlay';
 import { ShareToggle } from '@/components/gallery/ShareToggle';
+import { ShareStatusBadge } from '@/components/gallery/ShareStatusBadge';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -46,22 +44,33 @@ import type { RoadmapResultEditPayload, ResultInterviewSnapshot } from './types'
 
 export type RoadmapResultClientRole = 'CONSULTANT' | 'OPS';
 
+/**
+ * FINAL 버전에서 갤러리 공유 영역을 어떤 형태로 제공할지.
+ *
+ * - `'toggle'`: 공유 설정을 변경할 수 있는 스위치 (작성 컨설턴트)
+ * - `'badge'` : 공유 여부만 보여주는 읽기 전용 배지 (운영관리자)
+ *
+ * `toggleShare` Server Action 이 `CONSULTANT_APPROVED` + 본인 작성 로드맵만
+ * 허용하므로, 권한 없는 역할에는 조작 가능한 컨트롤을 노출하지 않는다.
+ */
+type ShareControl = 'toggle' | 'badge';
+
 interface RoleCapabilities {
   canEdit: boolean;
   showRegenerate: boolean;
-  showShareToggleWhenFinal: boolean;
+  shareControl: ShareControl;
 }
 
 const ROLE_CAPABILITIES: Record<RoadmapResultClientRole, RoleCapabilities> = {
   CONSULTANT: {
     canEdit: true,
     showRegenerate: true,
-    showShareToggleWhenFinal: false,
+    shareControl: 'toggle',
   },
   OPS: {
     canEdit: false,
     showRegenerate: false,
-    showShareToggleWhenFinal: true,
+    shareControl: 'badge',
   },
 };
 
@@ -223,7 +232,7 @@ export function RoadmapResultClient({
       readOnly: tabReadOnly,
       onEdit: onEdit ?? NOOP_EDIT,
     }),
-    [selectedVersion, interview, tabReadOnly, onEdit],
+    [selectedVersion, interview, tabReadOnly, onEdit]
   );
 
   const tabs: ResultTabItem[] = useMemo(
@@ -244,7 +253,7 @@ export function RoadmapResultClient({
         content: <TabTraining {...commonTabProps} />,
       },
     ],
-    [commonTabProps],
+    [commonTabProps]
   );
 
   return (
@@ -282,33 +291,34 @@ export function RoadmapResultClient({
               </>
             )}
             {/* Consultant 전용: DRAFT 선택 시 "최종 확정" 버튼 노출 */}
-            {capabilities.canEdit &&
-              isDraft &&
-              selectedVersion &&
-              onFinalize && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="default"
-                  onClick={() => void handleFinalize()}
-                  disabled={isFinalizing}
-                  data-testid="finalize-roadmap-button"
-                >
-                  {isFinalizing ? (
-                    <Loader2 className="mr-1 size-4 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <CheckCircle2 className="mr-1 size-4" aria-hidden="true" />
-                  )}
-                  {isFinalizing ? '확정 중...' : '최종 확정'}
-                </Button>
-              )}
-            {/* Ops 전용: FINAL 상태에서만 ShareToggle 노출 (갤러리 공유 감사 목적) */}
-            {capabilities.showShareToggleWhenFinal && isFinal && selectedVersion && (
-              <ShareToggle
-                roadmapVersionId={selectedVersion.id}
-                initialShared={selectedVersion.is_shared ?? false}
-              />
+            {capabilities.canEdit && isDraft && selectedVersion && onFinalize && (
+              <Button
+                type="button"
+                size="sm"
+                variant="default"
+                onClick={() => void handleFinalize()}
+                disabled={isFinalizing}
+                data-testid="finalize-roadmap-button"
+              >
+                {isFinalizing ? (
+                  <Loader2 className="mr-1 size-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <CheckCircle2 className="mr-1 size-4" aria-hidden="true" />
+                )}
+                {isFinalizing ? '확정 중...' : '최종 확정'}
+              </Button>
             )}
+            {/* FINAL 버전: 작성 컨설턴트는 공유 토글, Ops 는 읽기 전용 상태 배지 */}
+            {isFinal &&
+              selectedVersion &&
+              (capabilities.shareControl === 'toggle' ? (
+                <ShareToggle
+                  roadmapVersionId={selectedVersion.id}
+                  initialShared={selectedVersion.is_shared ?? false}
+                />
+              ) : (
+                <ShareStatusBadge isShared={selectedVersion.is_shared ?? false} />
+              ))}
           </div>
           <DownloadButtonGroup
             onDownload={handleDownload}
@@ -341,8 +351,8 @@ export function RoadmapResultClient({
             className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
             data-testid="final-edit-warning-banner"
           >
-            <strong>최종 확정된 v{selectedVersion.version_number}입니다.</strong> 여기서 항목을
-            직접 편집하면 새 버전 없이 v{selectedVersion.version_number}이 덮어써집니다.
+            <strong>최종 확정된 v{selectedVersion.version_number}입니다.</strong> 여기서 항목을 직접
+            편집하면 새 버전 없이 v{selectedVersion.version_number}이 덮어써집니다.
           </div>
         )}
 
@@ -427,13 +437,8 @@ function EmptyState({
   if (canGenerate && !hasInterview) {
     return (
       <div className="rounded-lg border bg-card p-12 text-center">
-        <FileText
-          className="mx-auto h-12 w-12 text-amber-500"
-          aria-hidden="true"
-        />
-        <h3 className="mt-4 text-base font-semibold">
-          현장 인터뷰를 먼저 완료해주세요
-        </h3>
+        <FileText className="mx-auto h-12 w-12 text-amber-500" aria-hidden="true" />
+        <h3 className="mt-4 text-base font-semibold">현장 인터뷰를 먼저 완료해주세요</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           AI 로드맵 생성에는 현장 인터뷰 데이터가 필요합니다.
         </p>
