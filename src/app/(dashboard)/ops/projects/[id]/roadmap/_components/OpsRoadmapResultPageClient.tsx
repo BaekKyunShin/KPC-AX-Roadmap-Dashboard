@@ -4,7 +4,8 @@
  * Ops Roadmap 결과 페이지의 Client wrapper (Task 2.11-b).
  *
  * OPS_ADMIN / SYSTEM_ADMIN 의 읽기 전용 뷰. V2 Client 의 role="OPS" 로
- * 편집·재생성·ShareToggle(FINAL) 가시성을 제어한다.
+ * 편집·재생성을 차단하고, FINAL 버전의 갤러리 공유는 읽기 전용 배지로만 노출한다
+ * (공유 설정 변경 권한은 작성 컨설턴트에게만 있음).
  *
  * V2 Server Action 은 컨설턴트 라우트에 정의되어 있으나 역할 가드가
  * OPS/SYSTEM_ADMIN 을 허용하므로 (`fetchRoadmapPageDataV2` · `exportRoadmapHwpxV2`)
@@ -19,9 +20,7 @@ import {
   fetchRoadmapPageDataV2,
 } from '@/app/(dashboard)/consultant/projects/[id]/roadmap/actions';
 import { RoadmapResultClient } from '@/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/RoadmapResultClient';
-import type {
-  ResultInterviewSnapshot,
-} from '@/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/types';
+import type { ResultInterviewSnapshot } from '@/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/types';
 import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
 import { useHwpxDownload } from '@/hooks/useHwpxDownload';
 import type { DownloadType } from '@/components/result/DownloadButtonGroup';
@@ -41,11 +40,8 @@ export default function OpsRoadmapResultPageClient({
   initialInterview,
 }: OpsRoadmapResultPageClientProps) {
   const [versions, setVersions] = useState<RoadmapVersionUI[]>(initialVersions);
-  const [selectedVersion, setSelectedVersion] = useState<RoadmapVersionUI | null>(
-    initialSelected,
-  );
-  const [interview, setInterview] =
-    useState<Partial<ResultInterviewSnapshot>>(initialInterview);
+  const [selectedVersion, setSelectedVersion] = useState<RoadmapVersionUI | null>(initialSelected);
+  const [interview, setInterview] = useState<Partial<ResultInterviewSnapshot>>(initialInterview);
   const [isSwitchingVersion, setIsSwitchingVersion] = useState(false);
 
   const { isDownloading, downloadPDF, downloadXLSX } = useRoadmapDownload();
