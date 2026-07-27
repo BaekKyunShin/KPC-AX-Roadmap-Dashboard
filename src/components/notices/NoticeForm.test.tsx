@@ -107,7 +107,11 @@ vi.mock('@/components/notices/AttachmentList', () => ({
     editable?: boolean;
     onDeleted?: (id: string) => void;
   }) => (
-    <div data-testid="attachment-list" data-count={attachments.length} data-editable={String(editable)}>
+    <div
+      data-testid="attachment-list"
+      data-count={attachments.length}
+      data-editable={String(editable)}
+    >
       {attachments.map((a: unknown) => {
         const att = a as { id: string; file_name: string };
         return (
@@ -131,7 +135,11 @@ vi.mock('@/components/notices/AttachmentList', () => ({
 
 vi.mock('@/components/ui/field-error', () => ({
   FieldError: ({ message }: { message?: string }) =>
-    message ? <p role="alert" data-testid="field-error">{message}</p> : null,
+    message ? (
+      <p role="alert" data-testid="field-error">
+        {message}
+      </p>
+    ) : null,
 }));
 
 // =============================================================================
@@ -281,6 +289,11 @@ describe('NoticeForm', () => {
         expect(mockShowSuccessToast).toHaveBeenCalledWith('공지가 작성되었습니다.');
         expect(mockPush).toHaveBeenCalledWith('/ops/notices');
       });
+      // 네비게이션 레이스 방지 가드: push 직후 router.refresh 를 호출하면 아직 커밋되지
+      // 않은 push 를 취소해 작성 페이지(/ops/notices/new)에 머무는 버그가 있었다
+      // (E2E notices.spec.ts:42 실패). 공지 목록은 동적 렌더링이라 push 만으로 새로
+      // fetch 되므로 refresh 는 불필요하다.
+      expect(mockRefresh).not.toHaveBeenCalled();
     });
 
     it('실패 시 에러 토스트가 표시된다', async () => {
@@ -345,9 +358,74 @@ describe('NoticeForm', () => {
 
       await waitFor(() => {
         expect(mockShowSuccessToast).toHaveBeenCalledWith(
-          expect.stringContaining('첨부 1건 업로드 완료'),
+          expect.stringContaining('첨부 1건 업로드 완료')
         );
       });
+    });
+
+    // 100MB 첨부는 회선에 따라 수 분이 걸린다. 작성 페이지는 저장 버튼을 누른 뒤
+    // 업로드가 시작되므로, 진행률이 없으면 사용자가 멈춘 것으로 오해한다.
+    it('첨부 업로드 중 해당 파일의 진행률(%)이 표시된다', async () => {
+      const user = userEvent.setup();
+      mockCreateNoticeAction.mockResolvedValue({
+        success: true,
+        data: { noticeId: 'new-notice-3' },
+      });
+
+      let finishUpload!: (v: unknown) => void;
+      mockUploadNoticeAttachmentDirect.mockImplementation(
+        (_noticeId: string, _file: File, onProgress?: (loaded: number, total: number) => void) => {
+          onProgress?.(30 * 1024 * 1024, 100 * 1024 * 1024);
+          return new Promise((resolve) => {
+            finishUpload = resolve;
+          });
+        }
+      );
+
+      render(<NoticeForm mode="create" />);
+
+      await user.click(screen.getByTestId('mock-select-file'));
+      await user.type(screen.getByRole('textbox', { name: /제목/ }), '공지');
+      await user.click(screen.getByRole('button', { name: '작성' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '30');
+        expect(screen.getByText('30%')).toBeInTheDocument();
+        expect(screen.getByText('30.0 MB / 100.0 MB')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        finishUpload({ success: true });
+      });
+    });
+
+    it('업로드 완료 후에는 진행률이 사라진다', async () => {
+      const user = userEvent.setup();
+      mockCreateNoticeAction.mockResolvedValue({
+        success: true,
+        data: { noticeId: 'new-notice-4' },
+      });
+      mockUploadNoticeAttachmentDirect.mockImplementation(
+        async (
+          _noticeId: string,
+          _file: File,
+          onProgress?: (loaded: number, total: number) => void
+        ) => {
+          onProgress?.(100 * 1024 * 1024, 100 * 1024 * 1024);
+          return { success: true };
+        }
+      );
+
+      render(<NoticeForm mode="create" />);
+
+      await user.click(screen.getByTestId('mock-select-file'));
+      await user.type(screen.getByRole('textbox', { name: /제목/ }), '공지');
+      await user.click(screen.getByRole('button', { name: '작성' }));
+
+      await waitFor(() => {
+        expect(mockShowSuccessToast).toHaveBeenCalled();
+      });
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
     });
 
     // 회귀 #이슈1-C: 첨부 포함 정상 흐름에서 "저장 실패" 토스트가 발생해선 안 됨.
@@ -372,9 +450,7 @@ describe('NoticeForm', () => {
       });
 
       // "저장 실패" 토스트는 단 한 번도 호출되어서는 안 됨
-      const errorCalls = mockShowErrorToast.mock.calls.filter(
-        (call) => call[0] === '저장 실패',
-      );
+      const errorCalls = mockShowErrorToast.mock.calls.filter((call) => call[0] === '저장 실패');
       expect(errorCalls).toHaveLength(0);
     });
   });
@@ -395,6 +471,10 @@ describe('NoticeForm', () => {
         expect(mockShowSuccessToast).toHaveBeenCalledWith('공지가 수정되었습니다.');
         expect(mockPush).toHaveBeenCalledWith('/notices/notice-1');
       });
+      // 네비게이션 레이스 방지 가드: 작성 경로와 동일하게, push 직후 refresh 는
+      // 네비게이션을 취소할 수 있으므로 호출하지 않는다. 상세 페이지도 동적 렌더링이라
+      // push 만으로 수정 내용이 반영된다.
+      expect(mockRefresh).not.toHaveBeenCalled();
     });
 
     it('수정 실패 시 에러 토스트가 표시된다', async () => {
@@ -496,7 +576,7 @@ describe('NoticeForm', () => {
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(
           '공지 등록 실패',
-          expect.stringContaining('첨부 업로드 오류'),
+          expect.stringContaining('첨부 업로드 오류')
         );
       });
       // 성공 토스트는 호출되지 않아야 함
@@ -579,7 +659,7 @@ describe('NoticeForm', () => {
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(
           '공지 등록 실패',
-          expect.stringContaining('첨부 업로드 오류'),
+          expect.stringContaining('첨부 업로드 오류')
         );
       });
 

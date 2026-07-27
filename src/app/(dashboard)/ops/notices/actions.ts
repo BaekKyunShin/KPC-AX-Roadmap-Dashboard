@@ -10,6 +10,7 @@ import {
   noticeUpdateSchema,
   attachmentInputSchema,
   MAX_ATTACHMENT_BYTES,
+  ATTACHMENT_TOO_LARGE_MESSAGE,
 } from '@/lib/schemas/notice';
 import {
   createNotice,
@@ -74,12 +75,10 @@ export async function createNoticeAction(
       console.error('[createNoticeAction] 감사로그 실패:', e);
     }
 
-    try {
-      revalidatePath('/ops/notices');
-      revalidatePath('/notices');
-    } catch (e) {
-      console.error('[createNoticeAction] 캐시 무효화 실패:', e);
-    }
+    // revalidatePath 미호출(의도적): 공지 목록은 모두 동적 렌더링이고, 작성 완료 시
+    // NoticeForm 이 목적지로 router.push + router.refresh 하므로 여기서 revalidate 할
+    // 필요가 없다. 제출 도중 revalidate 하면 현재 페이지(/ops/notices/new)가 refresh 되어
+    // window 스크롤이 최상단으로 리셋되는 UX 버그가 생긴다.
 
     return { success: true, data: { noticeId: result.id } };
   } catch (e) {
@@ -239,7 +238,7 @@ export async function uploadAttachmentAction(
       return { success: false, error: '빈 파일은 업로드할 수 없습니다.' };
     }
     if (file.size > MAX_ATTACHMENT_BYTES) {
-      return { success: false, error: '파일은 30MB 이하여야 합니다.' };
+      return { success: false, error: ATTACHMENT_TOO_LARGE_MESSAGE };
     }
 
     // 서버 측 Zod 검증 — storage_path는 실제 업로드 성공 후 확정되므로
@@ -338,7 +337,7 @@ export async function createUploadUrlAction(
       return { success: false, error: '파일 크기가 올바르지 않습니다.' };
     }
     if (fileSize > MAX_ATTACHMENT_BYTES) {
-      return { success: false, error: '파일은 30MB 이하여야 합니다.' };
+      return { success: false, error: ATTACHMENT_TOO_LARGE_MESSAGE };
     }
 
     // Zod 사전 검증 — storage_path 는 service 에서 buildStoragePath 로 생성되므로
@@ -441,12 +440,10 @@ export async function registerAttachmentAction(
       console.error('[registerAttachmentAction] 감사로그 실패:', e);
     }
 
-    try {
-      revalidatePath(`/ops/notices/${noticeId}/edit`);
-      revalidatePath(`/notices/${noticeId}`);
-    } catch (e) {
-      console.error('[registerAttachmentAction] 캐시 무효화 실패:', e);
-    }
+    // revalidatePath 미호출(의도적): 작성 흐름에서 첨부마다 이 액션이 호출되는데,
+    // revalidate 하면 현재 페이지(/ops/notices/new)가 refresh 되어 window 스크롤이
+    // 최상단으로 리셋되는 UX 버그가 생긴다. 수정 모드 즉시 업로드는 onUploaded 낙관적
+    // 상태로 UI 를 갱신하고, 공지 페이지는 모두 동적 렌더링이라 신선도에도 문제없다.
 
     return { success: true, data: { attachment: result.attachment } };
   } catch (e) {

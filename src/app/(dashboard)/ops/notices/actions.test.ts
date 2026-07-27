@@ -47,6 +47,7 @@ import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import * as noticeService from '@/lib/services/notice';
 import { createAuditLog } from '@/lib/services/audit';
 import { revalidatePath } from 'next/cache';
+import { ATTACHMENT_TOO_LARGE_MESSAGE } from '@/lib/schemas/notice';
 
 // ─── 헬퍼 ────────────────────────────────────────────────────────────────
 
@@ -86,9 +87,7 @@ afterEach(() => {
 describe('createNoticeAction', () => {
   it('권한 없으면 실패', async () => {
     setAuthFailure('공지 작성 권한이 없습니다.');
-    const result = await createNoticeAction(
-      makeFormData({ title: 't', body: 'b' }),
-    );
+    const result = await createNoticeAction(makeFormData({ title: 't', body: 'b' }));
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error).toContain('권한');
@@ -97,9 +96,7 @@ describe('createNoticeAction', () => {
 
   it('제목 누락 시 Zod 검증 실패', async () => {
     setAuthSuccess();
-    const result = await createNoticeAction(
-      makeFormData({ title: '', body: 'b' }),
-    );
+    const result = await createNoticeAction(makeFormData({ title: '', body: 'b' }));
     expect(result.success).toBe(false);
   });
 
@@ -107,7 +104,7 @@ describe('createNoticeAction', () => {
     setAuthSuccess();
     vi.mocked(noticeService.createNotice).mockResolvedValueOnce({ id: 'n-1' });
     const result = await createNoticeAction(
-      makeFormData({ title: '공지', body: '본문', is_pinned: 'on' }),
+      makeFormData({ title: '공지', body: '본문', is_pinned: 'on' })
     );
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.noticeId).toBe('n-1');
@@ -116,9 +113,7 @@ describe('createNoticeAction', () => {
   it('서비스 실패 시 error 반환', async () => {
     setAuthSuccess();
     vi.mocked(noticeService.createNotice).mockResolvedValueOnce(null);
-    const result = await createNoticeAction(
-      makeFormData({ title: '공지', body: 'b' }),
-    );
+    const result = await createNoticeAction(makeFormData({ title: '공지', body: 'b' }));
     expect(result.success).toBe(false);
   });
 
@@ -128,29 +123,26 @@ describe('createNoticeAction', () => {
     vi.mocked(createAuditLog).mockRejectedValueOnce(new Error('audit 테이블 에러'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const result = await createNoticeAction(
-      makeFormData({ title: '공지', body: '본문' }),
-    );
+    const result = await createNoticeAction(makeFormData({ title: '공지', body: '본문' }));
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.noticeId).toBe('n-1');
     consoleSpy.mockRestore();
   });
 
-  it('revalidatePath throw 해도 noticeId 반환 (회귀 #이슈1)', async () => {
+  // ─── 작성 중 스크롤 최상단 점프 방지 가드 ───────────────────────────────
+  // createNoticeAction 은 revalidatePath 를 호출하지 않아야 한다. 공지 페이지는
+  // 모두 동적 렌더링이고 작성 완료 시 목적지로 push+refresh 하므로 revalidate 는
+  // 신선도에 불필요하며, 제출 도중의 revalidatePath 는 현재 페이지(/ops/notices/new)
+  // 를 refresh 시켜 window 스크롤을 최상단으로 리셋한다(사용자 보고 UX 버그).
+  it('revalidatePath 를 호출하지 않는다 (작성 중 스크롤 점프 방지)', async () => {
     setAuthSuccess();
     vi.mocked(noticeService.createNotice).mockResolvedValueOnce({ id: 'n-1' });
-    vi.mocked(revalidatePath).mockImplementationOnce(() => {
-      throw new Error('cache 무효화 실패');
-    });
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const result = await createNoticeAction(
-      makeFormData({ title: '공지', body: '본문' }),
-    );
+    const result = await createNoticeAction(makeFormData({ title: '공지', body: '본문' }));
 
     expect(result.success).toBe(true);
-    consoleSpy.mockRestore();
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 
   // ─── 본 흐름 unknown throw 방어 (이슈 1-C 재발 차단) ─────────────────────
@@ -162,14 +154,10 @@ describe('createNoticeAction', () => {
 
   it('createNotice 서비스가 throw해도 ActionResult 반환 (회귀 #이슈1-C)', async () => {
     setAuthSuccess();
-    vi.mocked(noticeService.createNotice).mockRejectedValueOnce(
-      new Error('DB 네트워크 에러'),
-    );
+    vi.mocked(noticeService.createNotice).mockRejectedValueOnce(new Error('DB 네트워크 에러'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const result = await createNoticeAction(
-      makeFormData({ title: '공지', body: '본문' }),
-    );
+    const result = await createNoticeAction(makeFormData({ title: '공지', body: '본문' }));
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -185,20 +173,14 @@ describe('createNoticeAction', () => {
 describe('updateNoticeAction', () => {
   it('권한 없으면 실패', async () => {
     setAuthFailure();
-    const result = await updateNoticeAction(
-      'n-1',
-      makeFormData({ title: 't', body: 'b' }),
-    );
+    const result = await updateNoticeAction('n-1', makeFormData({ title: 't', body: 'b' }));
     expect(result.success).toBe(false);
   });
 
   it('성공 시 simpleSuccess', async () => {
     setAuthSuccess();
     vi.mocked(noticeService.updateNotice).mockResolvedValueOnce(true);
-    const result = await updateNoticeAction(
-      'n-1',
-      makeFormData({ title: '수정', body: 'b' }),
-    );
+    const result = await updateNoticeAction('n-1', makeFormData({ title: '수정', body: 'b' }));
     expect(result.success).toBe(true);
   });
 
@@ -250,7 +232,7 @@ describe('togglePinAction', () => {
     expect(noticeService.updateNotice).toHaveBeenCalledWith(
       'n-1',
       { is_pinned: true },
-      expect.anything(),
+      expect.anything()
     );
   });
 });
@@ -262,7 +244,7 @@ describe('uploadAttachmentAction', () => {
     setAuthFailure();
     const result = await uploadAttachmentAction(
       'n-1',
-      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') })
     );
     expect(result.success).toBe(false);
   });
@@ -273,14 +255,29 @@ describe('uploadAttachmentAction', () => {
     expect(result.success).toBe(false);
   });
 
-  it('30MB 초과 거부', async () => {
+  it('100MB 초과 거부', async () => {
     setAuthSuccess();
-    const huge = makeFile('a.pdf', 31 * 1024 * 1024, 'application/pdf');
-    const result = await uploadAttachmentAction(
-      'n-1',
-      makeFormData({ file: huge }),
-    );
+    const huge = makeFile('a.pdf', 100 * 1024 * 1024 + 1, 'application/pdf');
+    const result = await uploadAttachmentAction('n-1', makeFormData({ file: huge }));
     expect(result.success).toBe(false);
+  });
+
+  it('100MB 이하(90MB)는 통과 — 상향된 한도가 실제로 적용된다', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.uploadAttachment).mockResolvedValueOnce({
+      attachment: {
+        id: 'att-90',
+        notice_id: 'n-1',
+        file_name: 'big.pdf',
+        mime_type: 'application/pdf',
+        file_size: 90 * 1024 * 1024,
+        storage_path: 'n-1/big.pdf',
+        uploaded_at: '2026-01-01',
+      },
+    });
+    const big = makeFile('big.pdf', 90 * 1024 * 1024, 'application/pdf');
+    const result = await uploadAttachmentAction('n-1', makeFormData({ file: big }));
+    expect(result.success).toBe(true);
   });
 
   it('허용 확장자·크기면 서비스 호출 후 성공', async () => {
@@ -299,7 +296,7 @@ describe('uploadAttachmentAction', () => {
 
     const result = await uploadAttachmentAction(
       'n-1',
-      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') })
     );
     expect(result.success).toBe(true);
   });
@@ -310,7 +307,7 @@ describe('uploadAttachmentAction', () => {
       'n-1',
       makeFormData({
         file: makeFile('mal.exe', 10, 'application/octet-stream'),
-      }),
+      })
     );
     expect(result.success).toBe(false);
   });
@@ -333,7 +330,7 @@ describe('uploadAttachmentAction', () => {
 
     const result = await uploadAttachmentAction(
       'n-1',
-      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') })
     );
 
     expect(result.success).toBe(true);
@@ -360,7 +357,7 @@ describe('uploadAttachmentAction', () => {
 
     const result = await uploadAttachmentAction(
       'n-1',
-      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') })
     );
 
     expect(result.success).toBe(true);
@@ -377,13 +374,13 @@ describe('uploadAttachmentAction', () => {
   it('uploadAttachment 서비스가 throw해도 ActionResult 반환 (회귀 #이슈1-C)', async () => {
     setAuthSuccess();
     vi.mocked(noticeService.uploadAttachment).mockRejectedValueOnce(
-      new Error('storage 네트워크 에러'),
+      new Error('storage 네트워크 에러')
     );
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = await uploadAttachmentAction(
       'n-1',
-      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') })
     );
 
     expect(result.success).toBe(false);
@@ -417,56 +414,50 @@ describe('deleteAttachmentAction', () => {
 describe('createUploadUrlAction', () => {
   it('권한 없으면 실패', async () => {
     setAuthFailure();
-    const result = await createUploadUrlAction(
-      'n-1',
-      'a.pdf',
-      'application/pdf',
-      100,
-    );
+    const result = await createUploadUrlAction('n-1', 'a.pdf', 'application/pdf', 100);
     expect(result.success).toBe(false);
   });
 
   it('빈 noticeId 거부', async () => {
     setAuthSuccess();
-    const result = await createUploadUrlAction(
-      '',
-      'a.pdf',
-      'application/pdf',
-      100,
-    );
+    const result = await createUploadUrlAction('', 'a.pdf', 'application/pdf', 100);
     expect(result.success).toBe(false);
   });
 
-  it('30MB 초과 거부', async () => {
+  it('100MB 초과 거부', async () => {
     setAuthSuccess();
     const result = await createUploadUrlAction(
       'n-1',
       'a.pdf',
       'application/pdf',
-      31 * 1024 * 1024,
+      100 * 1024 * 1024 + 1
     );
     expect(result.success).toBe(false);
+  });
+
+  it('100MB 초과 거부 메시지는 ATTACHMENT_TOO_LARGE_MESSAGE 와 동일 (문구 drift 방지)', async () => {
+    setAuthSuccess();
+    const result = await createUploadUrlAction(
+      'n-1',
+      'a.pdf',
+      'application/pdf',
+      100 * 1024 * 1024 + 1
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe(ATTACHMENT_TOO_LARGE_MESSAGE);
+    }
   });
 
   it('빈 파일(0바이트) 거부', async () => {
     setAuthSuccess();
-    const result = await createUploadUrlAction(
-      'n-1',
-      'a.pdf',
-      'application/pdf',
-      0,
-    );
+    const result = await createUploadUrlAction('n-1', 'a.pdf', 'application/pdf', 0);
     expect(result.success).toBe(false);
   });
 
   it('허용되지 않은 확장자 거부 (.exe)', async () => {
     setAuthSuccess();
-    const result = await createUploadUrlAction(
-      'n-1',
-      'mal.exe',
-      'application/octet-stream',
-      100,
-    );
+    const result = await createUploadUrlAction('n-1', 'mal.exe', 'application/octet-stream', 100);
     expect(result.success).toBe(false);
   });
 
@@ -479,12 +470,7 @@ describe('createUploadUrlAction', () => {
       resolvedMime: 'application/pdf',
     });
 
-    const result = await createUploadUrlAction(
-      'n-1',
-      'a.pdf',
-      'application/pdf',
-      100,
-    );
+    const result = await createUploadUrlAction('n-1', 'a.pdf', 'application/pdf', 100);
 
     expect(result.success).toBe(true);
     if (result.success) {
@@ -497,16 +483,11 @@ describe('createUploadUrlAction', () => {
   it('서비스 throw 해도 ActionResult 반환', async () => {
     setAuthSuccess();
     vi.mocked(noticeService.createNoticeAttachmentUploadUrl).mockRejectedValueOnce(
-      new Error('network down'),
+      new Error('network down')
     );
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const result = await createUploadUrlAction(
-      'n-1',
-      'a.pdf',
-      'application/pdf',
-      100,
-    );
+    const result = await createUploadUrlAction('n-1', 'a.pdf', 'application/pdf', 100);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -569,6 +550,37 @@ describe('registerAttachmentAction', () => {
     }
   });
 
+  // ─── 작성 중 스크롤 최상단 점프 방지 가드 ───────────────────────────────
+  // registerAttachmentAction 은 작성 흐름의 첨부 업로드 루프에서 첨부마다 호출된다.
+  // revalidatePath 를 호출하면 현재 페이지(/ops/notices/new)가 refresh 되어 window
+  // 스크롤이 최상단으로 리셋되므로(사용자 보고 UX 버그) 호출하지 않아야 한다. 수정 모드
+  // 즉시 업로드는 onUploaded 낙관적 상태로 UI 를 갱신하고, 공지 페이지는 동적 렌더링이라
+  // 신선도에도 문제 없다.
+  it('revalidatePath 를 호출하지 않는다 (작성 중 스크롤 점프 방지)', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.registerNoticeAttachment).mockResolvedValueOnce({
+      attachment: {
+        id: 'att-1',
+        notice_id: 'n-1',
+        file_name: 'a.pdf',
+        mime_type: 'application/pdf',
+        file_size: 100,
+        storage_path: 'n-1/uuid-a.pdf',
+        uploaded_at: '2026-01-01',
+      },
+    } as never);
+
+    const result = await registerAttachmentAction('n-1', {
+      file_name: 'a.pdf',
+      mime_type: 'application/pdf',
+      file_size: 100,
+      storage_path: 'n-1/uuid-a.pdf',
+    });
+
+    expect(result.success).toBe(true);
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
   it('서비스 실패 시 error 반환', async () => {
     setAuthSuccess();
     vi.mocked(noticeService.registerNoticeAttachment).mockResolvedValueOnce({
@@ -590,9 +602,7 @@ describe('registerAttachmentAction', () => {
 
   it('서비스 throw 해도 ActionResult 반환', async () => {
     setAuthSuccess();
-    vi.mocked(noticeService.registerNoticeAttachment).mockRejectedValueOnce(
-      new Error('db down'),
-    );
+    vi.mocked(noticeService.registerNoticeAttachment).mockRejectedValueOnce(new Error('db down'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = await registerAttachmentAction('n-1', {

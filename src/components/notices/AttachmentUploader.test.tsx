@@ -23,10 +23,12 @@ vi.mock('@/lib/utils/toast', () => ({
   showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
-// ALLOWED_ATTACHMENT_EXT와 MAX_ATTACHMENT_BYTES 모킹
+// ALLOWED_ATTACHMENT_EXT와 크기 상한 상수 모킹
 vi.mock('@/lib/schemas/notice', () => ({
   ALLOWED_ATTACHMENT_EXT: ['.pdf', '.docx', '.xlsx', '.hwpx', '.jpg', '.png'],
-  MAX_ATTACHMENT_BYTES: 30 * 1024 * 1024, // 30MB
+  MAX_ATTACHMENT_BYTES: 100 * 1024 * 1024, // 100MB
+  MAX_ATTACHMENT_LABEL: '100MB',
+  ATTACHMENT_TOO_LARGE_MESSAGE: '파일은 100MB 이하여야 합니다.',
 }));
 
 // =============================================================================
@@ -40,8 +42,15 @@ import type { NoticeAttachment } from '@/types/database';
 // 헬퍼
 // =============================================================================
 
+/**
+ * 가짜 File 생성.
+ * 실제 내용을 size 만큼 채우면 100MB 초과 케이스에서 메모리를 그대로 잡아먹으므로,
+ * 내용은 1바이트만 두고 size 속성만 원하는 값으로 덮어쓴다.
+ */
 function makeFile(name: string, size: number, type = 'application/pdf'): File {
-  return new File(['x'.repeat(size)], name, { type });
+  const file = new File(['x'], name, { type });
+  Object.defineProperty(file, 'size', { value: size, configurable: true });
+  return file;
 }
 
 // =============================================================================
@@ -189,32 +198,45 @@ describe('AttachmentUploader', () => {
       expect(mockOnFileSelected).not.toHaveBeenCalled();
     });
 
-    it('30MB 초과 파일을 선택하면 에러 메시지가 표시된다', async () => {
+    it('100MB 초과 파일을 선택하면 에러 메시지가 표시된다', async () => {
       render(<AttachmentUploader onFileSelected={mockOnFileSelected} />);
 
       const input = screen.getByTestId('attachment-input');
-      const oversizedFile = makeFile('big.pdf', 30 * 1024 * 1024 + 1);
+      const oversizedFile = makeFile('big.pdf', 100 * 1024 * 1024 + 1);
 
       await act(async () => {
         await userEvent.upload(input, oversizedFile);
       });
 
       await waitFor(() => {
-        expect(screen.getByText('파일은 30MB 이하여야 합니다.')).toBeInTheDocument();
+        expect(screen.getByText('파일은 100MB 이하여야 합니다.')).toBeInTheDocument();
       });
     });
 
-    it('30MB 초과 파일 선택 시 onFileSelected가 호출되지 않는다', async () => {
+    it('100MB 초과 파일 선택 시 onFileSelected가 호출되지 않는다', async () => {
       render(<AttachmentUploader onFileSelected={mockOnFileSelected} />);
 
       const input = screen.getByTestId('attachment-input');
-      const oversizedFile = makeFile('big.pdf', 30 * 1024 * 1024 + 1);
+      const oversizedFile = makeFile('big.pdf', 100 * 1024 * 1024 + 1);
 
       await act(async () => {
         await userEvent.upload(input, oversizedFile);
       });
 
       expect(mockOnFileSelected).not.toHaveBeenCalled();
+    });
+
+    it('정확히 100MB 파일은 통과한다 (경계값)', async () => {
+      render(<AttachmentUploader onFileSelected={mockOnFileSelected} />);
+
+      const input = screen.getByTestId('attachment-input');
+      const exactly100mb = makeFile('big.pdf', 100 * 1024 * 1024);
+
+      await act(async () => {
+        await userEvent.upload(input, exactly100mb);
+      });
+
+      expect(mockOnFileSelected).toHaveBeenCalledWith(exactly100mb);
     });
 
     it('유효한 파일 선택 후에는 에러 메시지가 사라진다', async () => {
@@ -271,9 +293,7 @@ describe('AttachmentUploader', () => {
         data: { attachment: fakeAttachment },
       });
 
-      render(
-        <AttachmentUploader noticeId="n-1" onUploaded={mockOnUploaded} />,
-      );
+      render(<AttachmentUploader noticeId="n-1" onUploaded={mockOnUploaded} />);
 
       const input = screen.getByTestId('attachment-input');
       const file = makeFile('report.pdf', 1024);
@@ -286,6 +306,7 @@ describe('AttachmentUploader', () => {
         expect(mockUploadNoticeAttachmentDirect).toHaveBeenCalledWith(
           'n-1',
           expect.any(File),
+          expect.any(Function) // onProgress — 진행률 콜백
         );
       });
     });
@@ -305,9 +326,7 @@ describe('AttachmentUploader', () => {
         data: { attachment: fakeAttachment },
       });
 
-      render(
-        <AttachmentUploader noticeId="n-1" onUploaded={mockOnUploaded} />,
-      );
+      render(<AttachmentUploader noticeId="n-1" onUploaded={mockOnUploaded} />);
 
       const input = screen.getByTestId('attachment-input');
       await act(async () => {
@@ -326,9 +345,7 @@ describe('AttachmentUploader', () => {
         error: '서버 오류',
       });
 
-      render(
-        <AttachmentUploader noticeId="n-1" onUploaded={mockOnUploaded} />,
-      );
+      render(<AttachmentUploader noticeId="n-1" onUploaded={mockOnUploaded} />);
 
       const input = screen.getByTestId('attachment-input');
       await act(async () => {
@@ -343,9 +360,7 @@ describe('AttachmentUploader', () => {
     it('예외 발생 시 에러 토스트가 표시된다', async () => {
       mockUploadNoticeAttachmentDirect.mockRejectedValue(new Error('네트워크 오류'));
 
-      render(
-        <AttachmentUploader noticeId="n-1" onUploaded={mockOnUploaded} />,
-      );
+      render(<AttachmentUploader noticeId="n-1" onUploaded={mockOnUploaded} />);
 
       const input = screen.getByTestId('attachment-input');
       await act(async () => {
@@ -354,6 +369,100 @@ describe('AttachmentUploader', () => {
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith('업로드 실패', '네트워크 오류');
+      });
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 업로드 진행률 (100MB 첨부는 수 분 소요 — 진행 상황을 반드시 보여준다)
+  // ---------------------------------------------------------------------------
+  describe('업로드 진행률', () => {
+    const fakeAttachment: NoticeAttachment = {
+      id: 'att-1',
+      notice_id: 'n-1',
+      file_name: 'big.pdf',
+      storage_path: 'n-1/big.pdf',
+      mime_type: 'application/pdf',
+      file_size: 100 * 1024 * 1024,
+      uploaded_at: '2026-01-01T00:00:00Z',
+    };
+
+    it('업로드 중에는 파일명·진행률·전송량이 표시된다', async () => {
+      let finishUpload!: (v: unknown) => void;
+      mockUploadNoticeAttachmentDirect.mockImplementation(
+        (_noticeId: string, _file: File, onProgress?: (loaded: number, total: number) => void) => {
+          onProgress?.(42 * 1024 * 1024, 100 * 1024 * 1024);
+          return new Promise((resolve) => {
+            finishUpload = resolve;
+          });
+        }
+      );
+
+      render(<AttachmentUploader noticeId="n-1" onUploaded={mockOnUploaded} />);
+
+      const input = screen.getByTestId('attachment-input');
+      await act(async () => {
+        await userEvent.upload(input, makeFile('big.pdf', 100 * 1024 * 1024));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('big.pdf')).toBeInTheDocument();
+        expect(screen.getByText('42%')).toBeInTheDocument();
+        expect(screen.getByText('42.0 MB / 100.0 MB')).toBeInTheDocument();
+        expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '42');
+      });
+
+      await act(async () => {
+        finishUpload({ success: true, data: { attachment: fakeAttachment } });
+      });
+    });
+
+    it('업로드 완료 후에는 진행률이 사라진다', async () => {
+      mockUploadNoticeAttachmentDirect.mockImplementation(
+        async (
+          _noticeId: string,
+          _file: File,
+          onProgress?: (loaded: number, total: number) => void
+        ) => {
+          onProgress?.(100 * 1024 * 1024, 100 * 1024 * 1024);
+          return { success: true, data: { attachment: fakeAttachment } };
+        }
+      );
+
+      render(<AttachmentUploader noticeId="n-1" onUploaded={mockOnUploaded} />);
+
+      const input = screen.getByTestId('attachment-input');
+      await act(async () => {
+        await userEvent.upload(input, makeFile('big.pdf', 100 * 1024 * 1024));
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+      });
+    });
+
+    it('업로드 실패 후에도 진행률이 사라진다 (잔상 방지)', async () => {
+      mockUploadNoticeAttachmentDirect.mockImplementation(
+        async (
+          _noticeId: string,
+          _file: File,
+          onProgress?: (loaded: number, total: number) => void
+        ) => {
+          onProgress?.(50 * 1024 * 1024, 100 * 1024 * 1024);
+          return { success: false, error: '서버 오류' };
+        }
+      );
+
+      render(<AttachmentUploader noticeId="n-1" onUploaded={mockOnUploaded} />);
+
+      const input = screen.getByTestId('attachment-input');
+      await act(async () => {
+        await userEvent.upload(input, makeFile('big.pdf', 100 * 1024 * 1024));
+      });
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalled();
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
       });
     });
   });
