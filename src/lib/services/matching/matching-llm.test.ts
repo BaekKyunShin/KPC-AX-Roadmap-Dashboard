@@ -577,4 +577,42 @@ describe('generateLLMMatchingRecommendations', () => {
 
     expect(userMsg?.content).toContain('자가진단 상세 결과 없음');
   });
+
+  // ─── LLM 쿼터 (P5) ────────────────────────────────────────────────────────
+
+  describe('LLM 쿼터', () => {
+    it('한도 내이면 actorUserId 로 쿼터를 1회 기록하고 정상 진행한다', async () => {
+      await generateLLMMatchingRecommendations('project-1', 'actor-1');
+
+      expect(checkAndRecordLLMUsage).toHaveBeenCalledTimes(1);
+      expect(checkAndRecordLLMUsage).toHaveBeenCalledWith('actor-1');
+      expect(callLLMForJSON).toHaveBeenCalled();
+    });
+
+    it('한도 초과 시 throw 하고 LLM·데이터 조회를 실행하지 않는다', async () => {
+      vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({
+        exceeded: true,
+        reason: 'daily',
+        message: '일일 사용량 한도(50회)에 도달했습니다.',
+      });
+
+      await expect(generateLLMMatchingRecommendations('project-1', 'actor-1')).rejects.toThrow(
+        '일일 사용량 한도(50회)에 도달했습니다.'
+      );
+
+      // 쿼터는 LLM 호출뿐 아니라 데이터 조회보다도 앞이어야 한다(불필요한 조회 방지)
+      expect(fetchMatchingData).not.toHaveBeenCalled();
+      expect(callLLMForJSON).not.toHaveBeenCalled();
+    });
+
+    it('한도 초과 메시지가 비어도 route 의 429 분기 키워드를 포함해 throw 한다', async () => {
+      // route.ts 는 message.includes('사용량 한도') 로 429 QUOTA_EXCEEDED 를 판정한다.
+      // DB RPC 메시지가 비어 오는 경우에도 이 계약이 깨지지 않아야 한다.
+      vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: true });
+
+      await expect(generateLLMMatchingRecommendations('project-1', 'actor-1')).rejects.toThrow(
+        '사용량 한도'
+      );
+    });
+  });
 });

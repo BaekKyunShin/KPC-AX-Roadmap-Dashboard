@@ -555,6 +555,34 @@ describe('generatePBLAction', () => {
     if (!result.success) expect(result.error).toContain('컨설턴트');
   });
 
+  // ─── LLM 쿼터 (P5 — 로드맵 트랙과 동일하게 적용) ────────────────────────────
+
+  it('LLM 쿼터 초과 → error 반환, LLM 생성 미실행', async () => {
+    const { generatePBLContent } = await import('@/lib/services/pbl/pbl-generator');
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({
+      exceeded: true,
+      reason: 'daily',
+      message: '일일 사용량 한도(50회)에 도달했습니다.',
+    });
+
+    const result = await generatePBLAction(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('한도');
+    expect(generatePBLContent).not.toHaveBeenCalled();
+  });
+
+  it('쿼터 초과 메시지가 비어도 한도 안내 문구를 반환한다', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: true });
+
+    const result = await generatePBLAction(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('한도');
+  });
+
   it('타 컨설턴트 프로젝트 → error', async () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({

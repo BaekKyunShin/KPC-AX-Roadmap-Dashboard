@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchInterview, processSttFile, deleteSttInsights } from './actions';
+import { fetchInterview, processSttFile, deleteSttInsights, extractSttInsights } from './actions';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
@@ -222,6 +222,44 @@ describe('processSttFile', () => {
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toContain('크기');
+  });
+
+  // ─── LLM 쿼터 (P5) ────────────────────────────────────────────────────────
+
+  it('LLM 쿼터 초과 → error 반환, LLM 미호출', async () => {
+    const { validateSttTextSize, extractInsightsFromStt } = await import('@/lib/services/stt');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    vi.mocked(validateSttTextSize).mockReturnValue({ valid: true });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({
+      exceeded: true,
+      reason: 'daily',
+      message: '일일 사용량 한도(50회)에 도달했습니다.',
+    });
+
+    const result = await processSttFile(PROJECT_ID, '인터뷰 녹취록 텍스트');
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('한도');
+    expect(extractInsightsFromStt).not.toHaveBeenCalled();
+  });
+
+  it('크기 검증 실패 시에는 쿼터를 차감하지 않는다', async () => {
+    const { validateSttTextSize } = await import('@/lib/services/stt');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    vi.mocked(validateSttTextSize).mockReturnValue({
+      valid: false,
+      error: '파일 크기가 너무 큽니다.',
+    });
+
+    await processSttFile(PROJECT_ID, '아주 긴 텍스트...');
+
+    // checkAndRecordLLMUsage 는 확인과 동시에 사용량을 증가시키므로
+    // 거절될 입력에 차감이 일어나면 안 된다(검증 → 쿼터 순서 보장).
+    expect(checkAndRecordLLMUsage).not.toHaveBeenCalled();
   });
 
   it('정상 처리 → success + 인사이트 반환', async () => {
@@ -466,5 +504,99 @@ describe('deleteSttInsights — 에러/엣지 케이스', () => {
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toContain('삭제');
     consoleSpy.mockRestore();
+  });
+});
+
+// ─── extractSttInsights ─────────────────────────────────────────────────────
+//
+// 실제 UI(RoadmapInterviewClient·PBLInterviewClient)가 호출하는 STT 진입점인데
+// 서버측 테스트가 없었다. 쿼터 적용과 함께 정상 경로 특성화를 함께 신설한다.
+
+describe('extractSttInsights', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+
+  const MOCK_INSIGHTS = {
+    추가_업무: ['추가 업무1'],
+    추가_페인포인트: ['페인포인트1'],
+    숨은_니즈: [],
+    조직_맥락: '맥락',
+    AI_태도: '긍정적',
+    주요_인용: [],
+  };
+
+  /** 인증 + 프로젝트 배정 통과 상태를 만든다 */
+  function grantAccess() {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+  }
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('정상 처리 → success + 인사이트 반환', async () => {
+    const { validateSttTextSize, extractInsightsFromStt } = await import('@/lib/services/stt');
+    grantAccess();
+    vi.mocked(validateSttTextSize).mockReturnValue({ valid: true });
+    vi.mocked(extractInsightsFromStt).mockResolvedValue(MOCK_INSIGHTS);
+
+    const result = await extractSttInsights(PROJECT_ID, '충분히 긴 인터뷰 녹취록 텍스트입니다.');
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual(MOCK_INSIGHTS);
+  });
+
+  it('CONSULTANT_APPROVED 아닌 역할 → error 반환', async () => {
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
+
+    const result = await extractSttInsights(PROJECT_ID, '충분히 긴 인터뷰 녹취록 텍스트입니다.');
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('컨설턴트');
+  });
+
+  it('LLM 쿼터 초과 → error 반환, LLM 미호출', async () => {
+    const { validateSttTextSize, extractInsightsFromStt } = await import('@/lib/services/stt');
+    grantAccess();
+    vi.mocked(validateSttTextSize).mockReturnValue({ valid: true });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({
+      exceeded: true,
+      reason: 'monthly',
+      message: '월간 사용량 한도(500회)에 도달했습니다.',
+    });
+
+    const result = await extractSttInsights(PROJECT_ID, '충분히 긴 인터뷰 녹취록 텍스트입니다.');
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('한도');
+    expect(extractInsightsFromStt).not.toHaveBeenCalled();
+  });
+
+  it('10자 미만 텍스트는 쿼터를 차감하지 않고 거절한다', async () => {
+    grantAccess();
+
+    const result = await extractSttInsights(PROJECT_ID, '짧음');
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('짧습니다');
+    expect(checkAndRecordLLMUsage).not.toHaveBeenCalled();
+  });
+
+  it('크기 검증 실패 시에도 쿼터를 차감하지 않는다', async () => {
+    const { validateSttTextSize } = await import('@/lib/services/stt');
+    grantAccess();
+    vi.mocked(validateSttTextSize).mockReturnValue({
+      valid: false,
+      error: '파일 크기가 너무 큽니다.',
+    });
+
+    await extractSttInsights(PROJECT_ID, '충분히 긴 인터뷰 녹취록 텍스트입니다.');
+
+    expect(checkAndRecordLLMUsage).not.toHaveBeenCalled();
   });
 });

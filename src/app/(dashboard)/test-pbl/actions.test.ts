@@ -17,8 +17,20 @@ import {
   type TestPBLActionInput,
 } from './actions';
 import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
+import { checkAndRecordLLMUsage } from '@/lib/services/quota';
 
 // ─── 외부 모듈 모킹 ───────────────────────────────────────────────────────────
+
+// LLM 쿼터: generateTestPBL 이 LLM 호출 전 확인하므로 모킹 필수.
+// 미모킹 시 실제 checkAndRecordLLMUsage 가 mock admin client 에서 .rpc 를 찾다 실패한다.
+vi.mock('@/lib/services/quota', () => ({
+  checkAndRecordLLMUsage: vi.fn(),
+}));
+
+// 쿼터 기본값은 한도 내. 초과 케이스는 해당 테스트에서 개별 재정의.
+beforeEach(() => {
+  vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false });
+});
 
 const mockRequireAuthWithRole = vi.fn();
 
@@ -44,7 +56,7 @@ vi.mock('@/lib/services/audit', () => ({
 
 vi.mock('@/lib/services/llm', () => ({
   getLLMUserFriendlyError: vi.fn((err: unknown) =>
-    err instanceof Error ? err.message : 'LLM 호출에 실패했습니다.',
+    err instanceof Error ? err.message : 'LLM 호출에 실패했습니다.'
   ),
 }));
 
@@ -78,9 +90,7 @@ vi.mock('next/server', () => ({ after: mockAfter }));
 
 const USER_ID = 'test-user-pbl';
 
-function makeValidInput(
-  overrides: Partial<TestPBLActionInput> = {},
-): TestPBLActionInput {
+function makeValidInput(overrides: Partial<TestPBLActionInput> = {}): TestPBLActionInput {
   return {
     interview: PBL_INTERVIEW_SAMPLE,
     companyName: '테스트 기업',
@@ -125,6 +135,30 @@ describe('generateTestPBL', () => {
     if (!result.success) expect(result.error).toMatch(/2자 이상/);
   });
 
+  // ─── LLM 쿼터 (P5) ────────────────────────────────────────────────────────
+  // generateTestRoadmap 은 이미 쿼터가 걸려 있어(roadmap-generator.ts) 테스트
+  // 로드맵/테스트 PBL 사이의 비대칭을 없앤다.
+
+  it('LLM 쿼터 초과 → error 반환, LLM 미호출', async () => {
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({
+      exceeded: true,
+      reason: 'daily',
+      message: '일일 사용량 한도(50회)에 도달했습니다.',
+    });
+
+    const result = await generateTestPBL(makeValidInput());
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('한도');
+    expect(mockGeneratePBLContent).not.toHaveBeenCalled();
+  });
+
+  it('입력 검증 실패 시에는 쿼터를 차감하지 않는다', async () => {
+    await generateTestPBL(makeValidInput({ companyName: 'A' }));
+
+    expect(checkAndRecordLLMUsage).not.toHaveBeenCalled();
+  });
+
   it('업종 누락 → error', async () => {
     const result = await generateTestPBL(makeValidInput({ industry: '' }));
     expect(result.success).toBe(false);
@@ -134,7 +168,7 @@ describe('generateTestPBL', () => {
     const result = await generateTestPBL(
       makeValidInput({
         interview: { ...PBL_INTERVIEW_SAMPLE, courseName: '' },
-      }),
+      })
     );
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toMatch(/검증 실패/);
@@ -161,7 +195,7 @@ describe('generateTestPBL', () => {
       expect.objectContaining({
         action: 'TEST_PROJECT_CREATE',
         meta: expect.objectContaining({ is_test_mode: true, no_db_save: true }),
-      }),
+      })
     );
   });
 
@@ -202,8 +236,7 @@ const mockGeneratePBLHwpx = vi.fn();
 const mockBuildPBLHwpxPayloadFromInputs = vi.fn();
 
 vi.mock('@/lib/services/export/hwpx', () => ({
-  buildPBLHwpxPayloadFromInputs: (...args: unknown[]) =>
-    mockBuildPBLHwpxPayloadFromInputs(...args),
+  buildPBLHwpxPayloadFromInputs: (...args: unknown[]) => mockBuildPBLHwpxPayloadFromInputs(...args),
   generatePBLHwpx: (...args: unknown[]) => mockGeneratePBLHwpx(...args),
 }));
 
@@ -252,16 +285,14 @@ describe('exportTestPBLHwpx', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     await exportTestPBLHwpx({ ...validInput(), companyName: '   ' });
     expect(mockBuildPBLHwpxPayloadFromInputs).toHaveBeenCalledWith(
-      expect.objectContaining({ companyName: '   ' }),
+      expect.objectContaining({ companyName: '   ' })
     );
     consoleSpy.mockRestore();
   });
 
   it('generatePBLHwpx throw → 로컬 dev fallback 메시지 전달', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockGeneratePBLHwpx.mockRejectedValueOnce(
-      new Error('Vercel Python 런타임 미동작'),
-    );
+    mockGeneratePBLHwpx.mockRejectedValueOnce(new Error('Vercel Python 런타임 미동작'));
     const result = await exportTestPBLHwpx(validInput());
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -272,9 +303,7 @@ describe('exportTestPBLHwpx', () => {
 
   it('generatePBLHwpx 일반 throw → 사용자에게 원인 노출', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockGeneratePBLHwpx.mockRejectedValueOnce(
-      new Error('HWPX generation failed: 500 KeyError'),
-    );
+    mockGeneratePBLHwpx.mockRejectedValueOnce(new Error('HWPX generation failed: 500 KeyError'));
     const result = await exportTestPBLHwpx(validInput());
     expect(result.success).toBe(false);
     if (!result.success) {
