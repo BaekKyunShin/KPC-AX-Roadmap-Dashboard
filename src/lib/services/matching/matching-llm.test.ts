@@ -39,6 +39,13 @@ vi.mock('./matching-helpers', () => ({
   },
 }));
 
+// matching-llm 이 LLM 호출 전 쿼터를 확인하므로 모킹 필수.
+// 미모킹 시 실제 checkAndRecordLLMUsage 가 createAdminClient() 의 {} 에서
+// .rpc 를 찾다 TypeError 를 던져 이 파일 전체가 깨진다.
+vi.mock('../quota', () => ({
+  checkAndRecordLLMUsage: vi.fn(),
+}));
+
 import { generateLLMMatchingRecommendations } from './matching-llm';
 import { callLLMForJSON } from '../llm';
 import { createAuditLog } from '../audit';
@@ -48,6 +55,7 @@ import {
   saveRecommendations,
   updateProjectStatusIfNeeded,
 } from './matching-helpers';
+import { checkAndRecordLLMUsage } from '../quota';
 
 // ─── 테스트 데이터 ──────────────────────────────────────────────────────────
 
@@ -130,6 +138,8 @@ describe('generateLLMMatchingRecommendations', () => {
     vi.mocked(callLLMForJSON).mockResolvedValue(createMockLLMResponse());
     // filterValidRecommendations: 기본적으로 입력을 그대로 통과
     vi.mocked(filterValidRecommendations).mockImplementation((recs) => recs);
+    // 쿼터: 기본은 한도 내. 초과 케이스는 해당 테스트에서 개별 재정의.
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false });
   });
 
   afterEach(() => {
@@ -205,8 +215,20 @@ describe('generateLLMMatchingRecommendations', () => {
   it('점수를 0-100 범위로 클램핑한다', async () => {
     vi.mocked(callLLMForJSON).mockResolvedValue(
       createMockLLMResponse([
-        { userId: 'user-a', score: 150, analysis: '분석', strengths: ['강점'], considerations: ['고려'] },
-        { userId: 'user-b', score: -10, analysis: '분석', strengths: ['강점'], considerations: ['고려'] },
+        {
+          userId: 'user-a',
+          score: 150,
+          analysis: '분석',
+          strengths: ['강점'],
+          considerations: ['고려'],
+        },
+        {
+          userId: 'user-b',
+          score: -10,
+          analysis: '분석',
+          strengths: ['강점'],
+          considerations: ['고려'],
+        },
       ])
     );
 
@@ -257,8 +279,20 @@ describe('generateLLMMatchingRecommendations', () => {
   it('topN 옵션에 따라 결과를 잘라낸다', async () => {
     vi.mocked(callLLMForJSON).mockResolvedValue(
       createMockLLMResponse([
-        { userId: 'user-a', score: 90, analysis: '분석A', strengths: ['강점'], considerations: ['고려'] },
-        { userId: 'user-b', score: 80, analysis: '분석B', strengths: ['강점'], considerations: ['고려'] },
+        {
+          userId: 'user-a',
+          score: 90,
+          analysis: '분석A',
+          strengths: ['강점'],
+          considerations: ['고려'],
+        },
+        {
+          userId: 'user-b',
+          score: 80,
+          analysis: '분석B',
+          strengths: ['강점'],
+          considerations: ['고려'],
+        },
       ])
     );
 
@@ -271,10 +305,34 @@ describe('generateLLMMatchingRecommendations', () => {
   it('기본 topN은 3이다', async () => {
     vi.mocked(callLLMForJSON).mockResolvedValue(
       createMockLLMResponse([
-        { userId: 'u1', score: 90, analysis: '분석', strengths: ['강점'], considerations: ['고려'] },
-        { userId: 'u2', score: 85, analysis: '분석', strengths: ['강점'], considerations: ['고려'] },
-        { userId: 'u3', score: 80, analysis: '분석', strengths: ['강점'], considerations: ['고려'] },
-        { userId: 'u4', score: 70, analysis: '분석', strengths: ['강점'], considerations: ['고려'] },
+        {
+          userId: 'u1',
+          score: 90,
+          analysis: '분석',
+          strengths: ['강점'],
+          considerations: ['고려'],
+        },
+        {
+          userId: 'u2',
+          score: 85,
+          analysis: '분석',
+          strengths: ['강점'],
+          considerations: ['고려'],
+        },
+        {
+          userId: 'u3',
+          score: 80,
+          analysis: '분석',
+          strengths: ['강점'],
+          considerations: ['고려'],
+        },
+        {
+          userId: 'u4',
+          score: 70,
+          analysis: '분석',
+          strengths: ['강점'],
+          considerations: ['고려'],
+        },
       ])
     );
 
@@ -327,9 +385,7 @@ describe('generateLLMMatchingRecommendations', () => {
 
     await generateLLMMatchingRecommendations('project-1', 'actor-1');
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('유효한 후보 없음')
-    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('유효한 후보 없음'));
     warnSpy.mockRestore();
   });
 
@@ -341,9 +397,7 @@ describe('generateLLMMatchingRecommendations', () => {
     expect(saveRecommendations).toHaveBeenCalledWith(
       expect.anything(),
       'project-1',
-      expect.arrayContaining([
-        expect.objectContaining({ userId: 'user-a', totalScore: 90 }),
-      ])
+      expect.arrayContaining([expect.objectContaining({ userId: 'user-a', totalScore: 90 })])
     );
   });
 
@@ -457,25 +511,25 @@ describe('generateLLMMatchingRecommendations', () => {
   it('callLLMForJSON 에러 시 예외가 전파된다', async () => {
     vi.mocked(callLLMForJSON).mockRejectedValueOnce(new Error('LLM API 호출 타임아웃'));
 
-    await expect(
-      generateLLMMatchingRecommendations('project-1', 'actor-1')
-    ).rejects.toThrow('LLM API 호출 타임아웃');
+    await expect(generateLLMMatchingRecommendations('project-1', 'actor-1')).rejects.toThrow(
+      'LLM API 호출 타임아웃'
+    );
   });
 
   it('fetchMatchingData 에러 시 예외가 전파된다', async () => {
     vi.mocked(fetchMatchingData).mockRejectedValueOnce(new Error('프로젝트를 찾을 수 없습니다'));
 
-    await expect(
-      generateLLMMatchingRecommendations('project-1', 'actor-1')
-    ).rejects.toThrow('프로젝트를 찾을 수 없습니다');
+    await expect(generateLLMMatchingRecommendations('project-1', 'actor-1')).rejects.toThrow(
+      '프로젝트를 찾을 수 없습니다'
+    );
   });
 
   it('saveRecommendations 에러 시 예외가 전파된다', async () => {
     vi.mocked(saveRecommendations).mockRejectedValueOnce(new Error('DB 저장 실패'));
 
-    await expect(
-      generateLLMMatchingRecommendations('project-1', 'actor-1')
-    ).rejects.toThrow('DB 저장 실패');
+    await expect(generateLLMMatchingRecommendations('project-1', 'actor-1')).rejects.toThrow(
+      'DB 저장 실패'
+    );
   });
 
   // ─── 빈 추천 시 감사로그 ──────────────────────────────────────────────────

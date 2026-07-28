@@ -11,14 +11,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  fetchInterview,
-  processSttFile,
-  deleteSttInsights,
-} from './actions';
+import { fetchInterview, processSttFile, deleteSttInsights } from './actions';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
+import { checkAndRecordLLMUsage } from '@/lib/services/quota';
 
 // ─── 외부 모듈 모킹 ────────────────────────────────────────────────────────
 
@@ -51,7 +48,22 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
 
-const { pendingCallbacks: pendingAfterCallbacks, flush: flushAfterCallbacks, mockAfter } = vi.hoisted(() => {
+// LLM 쿼터: STT 인사이트 추출이 LLM 호출 전 확인하므로 모킹 필수.
+// 미모킹 시 실제 checkAndRecordLLMUsage 가 mock supabase 에서 .rpc 를 찾다 실패한다.
+vi.mock('@/lib/services/quota', () => ({
+  checkAndRecordLLMUsage: vi.fn(),
+}));
+
+// 쿼터 기본값은 한도 내. 초과 케이스는 해당 테스트에서 개별 재정의.
+beforeEach(() => {
+  vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false });
+});
+
+const {
+  pendingCallbacks: pendingAfterCallbacks,
+  flush: flushAfterCallbacks,
+  mockAfter,
+} = vi.hoisted(() => {
   const pendingCallbacks: Promise<unknown>[] = [];
   const mockAfter = vi.fn((fn: () => void | Promise<unknown>) => {
     const result = fn();
@@ -244,7 +256,7 @@ describe('processSttFile', () => {
       expect.objectContaining({
         action: 'INTERVIEW_UPDATE',
         meta: expect.objectContaining({ stt_processed: true }),
-      }),
+      })
     );
   });
 
@@ -324,7 +336,6 @@ describe('deleteSttInsights', () => {
   });
 });
 
-
 describe('fetchInterview — 에러/엣지 케이스', () => {
   let serverMock: ReturnType<typeof createMockSupabase>;
 
@@ -382,7 +393,7 @@ describe('processSttFile — 에러/엣지 케이스', () => {
     serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
     vi.mocked(validateSttTextSize).mockReturnValue({ valid: true });
     vi.mocked(extractInsightsFromStt).mockRejectedValue(
-      new LLMResponseInvalidError('LLM 응답이 스키마를 충족하지 못했습니다: x'),
+      new LLMResponseInvalidError('LLM 응답이 스키마를 충족하지 못했습니다: x')
     );
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -390,9 +401,7 @@ describe('processSttFile — 에러/엣지 케이스', () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toBe(
-        'AI 응답 형식이 올바르지 않습니다. 잠시 후 다시 시도해 주세요.',
-      );
+      expect(result.error).toBe('AI 응답 형식이 올바르지 않습니다. 잠시 후 다시 시도해 주세요.');
     }
     consoleSpy.mockRestore();
   });
@@ -415,7 +424,7 @@ describe('processSttFile — 에러/엣지 케이스', () => {
         actorUserId: USER_A_ID,
         targetId: PROJECT_ID,
         meta: expect.objectContaining({ stt_processed: true }),
-      }),
+      })
     );
   });
 });

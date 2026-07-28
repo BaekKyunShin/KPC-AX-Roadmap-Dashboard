@@ -31,6 +31,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
 import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
+import { checkAndRecordLLMUsage } from '@/lib/services/quota';
 
 // ─── 외부 모듈 모킹 ───────────────────────────────────────────────────────────
 
@@ -130,6 +131,17 @@ vi.mock('next/headers', () => ({
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
+
+// LLM 쿼터: generatePBLAction 이 LLM 호출 전 확인하므로 모킹 필수.
+// 미모킹 시 실제 checkAndRecordLLMUsage 가 mock supabase 에서 .rpc 를 찾다 실패한다.
+vi.mock('@/lib/services/quota', () => ({
+  checkAndRecordLLMUsage: vi.fn(),
+}));
+
+// 쿼터 기본값은 한도 내. 초과 케이스는 해당 테스트에서 개별 재정의.
+beforeEach(() => {
+  vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false });
+});
 
 // ─── 테스트 상수 ──────────────────────────────────────────────────────────────
 
