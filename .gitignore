@@ -79,3 +79,4 @@ roadmap-*.png
 __pycache__/
 *.pyc
 *.pyo
+.env*.local
