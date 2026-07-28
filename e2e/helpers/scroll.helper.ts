@@ -26,16 +26,41 @@ export async function isScrollable(page: Page): Promise<boolean> {
 /**
  * 지정 위치로 스크롤한 뒤 실제 scrollY 를 반환.
  * 페이지 높이가 부족하면 max scroll 위치로 떨어질 수 있음.
+ *
+ * **`behavior: 'instant'` + 목표 clamp 가 필수인 이유** (2026-07-28 규명):
+ * `globals.css` 가 `html { scroll-behavior: smooth }` 를 걸어두어, 그냥
+ * `window.scrollTo(0, 400)` 을 부르면 스크롤이 애니메이션으로 이동한다. 게다가
+ * 목표(400)가 실제 최대 스크롤(예: 261)보다 크면 애니메이션이 목표에 영원히
+ * 도달하지 못해 **미완료 상태로 남는다**. 그 상태에서 DOM 높이가 조금이라도
+ * 변하면 브라우저가 애니메이션을 취소하며 스크롤이 **시작점(0)으로 되돌아간다**.
+ * 그러면 `{ scroll: false }` 가 올바로 지정된 화면에서도 테스트가 실패한다
+ * (계측 결과 `scrollTop=0` 대입도 `scrollTo` 호출도 없이 0 이 됐다).
+ *
+ * 실사용자의 휠 스크롤은 애니메이션이 아니라 즉시 이동이므로, 테스트도 즉시
+ * 이동으로 같은 조건을 만들어야 한다. 원래 잡으려던 회귀(`scroll: false` 누락)는
+ * 그대로 검출된다 — 누락되면 라우터가 실제로 최상단으로 보내기 때문이다.
  */
 export async function scrollToY(page: Page, targetY: number = DEFAULT_TARGET_PX): Promise<number> {
-  await page.evaluate((y) => window.scrollTo(0, y), targetY);
+  await page.evaluate((y) => {
+    const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    window.scrollTo({ top: Math.min(y, max), behavior: 'instant' });
+  }, targetY);
+  // 스크롤이 멈췄는지(연속 프레임 동일) 확인 — 진행 중인 이동을 남기지 않는다
   await page
     .waitForFunction(
-      (y) =>
-        window.scrollY >=
-        Math.min(y, document.documentElement.scrollHeight - window.innerHeight) - 5,
-      targetY,
-      { timeout: 2000 }
+      () => {
+        const w = window as unknown as { __sy?: number; __sn?: number };
+        const y = Math.round(window.scrollY);
+        if (w.__sy === y) {
+          w.__sn = (w.__sn ?? 0) + 1;
+        } else {
+          w.__sy = y;
+          w.__sn = 0;
+        }
+        return (w.__sn ?? 0) >= 2;
+      },
+      undefined,
+      { timeout: 2000, polling: 'raf' }
     )
     .catch(() => {});
   return await page.evaluate(() => window.scrollY);

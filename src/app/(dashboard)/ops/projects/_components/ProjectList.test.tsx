@@ -8,8 +8,10 @@ import type { ProjectWithTimeline, ProjectFilterOptions } from '../actions';
 // 모킹
 // ============================================================================
 
+const mockRouterReplace = vi.fn();
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: mockRouterReplace, back: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
   usePathname: () => '/ops/projects',
 }));
@@ -306,9 +308,7 @@ describe('ProjectList', () => {
     it('카드 필터만 활성 상태에서 EmptyState "필터 초기화" 클릭 시 onResetCardFilter 콜백이 호출된다', async () => {
       setupMocks({ projects: [], total: 0, totalPages: 0 });
       const onResetCardFilter = vi.fn();
-      render(
-        <ProjectList statusFilter={['NEW']} onResetCardFilter={onResetCardFilter} />
-      );
+      render(<ProjectList statusFilter={['NEW']} onResetCardFilter={onResetCardFilter} />);
       await waitFor(() => {
         expect(screen.getByText('검색 조건에 맞는 프로젝트가 없습니다')).toBeInTheDocument();
       });
@@ -324,9 +324,7 @@ describe('ProjectList', () => {
     it('카드 필터만 활성 상태에서 상단 x 아이콘 버튼 클릭 시 onResetCardFilter 콜백이 호출된다', async () => {
       setupMocks({ projects: [], total: 0, totalPages: 0 });
       const onResetCardFilter = vi.fn();
-      render(
-        <ProjectList statusFilter={['NEW']} onResetCardFilter={onResetCardFilter} />
-      );
+      render(<ProjectList statusFilter={['NEW']} onResetCardFilter={onResetCardFilter} />);
       await waitFor(() => {
         expect(screen.getByLabelText('필터 초기화')).toBeInTheDocument();
       });
@@ -430,6 +428,156 @@ describe('ProjectList', () => {
       await waitFor(() => {
         expect(screen.queryByText(/카드 필터/)).not.toBeInTheDocument();
       });
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 8. 로딩 중 문서 높이 보존 (스크롤 리셋 방지)
+  //
+  // 재조회 중 목록이 고정 5행 스켈레톤으로 교체되면 문서 높이가 급변한다.
+  // 진행 중이던 스크롤 애니메이션이 그 변동에 취소되면서 스크롤이 최상단으로
+  // 되돌아가는 결함이 있었다(E2E ops-projects-filter.spec.ts 재현).
+  // 스켈레톤 행 수를 직전 목록 행 수에 맞춰 높이를 보존한다.
+  // --------------------------------------------------------------------------
+  describe('로딩 중 문서 높이 보존', () => {
+    function makeProjects(count: number): ProjectWithTimeline[] {
+      return Array.from({ length: count }, (_, i) =>
+        makeProject({ id: `p${i}`, company_name: `기업${i}` })
+      );
+    }
+
+    /** 데스크톱 테이블 본문 행 수 (스켈레톤·실제 목록 공통) */
+    function desktopBodyRowCount(container: HTMLElement): number {
+      return container.querySelectorAll('.hidden.md\\:block tbody tr').length;
+    }
+
+    it('재조회 로딩 중 스켈레톤 행 수가 직전 목록 행 수와 같다', async () => {
+      setupMocks({ projects: makeProjects(8), total: 8, totalPages: 1 });
+      const { container } = render(<ProjectList />);
+
+      await waitFor(() => {
+        // 데스크톱 테이블·모바일 카드 양쪽에 렌더되므로 getAllByText 사용
+        expect(screen.getAllByText('기업0').length).toBeGreaterThan(0);
+      });
+      expect(desktopBodyRowCount(container)).toBe(8);
+
+      // 다음 조회를 미완료 상태로 붙잡아 로딩 화면을 관찰한다
+      mockFetchProjectsWithTimeline.mockImplementationOnce(() => new Promise(() => {}));
+
+      const input = screen.getByPlaceholderText('회사명 또는 이메일 검색...');
+      await act(async () => {
+        fireEvent.change(input, { target: { value: '기업' } });
+      });
+
+      await waitFor(
+        () => {
+          expect(mockFetchProjectsWithTimeline).toHaveBeenCalledTimes(2);
+        },
+        { timeout: 1000 }
+      );
+
+      expect(desktopBodyRowCount(container)).toBe(8);
+    });
+
+    it('직전 목록이 비어 있으면 기본 5행 스켈레톤을 사용한다', async () => {
+      setupMocks({ projects: [], total: 0, totalPages: 0 });
+      const { container } = render(<ProjectList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('등록된 프로젝트가 없습니다')).toBeInTheDocument();
+      });
+
+      mockFetchProjectsWithTimeline.mockImplementationOnce(() => new Promise(() => {}));
+
+      const input = screen.getByPlaceholderText('회사명 또는 이메일 검색...');
+      await act(async () => {
+        fireEvent.change(input, { target: { value: '없는기업' } });
+      });
+
+      await waitFor(
+        () => {
+          expect(mockFetchProjectsWithTimeline).toHaveBeenCalledTimes(2);
+        },
+        { timeout: 1000 }
+      );
+
+      expect(desktopBodyRowCount(container)).toBe(5);
+    });
+
+    it('재조회 로딩 중에도 페이지네이션 영역이 유지된다', async () => {
+      setupMocks({ projects: makeProjects(10), total: 25, totalPages: 3 });
+      render(<ProjectList />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: '다음 페이지' })).toBeInTheDocument();
+      });
+
+      mockFetchProjectsWithTimeline.mockImplementationOnce(() => new Promise(() => {}));
+
+      const input = screen.getByPlaceholderText('회사명 또는 이메일 검색...');
+      await act(async () => {
+        fireEvent.change(input, { target: { value: '기업' } });
+      });
+
+      await waitFor(
+        () => {
+          expect(mockFetchProjectsWithTimeline).toHaveBeenCalledTimes(2);
+        },
+        { timeout: 1000 }
+      );
+
+      expect(screen.getByRole('button', { name: '다음 페이지' })).toBeInTheDocument();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 9. URL 동기화 — 서버 왕복 없이 주소만 갱신
+  //
+  // page.tsx 는 search 만 소비하고 status·industry·page 는 무시한다. 그런데도
+  // router.replace 로 주소를 바꾸면 결과가 달라지지 않는 RSC 왕복(+ 전체 스캔인
+  // fetchProjectStats)이 매번 발생하고, 그 응답은 initialData 가 첫 마운트에만
+  // 쓰이므로 버려진다. history.replaceState 로 주소만 갱신한다.
+  // --------------------------------------------------------------------------
+  describe('URL 동기화', () => {
+    it('필터 변경 시 router.replace 를 호출하지 않는다 (서버 왕복 없음)', async () => {
+      setupMocks();
+      render(<ProjectList />);
+
+      await waitFor(() => {
+        expect(mockFetchProjectsWithTimeline).toHaveBeenCalledTimes(1);
+      });
+
+      const input = screen.getByPlaceholderText('회사명 또는 이메일 검색...');
+      await act(async () => {
+        fireEvent.change(input, { target: { value: '알파' } });
+      });
+
+      await waitFor(
+        () => {
+          expect(mockFetchProjectsWithTimeline).toHaveBeenCalledTimes(2);
+        },
+        { timeout: 1000 }
+      );
+
+      expect(mockRouterReplace).not.toHaveBeenCalled();
+      expect(window.location.search).toContain('search=');
+    });
+
+    it('필터 초기화 시에도 router.replace 를 호출하지 않고 쿼리를 비운다', async () => {
+      setupMocks();
+      render(<ProjectList statusFilter={['NEW']} onResetCardFilter={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/카드 필터/)).toBeInTheDocument();
+      });
+
+      const resetButton = screen.getByRole('button', { name: '필터 초기화' });
+      await act(async () => {
+        fireEvent.click(resetButton);
+      });
+
+      expect(mockRouterReplace).not.toHaveBeenCalled();
+      expect(window.location.search).toBe('');
     });
   });
 });
