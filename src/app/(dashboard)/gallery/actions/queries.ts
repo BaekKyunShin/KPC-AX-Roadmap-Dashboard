@@ -1,7 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/actions/auth-helpers';
-import { ROADMAP_ELIGIBLE_STATUSES, isOpsManager } from '@/lib/constants/status';
+import { ROADMAP_ELIGIBLE_STATUSES, isOpsManager, isPendingApproval } from '@/lib/constants/status';
 import { ilikePattern, sanitizePostgrestFilter } from '@/lib/utils/postgrest-sanitize';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { galleryFiltersSchema } from '@/lib/schemas/gallery';
@@ -138,6 +138,12 @@ export async function fetchGalleryRoadmaps(
 
   if (!role) {
     return errorResult('사용자 정보를 찾을 수 없습니다.');
+  }
+
+  // 승인 대기 사용자는 타 기업 산출물을 볼 수 없다.
+  // 라우트는 gallery/layout.tsx 가 막지만, Server Action 은 직접 호출이 가능하다.
+  if (isPendingApproval(role)) {
+    return errorResult('승인 대기 중에는 이용할 수 없습니다.');
   }
 
   const parsed = galleryFiltersSchema.safeParse(params);
@@ -315,6 +321,12 @@ export async function fetchRoadmapDetail(
     return errorResult('사용자 정보를 찾을 수 없습니다.');
   }
 
+  // 승인 대기 사용자는 타 기업 산출물을 볼 수 없다.
+  // 라우트는 gallery/layout.tsx 가 막지만, Server Action 은 직접 호출이 가능하다.
+  if (isPendingApproval(role)) {
+    return errorResult('승인 대기 중에는 이용할 수 없습니다.');
+  }
+
   // 갤러리 상세도 admin client 사용 (projects RLS 우회)
   const adminClient = createAdminClient();
 
@@ -429,6 +441,12 @@ export async function fetchGalleryPBLReports(
 
   if (!role) {
     return errorResult('사용자 정보를 찾을 수 없습니다.');
+  }
+
+  // 승인 대기 사용자는 타 기업 산출물을 볼 수 없다.
+  // 라우트는 gallery/layout.tsx 가 막지만, Server Action 은 직접 호출이 가능하다.
+  if (isPendingApproval(role)) {
+    return errorResult('승인 대기 중에는 이용할 수 없습니다.');
   }
 
   const parsed = galleryFiltersSchema.safeParse(params);
@@ -672,6 +690,12 @@ export async function fetchPBLReportDetail(
 
   if (!role) {
     return errorResult('사용자 정보를 찾을 수 없습니다.');
+  }
+
+  // 승인 대기 사용자는 타 기업 산출물을 볼 수 없다.
+  // 라우트는 gallery/layout.tsx 가 막지만, Server Action 은 직접 호출이 가능하다.
+  if (isPendingApproval(role)) {
+    return errorResult('승인 대기 중에는 이용할 수 없습니다.');
   }
 
   const adminClient = createAdminClient();

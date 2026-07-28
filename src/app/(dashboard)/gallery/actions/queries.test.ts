@@ -169,9 +169,7 @@ describe('fetchGalleryRoadmaps', () => {
     // 컨설턴트 전용 필터가 호출되지 않아야 함
     // eq가 호출되지 않았는지 확인 (is_shared, status 컨설턴트 필터)
     const eqCalls = adminMock.chainable.eq.mock.calls;
-    const hasSharedFilter = eqCalls.some(
-      (c: unknown[]) => c[0] === 'is_shared' && c[1] === true,
-    );
+    const hasSharedFilter = eqCalls.some((c: unknown[]) => c[0] === 'is_shared' && c[1] === true);
     expect(hasSharedFilter).toBe(false);
   });
 
@@ -236,12 +234,10 @@ describe('fetchGalleryRoadmaps', () => {
     // from('projects')가 첫 번째로 호출되어야 함
     expect(adminMock.client.from).toHaveBeenCalledWith('projects');
     // or 필터에 project_id.in 포함
-    expect(adminMock.chainable.or).toHaveBeenCalledWith(
-      expect.stringContaining('project_id.in.'),
-    );
+    expect(adminMock.chainable.or).toHaveBeenCalledWith(expect.stringContaining('project_id.in.'));
     // or 필터에 diagnosis_summary.ilike 포함
     expect(adminMock.chainable.or).toHaveBeenCalledWith(
-      expect.stringContaining('diagnosis_summary.ilike.'),
+      expect.stringContaining('diagnosis_summary.ilike.')
     );
   });
 
@@ -259,7 +255,7 @@ describe('fetchGalleryRoadmaps', () => {
     // 대신 ilike만 호출
     expect(adminMock.chainable.ilike).toHaveBeenCalledWith(
       'diagnosis_summary',
-      expect.stringContaining('없는검색어'),
+      expect.stringContaining('없는검색어')
     );
   });
 
@@ -413,12 +409,10 @@ describe('fetchGalleryRoadmaps', () => {
     // projects 테이블 ilike에 sanitize된 패턴 사용
     expect(adminMock.chainable.ilike).toHaveBeenCalledWith(
       'company_name',
-      expect.stringContaining('테스트'),
+      expect.stringContaining('테스트')
     );
     // or 쿼리에 project_id.in 포함
-    expect(adminMock.chainable.or).toHaveBeenCalledWith(
-      expect.stringContaining('project_id.in.'),
-    );
+    expect(adminMock.chainable.or).toHaveBeenCalledWith(expect.stringContaining('project_id.in.'));
   });
 
   it('데이터 변환 — roadmap_likes 빈 배열이면 likeCount=0', async () => {
@@ -479,10 +473,9 @@ describe('fetchGalleryRoadmaps', () => {
 
       await fetchGalleryRoadmaps();
 
-      expect(adminMock.chainable.select).toHaveBeenCalledWith(
-        expect.any(String),
-        { count: 'exact' },
-      );
+      expect(adminMock.chainable.select).toHaveBeenCalledWith(expect.any(String), {
+        count: 'exact',
+      });
     });
 
     it('total=25, limit=12 → totalPages=3', async () => {
@@ -862,9 +855,7 @@ describe('fetchGalleryPBLReports', () => {
     await fetchGalleryPBLReports();
 
     const eqCalls = adminMock.chainable.eq.mock.calls;
-    const hasSharedFilter = eqCalls.some(
-      (c: unknown[]) => c[0] === 'is_shared' && c[1] === true,
-    );
+    const hasSharedFilter = eqCalls.some((c: unknown[]) => c[0] === 'is_shared' && c[1] === true);
     expect(hasSharedFilter).toBe(false);
   });
 
@@ -924,9 +915,7 @@ describe('fetchGalleryPBLReports', () => {
     await fetchGalleryPBLReports({ search: '테스트' });
 
     expect(adminMock.client.from).toHaveBeenCalledWith('projects');
-    expect(adminMock.chainable.or).toHaveBeenCalledWith(
-      expect.stringContaining('project_id.in.'),
-    );
+    expect(adminMock.chainable.or).toHaveBeenCalledWith(expect.stringContaining('project_id.in.'));
   });
 
   it('search 필터 → 매칭 없으면 ilike만', async () => {
@@ -937,10 +926,7 @@ describe('fetchGalleryPBLReports', () => {
     await fetchGalleryPBLReports({ search: '없는검색어' });
 
     expect(adminMock.chainable.or).not.toHaveBeenCalled();
-    expect(adminMock.chainable.ilike).toHaveBeenCalledWith(
-      'diagnosis_summary',
-      expect.any(String),
-    );
+    expect(adminMock.chainable.ilike).toHaveBeenCalledWith('diagnosis_summary', expect.any(String));
   });
 
   it('sort=latest → order(created_at)', async () => {
@@ -1243,5 +1229,41 @@ describe('fetchGalleryItems', () => {
       expect(result.data.total).toBe(0);
       expect(result.data.items).toEqual([]);
     }
+  });
+});
+
+// ─── 승인 대기 사용자 차단 (#007) ────────────────────────────────────────────
+
+/**
+ * gallery/layout.tsx 가 라우트 진입을 막지만, Server Action 은 클라이언트 번들에
+ * action id 가 실리는 POST 엔드포인트라 화면을 거치지 않고 직접 호출할 수 있다.
+ * 타 기업 산출물이 걸린 4개 진입점은 액션 계층에서도 동일하게 차단한다.
+ */
+describe('승인 대기 사용자 차단 (#007)', () => {
+  const ENTRY_POINTS: [string, () => Promise<{ success: boolean; error?: string }>][] = [
+    ['fetchGalleryRoadmaps', () => fetchGalleryRoadmaps()],
+    ['fetchRoadmapDetail', () => fetchRoadmapDetail(TEST_ROADMAP_ID)],
+    ['fetchGalleryPBLReports', () => fetchGalleryPBLReports()],
+    ['fetchPBLReportDetail', () => fetchPBLReportDetail(TEST_PBL_REPORT_ID)],
+  ];
+
+  describe.each(ENTRY_POINTS)('%s', (_name, call) => {
+    it.each(['USER_PENDING', 'OPS_ADMIN_PENDING'])('역할 "%s" → error 반환', async (role) => {
+      setupAuth({ role });
+
+      const result = await call();
+
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error).toContain('승인 대기');
+    });
+
+    it('차단 시 DB 조회를 수행하지 않는다', async () => {
+      setupAuth({ role: 'USER_PENDING' });
+
+      await call();
+
+      // 쿼터·조회 앞단에서 반환되므로 admin 클라이언트 쿼리가 실행되면 안 된다
+      expect(adminMock.client.from).not.toHaveBeenCalled();
+    });
   });
 });

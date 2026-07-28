@@ -21,6 +21,8 @@ import {
   OPS_ADMIN_ROLES,
   SYSTEM_ADMIN_MANAGEABLE_ROLES,
   OPS_ADMIN_MANAGEABLE_ROLES,
+  PENDING_ROLES,
+  isPendingApproval,
 } from './status';
 
 describe('ALLOWED_STATUS_TRANSITIONS', () => {
@@ -108,6 +110,34 @@ describe('isOpsManager', () => {
 });
 
 // =============================================================================
+// isPendingApproval (#007 승인 대기 라우트 차단)
+// =============================================================================
+
+describe('isPendingApproval', () => {
+  it.each<[UserRole, boolean]>([
+    ['USER_PENDING', true],
+    ['OPS_ADMIN_PENDING', true],
+    ['CONSULTANT_APPROVED', false],
+    ['OPS_ADMIN', false],
+    ['SYSTEM_ADMIN', false],
+    ['PUBLIC', false],
+  ])('역할 "%s" → %s', (role, expected) => {
+    expect(isPendingApproval(role)).toBe(expected);
+  });
+
+  it('PENDING_ROLES 는 승인 대기 역할 2종만 포함한다', () => {
+    expect(PENDING_ROLES).toEqual(['USER_PENDING', 'OPS_ADMIN_PENDING']);
+  });
+
+  it('CONSULTANT_ROLES·OPS_ADMIN_ROLES 와 목적이 다르다 — 승인된 역할을 포함하지 않는다', () => {
+    // CONSULTANT_ROLES 는 USER_PENDING + CONSULTANT_APPROVED (관리 대상 묶음),
+    // PENDING_ROLES 는 승인 전 역할만 (접근 차단 대상). 혼동 방지용 회귀 단언.
+    expect(PENDING_ROLES).not.toContain('CONSULTANT_APPROVED');
+    expect(PENDING_ROLES).not.toContain('OPS_ADMIN');
+  });
+});
+
+// =============================================================================
 // getManageableRoles
 // =============================================================================
 
@@ -130,11 +160,12 @@ describe('getManageableRoles', () => {
     expect(roles).not.toContain('SYSTEM_ADMIN');
   });
 
-  it.each<UserRole>([
-    'PUBLIC', 'USER_PENDING', 'OPS_ADMIN_PENDING', 'CONSULTANT_APPROVED',
-  ])('"%s" 역할은 빈 배열을 반환한다', (role) => {
-    expect(getManageableRoles(role)).toEqual([]);
-  });
+  it.each<UserRole>(['PUBLIC', 'USER_PENDING', 'OPS_ADMIN_PENDING', 'CONSULTANT_APPROVED'])(
+    '"%s" 역할은 빈 배열을 반환한다',
+    (role) => {
+      expect(getManageableRoles(role)).toEqual([]);
+    }
+  );
 });
 
 // =============================================================================
@@ -208,8 +239,14 @@ describe('getWorkflowStepLabel', () => {
 
 describe('getProjectStatusBadge', () => {
   it.each<ProjectStatus>([
-    'NEW', 'DIAGNOSED', 'MATCH_RECOMMENDED', 'ASSIGNED',
-    'INTERVIEWED', 'ROADMAP_DRAFTED', 'PBL_DRAFTED', 'FINALIZED',
+    'NEW',
+    'DIAGNOSED',
+    'MATCH_RECOMMENDED',
+    'ASSIGNED',
+    'INTERVIEWED',
+    'ROADMAP_DRAFTED',
+    'PBL_DRAFTED',
+    'FINALIZED',
   ])('상태 "%s"에 대해 label과 color를 포함한 객체를 반환한다', (status) => {
     const badge = getProjectStatusBadge(status);
     expect(badge).toHaveProperty('label');

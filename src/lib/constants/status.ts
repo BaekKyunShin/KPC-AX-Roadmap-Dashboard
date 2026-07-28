@@ -34,6 +34,25 @@ export function isOpsManager(role: UserRole): boolean {
 }
 
 /**
+ * 승인 대기 역할 (로그인은 되지만 운영자 승인 전)
+ *
+ * ⚠️ CONSULTANT_ROLES·OPS_ADMIN_ROLES 와 원소가 겹치지만 목적이 다르다.
+ * 저 둘은 "누구를 관리할 수 있는가"(관리 대상 묶음)이고,
+ * 이 상수는 "누구의 접근을 막는가"(라우트 차단 대상)이다.
+ */
+export const PENDING_ROLES: readonly UserRole[] = ['USER_PENDING', 'OPS_ADMIN_PENDING'] as const;
+
+/**
+ * 승인 대기 상태인지 확인
+ *
+ * true 면 승인 대기 카드(/dashboard)와 프로필 작성(/dashboard/profile) 외의
+ * 대시보드 라우트 접근을 차단한다. 프로필은 승인 심사에 필요하므로 예외.
+ */
+export function isPendingApproval(role: UserRole): boolean {
+  return PENDING_ROLES.includes(role);
+}
+
+/**
  * 현재 사용자 역할에 따라 관리 가능한 역할 목록 반환
  */
 export function getManageableRoles(currentUserRole: UserRole): readonly UserRole[] {
