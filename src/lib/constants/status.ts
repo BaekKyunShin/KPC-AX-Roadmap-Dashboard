@@ -197,6 +197,19 @@ export function getStatusFilterOptions(): StatusFilterOption[] {
 }
 
 /**
+ * 워크플로 단계 키를 실제 프로젝트 상태 배열로 변환
+ *
+ * URL 쿼리(`?status=diagnosed`)에 담기는 값은 ProjectStatus 가 아니라
+ * 워크플로 단계 키다. 서버에서 그대로 `.eq('status', ...)` 에 넘기면
+ * 항상 0건이 되므로, 반드시 이 함수로 statuses 배열을 얻어 사용한다.
+ *
+ * @returns 단계 키에 해당하는 상태 배열. 알 수 없는 키면 undefined(필터 미적용).
+ */
+export function getStatusesByFilterKey(value: string): ProjectStatus[] | undefined {
+  return PROJECT_WORKFLOW_STEPS.find((step) => step.key === value)?.statuses;
+}
+
+/**
  * 프로젝트 상태 설정 (OPS 관리자용 - 전체 상태)
  */
 export const PROJECT_STATUS_CONFIG: Record<ProjectStatus, { label: string; color: string }> = {

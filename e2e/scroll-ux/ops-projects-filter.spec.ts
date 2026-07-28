@@ -36,11 +36,19 @@ test.describe('스크롤 위치 유지 — 운영 프로젝트 관리 필터', (
     );
   });
 
+  // ⚠️ 진입 URL 은 시드에 실재하는 업종이어야 한다.
+  //   2026-07-28 page.tsx 가 searchParams 를 서버 조회에 반영하도록 고쳐지면서,
+  //   시드에 없는 값(구 '?industry=IT')으로 진입하면 목록이 0건이 되고 페이지가
+  //   스크롤 불가가 되어 이 테스트가 실패가 아니라 **조용한 skip** 으로 죽는다.
+  //   시드 업종은 '제조업' 과 'IT/SW' 뿐이므로 인코딩한 'IT%2FSW' 를 쓴다.
   test('필터 초기화 시 스크롤 위치 유지', async ({ opsPage: page }) => {
-    await page.goto('/ops/projects?industry=IT');
+    await page.goto('/ops/projects?industry=IT%2FSW');
     await page.waitForLoadState('networkidle');
 
-    test.skip(!(await isScrollable(page)), '운영 프로젝트 시드 데이터 부족');
+    test.skip(
+      !(await isScrollable(page)),
+      '업종 필터 적용 후 목록이 짧아 스크롤 불가 — 시드 확대 필요'
+    );
     await scrollToY(page, 400);
 
     const resetButton = page.getByRole('button', { name: /초기화|리셋/ }).first();

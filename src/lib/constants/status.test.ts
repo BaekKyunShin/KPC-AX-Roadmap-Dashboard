@@ -23,6 +23,8 @@ import {
   OPS_ADMIN_MANAGEABLE_ROLES,
   PENDING_ROLES,
   isPendingApproval,
+  getStatusFilterOptions,
+  getStatusesByFilterKey,
 } from './status';
 
 describe('ALLOWED_STATUS_TRANSITIONS', () => {
@@ -134,6 +136,38 @@ describe('isPendingApproval', () => {
     // PENDING_ROLES 는 승인 전 역할만 (접근 차단 대상). 혼동 방지용 회귀 단언.
     expect(PENDING_ROLES).not.toContain('CONSULTANT_APPROVED');
     expect(PENDING_ROLES).not.toContain('OPS_ADMIN');
+  });
+});
+
+// =============================================================================
+// getStatusesByFilterKey (URL 딥링크 필터)
+// =============================================================================
+
+describe('getStatusesByFilterKey', () => {
+  it.each<[string, ProjectStatus[]]>([
+    ['new', ['NEW']],
+    ['diagnosed', ['DIAGNOSED', 'MATCH_RECOMMENDED']],
+    ['assigned', ['ASSIGNED']],
+    ['interviewed', ['INTERVIEWED']],
+    ['drafted', ['ROADMAP_DRAFTED', 'PBL_DRAFTED']],
+    ['finalized', ['FINALIZED']],
+  ])('워크플로 단계 키 "%s" → 실제 상태 배열', (key, expected) => {
+    expect(getStatusesByFilterKey(key)).toEqual(expected);
+  });
+
+  it('존재하지 않는 키는 undefined 를 반환한다 (필터 미적용)', () => {
+    expect(getStatusesByFilterKey('nonexistent')).toBeUndefined();
+    expect(getStatusesByFilterKey('')).toBeUndefined();
+    // URL 에 DB 상태값이 직접 들어온 경우도 단계 키가 아니므로 미적용
+    expect(getStatusesByFilterKey('DIAGNOSED')).toBeUndefined();
+  });
+
+  it('드롭다운 옵션의 모든 value 에 대해 옵션과 동일한 statuses 를 반환한다', () => {
+    // 클라이언트 드롭다운(getStatusFilterOptions)이 URL 에 쓰는 값과
+    // 서버 파서가 해석하는 값이 어긋나면 딥링크가 조용히 0건이 된다.
+    for (const opt of getStatusFilterOptions()) {
+      expect(getStatusesByFilterKey(opt.value)).toEqual(opt.statuses);
+    }
   });
 });
 
