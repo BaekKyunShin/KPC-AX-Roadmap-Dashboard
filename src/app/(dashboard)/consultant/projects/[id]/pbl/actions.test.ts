@@ -31,6 +31,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
 import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
+import { checkAndRecordLLMUsage } from '@/lib/services/quota';
 
 // ─── 외부 모듈 모킹 ───────────────────────────────────────────────────────────
 
@@ -130,6 +131,17 @@ vi.mock('next/headers', () => ({
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
+
+// LLM 쿼터: generatePBLAction 이 LLM 호출 전 확인하므로 모킹 필수.
+// 미모킹 시 실제 checkAndRecordLLMUsage 가 mock supabase 에서 .rpc 를 찾다 실패한다.
+vi.mock('@/lib/services/quota', () => ({
+  checkAndRecordLLMUsage: vi.fn(),
+}));
+
+// 쿼터 기본값은 한도 내. 초과 케이스는 해당 테스트에서 개별 재정의.
+beforeEach(() => {
+  vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false });
+});
 
 // ─── 테스트 상수 ──────────────────────────────────────────────────────────────
 
@@ -541,6 +553,34 @@ describe('generatePBLAction', () => {
     const result = await generatePBLAction(PROJECT_ID);
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toContain('컨설턴트');
+  });
+
+  // ─── LLM 쿼터 (P5 — 로드맵 트랙과 동일하게 적용) ────────────────────────────
+
+  it('LLM 쿼터 초과 → error 반환, LLM 생성 미실행', async () => {
+    const { generatePBLContent } = await import('@/lib/services/pbl/pbl-generator');
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({
+      exceeded: true,
+      reason: 'daily',
+      message: '일일 사용량 한도(50회)에 도달했습니다.',
+    });
+
+    const result = await generatePBLAction(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('한도');
+    expect(generatePBLContent).not.toHaveBeenCalled();
+  });
+
+  it('쿼터 초과 메시지가 비어도 한도 안내 문구를 반환한다', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: true });
+
+    const result = await generatePBLAction(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('한도');
   });
 
   it('타 컨설턴트 프로젝트 → error', async () => {

@@ -19,6 +19,7 @@ import { resolveHrdSignedUrl } from '@/lib/services/storage/hrd-signed-url';
 import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
+import { checkAndRecordLLMUsage } from '@/lib/services/quota';
 import { registerAbort, cleanupAbort } from '@/lib/services/abort-registry';
 import { PBLInterviewSchema, PBLInterviewStrictSchema } from '@/lib/schemas/interview-pbl';
 import type { PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
@@ -263,6 +264,13 @@ export async function generatePBLAction(
     });
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, supabase } = auth;
+
+    // LLM 호출 쿼터 확인 (로드맵 생성 경로와 동일 — 트랙별 비대칭 방지).
+    // 데이터 조회보다 앞에 두어 한도 초과 시 불필요한 조회를 막는다.
+    const quotaCheck = await checkAndRecordLLMUsage(user.id);
+    if (quotaCheck.exceeded) {
+      return { success: false, error: quotaCheck.message || 'LLM 호출 한도를 초과했습니다.' };
+    }
 
     // 프로젝트 조회 + 트랙/배정/상태 가드
     const { data: project } = await supabase

@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import type { ConsultantProfile, SelfAssessmentScore } from '@/types/database';
 import { createAuditLog } from '../audit';
 import { callLLMForJSON } from '../llm';
+import { checkAndRecordLLMUsage } from '../quota';
 import {
   fetchMatchingData,
   filterValidRecommendations,
@@ -11,11 +12,7 @@ import {
   LEVEL_LABEL_MAP,
   LLM_LIMITS,
 } from './matching-helpers';
-import type {
-  LLMCandidateScore,
-  LLMMatchingResponse,
-  MatchingOptions,
-} from './matching-helpers';
+import type { LLMCandidateScore, LLMMatchingResponse, MatchingOptions } from './matching-helpers';
 
 /** 매칭 LLM 설정 */
 const MATCHING_LLM_TEMPERATURE = 0.3;
@@ -33,9 +30,20 @@ export async function generateLLMMatchingRecommendations(
   const { topN = 3, preserveStatus = false } = options;
   const supabase = createAdminClient();
 
+  // 0. LLM 호출 쿼터 확인 (로드맵 생성 경로와 동일 패턴)
+  //    데이터 조회보다 앞에 두어 한도 초과 시 불필요한 DB 조회를 막는다.
+  //    throw 메시지의 '사용량 한도' 키워드는 api/matching/generate/route.ts 의
+  //    429 QUOTA_EXCEEDED 분기가 매칭하는 계약이므로 fallback 문구를 바꾸지 말 것.
+  const quotaCheck = await checkAndRecordLLMUsage(actorUserId);
+  if (quotaCheck.exceeded) {
+    throw new Error(quotaCheck.message || '사용량 한도를 초과했습니다.');
+  }
+
   // 1. 데이터 조회
-  const { projectData, assessmentScores, candidatesWithProfile, nameMap } =
-    await fetchMatchingData(supabase, projectId);
+  const { projectData, assessmentScores, candidatesWithProfile, nameMap } = await fetchMatchingData(
+    supabase,
+    projectId
+  );
 
   // 2. LLM 프롬프트 구성 및 호출
   //    ISSUE-06 방어적 하드닝: validator 로 recommendations 배열 존재를 보장해
@@ -43,34 +51,38 @@ export async function generateLLMMatchingRecommendations(
   const llmResponse = await callLLMForJSON<LLMMatchingResponse>(
     [
       { role: 'system', content: buildLLMSystemPrompt() },
-      { role: 'user', content: buildLLMUserPrompt(projectData, assessmentScores, candidatesWithProfile) },
+      {
+        role: 'user',
+        content: buildLLMUserPrompt(projectData, assessmentScores, candidatesWithProfile),
+      },
     ],
     { temperature: MATCHING_LLM_TEMPERATURE, maxTokens: MATCHING_LLM_MAX_TOKENS },
     2,
     undefined,
-    validateLlmMatchingResponse,
+    validateLlmMatchingResponse
   );
 
   // 3. LLM 응답 검증 — hallucinated userId 필터링
   const validCandidateIds = candidatesWithProfile.map((c) => c.userId);
-  const validRecommendations = filterValidRecommendations(llmResponse.recommendations, validCandidateIds);
+  const validRecommendations = filterValidRecommendations(
+    llmResponse.recommendations,
+    validCandidateIds
+  );
 
   if (validRecommendations.length === 0) {
     console.warn(`[Matching] LLM 응답에 유효한 후보 없음 — projectId: ${projectId}`);
   }
 
   // 4. 응답 변환
-  const scoredCandidates: LLMCandidateScore[] = validRecommendations
-    .slice(0, topN)
-    .map((rec) => ({
-      userId: rec.userId,
-      totalScore: Math.max(0, Math.min(100, rec.score)),
-      rationale: {
-        analysis: rec.analysis,
-        strengths: rec.strengths.slice(0, LLM_LIMITS.MAX_STRENGTHS),
-        considerations: rec.considerations.slice(0, LLM_LIMITS.MAX_CONSIDERATIONS),
-      },
-    }));
+  const scoredCandidates: LLMCandidateScore[] = validRecommendations.slice(0, topN).map((rec) => ({
+    userId: rec.userId,
+    totalScore: Math.max(0, Math.min(100, rec.score)),
+    rationale: {
+      analysis: rec.analysis,
+      strengths: rec.strengths.slice(0, LLM_LIMITS.MAX_STRENGTHS),
+      considerations: rec.considerations.slice(0, LLM_LIMITS.MAX_CONSIDERATIONS),
+    },
+  }));
 
   // 5. 추천 저장
   await saveRecommendations(supabase, projectId, scoredCandidates);

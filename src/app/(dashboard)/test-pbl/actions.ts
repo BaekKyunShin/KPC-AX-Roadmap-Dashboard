@@ -8,6 +8,7 @@ import { createAuditLog } from '@/lib/services/audit';
 import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-registry';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { generatePBLContent, PBLGenerationError } from '@/lib/services/pbl/pbl-generator';
+import { checkAndRecordLLMUsage } from '@/lib/services/quota';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 import { PBLInterviewStrictSchema, type PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
 import type { ConsultantProfile } from '@/types/database';
@@ -83,6 +84,14 @@ export async function generateTestPBL(
   const validatedInput = parsed.data;
 
   const { user } = auth;
+
+  // LLM 호출 쿼터 확인 — 테스트 로드맵(generateTestRoadmap)과 동일하게 적용한다.
+  // 확인과 동시에 사용량이 증가하므로 입력 검증 뒤, DB 조회 앞에 둔다.
+  const quotaCheck = await checkAndRecordLLMUsage(user.id);
+  if (quotaCheck.exceeded) {
+    return { success: false, error: quotaCheck.message || 'LLM 호출 한도를 초과했습니다.' };
+  }
+
   const adminSupabase = createAdminClient();
 
   let consultantProfile: ConsultantProfile | null = null;

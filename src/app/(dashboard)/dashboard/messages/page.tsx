@@ -1,6 +1,8 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getCachedProfile } from '@/lib/supabase/cached';
+import { isPendingApproval } from '@/lib/constants/status';
 import { PageHeader } from '@/components/ui/page-header';
 import MessagesClient from './_components/MessagesClient';
 import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
@@ -12,6 +14,10 @@ export default async function MessagesPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect('/login');
+
+  // 승인 대기 사용자는 좌측 메뉴에 메시지가 없지만 URL 직접 입력으로는 진입할 수 있었다.
+  const profile = await getCachedProfile();
+  if (profile && isPendingApproval(profile.role)) redirect('/dashboard');
 
   return (
     <div className="flex flex-col overflow-hidden h-[calc(100vh-10rem)]">

@@ -33,6 +33,7 @@ import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { createNotificationForAdmins } from '@/lib/services/notification';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
+import { checkAndRecordLLMUsage } from '@/lib/services/quota';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { validateStatusTransition } from '@/lib/constants/status';
 import { deepMerge } from '@/lib/utils/deep-merge';
@@ -698,6 +699,12 @@ export async function processSttFile(
       return { success: false, error: sizeValidation.error };
     }
 
+    // LLM 호출 쿼터 확인 — 확인과 동시에 사용량이 증가하므로 입력 검증 뒤에 둔다.
+    const quotaCheck = await checkAndRecordLLMUsage(authResult.user.id);
+    if (quotaCheck.exceeded) {
+      return { success: false, error: quotaCheck.message || 'LLM 호출 한도를 초과했습니다.' };
+    }
+
     // LLM으로 인사이트 추출
     const insights = await extractInsightsFromStt(sttText);
 
@@ -769,6 +776,12 @@ export async function extractSttInsights(
     const sizeValidation = validateSttTextSize(text);
     if (!sizeValidation.valid) {
       return { success: false, error: sizeValidation.error };
+    }
+
+    // LLM 호출 쿼터 확인 — 확인과 동시에 사용량이 증가하므로 입력 검증 뒤에 둔다.
+    const quotaCheck = await checkAndRecordLLMUsage(authResult.user.id);
+    if (quotaCheck.exceeded) {
+      return { success: false, error: quotaCheck.message || 'LLM 호출 한도를 초과했습니다.' };
     }
 
     const insights = await extractInsightsFromStt(text);

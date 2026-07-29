@@ -533,10 +533,14 @@ describe('ProjectList', () => {
   // --------------------------------------------------------------------------
   // 9. URL 동기화 — 서버 왕복 없이 주소만 갱신
   //
-  // page.tsx 는 search 만 소비하고 status·industry·page 는 무시한다. 그런데도
-  // router.replace 로 주소를 바꾸면 결과가 달라지지 않는 RSC 왕복(+ 전체 스캔인
-  // fetchProjectStats)이 매번 발생하고, 그 응답은 initialData 가 첫 마운트에만
-  // 쓰이므로 버려진다. history.replaceState 로 주소만 갱신한다.
+  // page.tsx 는 이제 search·status·industry·page 를 모두 읽어 프리페치한다
+  // (북마크·공유 링크로 진입했을 때 목록이 필터와 일치하도록). 하지만 그건
+  // '첫 진입' 한 번뿐이고, 이후 필터 변경의 재조회는 이 컴포넌트가 Server Action
+  // 으로 직접 수행한다. 그런데도 router.replace 로 주소를 바꾸면 결과가 달라지지
+  // 않는 RSC 왕복(+ 전체 스캔인 fetchProjectStats)이 매번 발생하고, 그 응답은
+  // initialData 가 첫 마운트에만 쓰이므로 버려진다. 게다가 그 왕복은 진행 중이던
+  // 스크롤 애니메이션을 취소해 위치를 잃게 한다(PR #133). history.replaceState 로
+  // 주소만 갱신한다.
   // --------------------------------------------------------------------------
   describe('URL 동기화', () => {
     it('필터 변경 시 router.replace 를 호출하지 않는다 (서버 왕복 없음)', async () => {
