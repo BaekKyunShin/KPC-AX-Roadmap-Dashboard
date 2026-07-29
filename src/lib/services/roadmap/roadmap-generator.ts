@@ -355,7 +355,19 @@ export async function generateRoadmap(
 
   // 프로젝트 상태 업데이트 (중앙 전이 검증 — FINALIZED 역방향 전이 방지 포함)
   if (validateStatusTransition(projectData.status, 'ROADMAP_DRAFTED')) {
-    await supabase.from('projects').update({ status: 'ROADMAP_DRAFTED' }).eq('id', projectId);
+    // 전이가 실패해도 로드맵은 이미 저장됐으므로 응답은 유지한다.
+    // 다만 로그가 없으면 "산출물은 있는데 상태는 이전 단계"인 desync 를
+    // 사후에도 추적할 수 없으므로 error 를 반드시 남긴다.
+    const { error: statusError } = await supabase
+      .from('projects')
+      .update({ status: 'ROADMAP_DRAFTED' })
+      .eq('id', projectId);
+    if (statusError) {
+      console.error(
+        `[generateRoadmap] status 전이 실패(${projectData.status}→ROADMAP_DRAFTED) project=${projectId}:`,
+        statusError.message
+      );
+    }
   }
 
   // 감사로그

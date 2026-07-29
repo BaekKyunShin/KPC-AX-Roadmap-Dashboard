@@ -198,6 +198,17 @@ export async function updateProjectStatusIfNeeded(
     .single();
 
   if (project?.status && validateStatusTransition(project.status, 'MATCH_RECOMMENDED')) {
-    await supabase.from('projects').update({ status: 'MATCH_RECOMMENDED' }).eq('id', projectId);
+    // 전이가 실패해도 추천은 이미 저장됐으므로 throw 하지 않는다(호출부 응답 유지).
+    // 다만 로그가 없으면 desync 를 사후 추적할 수 없으므로 error 를 남긴다.
+    const { error: statusError } = await supabase
+      .from('projects')
+      .update({ status: 'MATCH_RECOMMENDED' })
+      .eq('id', projectId);
+    if (statusError) {
+      console.error(
+        `[updateProjectStatusIfNeeded] status 전이 실패(${project.status}→MATCH_RECOMMENDED) project=${projectId}:`,
+        statusError.message
+      );
+    }
   }
 }

@@ -211,11 +211,18 @@ export async function createSelfAssessment(formData: FormData): Promise<SimpleAc
   }
 
   // 프로젝트 상태 업데이트 — SQL 조건으로 NEW→DIAGNOSED 전이만 허용 (동시성 안전한 원자적 가드)
-  await adminSupabase
+  // 이미 DIAGNOSED 이면 0행 매치가 정상이므로 행 수는 보지 않고 error 만 검사한다.
+  const { error: statusError } = await adminSupabase
     .from('projects')
     .update({ status: 'DIAGNOSED' })
     .eq('id', projectId)
     .eq('status', 'NEW');
+  if (statusError) {
+    console.error(
+      `[createSelfAssessment] status 전이 실패(NEW→DIAGNOSED) project=${projectId}:`,
+      statusError.message
+    );
+  }
 
   // 감사로그 기록 (응답 차단 방지를 위해 after()로 지연)
   after(async () => {

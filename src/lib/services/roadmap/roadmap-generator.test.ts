@@ -119,6 +119,8 @@ interface MockOverrides {
   insertResult?: { data: { id: string } | null; error: { message: string } | null };
   assignedConsultantId?: string | null;
   interviewUpdateError?: { message: string } | null;
+  /** projects.status 전이 update 가 반환할 error (P6 데시싱크 검증용) */
+  projectUpdateError?: { message: string } | null;
 }
 
 function createProjectsChain(
@@ -228,7 +230,7 @@ function createRoadmapVersionsChain(overrides: MockOverrides) {
 
 function createMockSupabase(projectStatus: string, overrides: MockOverrides = {}) {
   const updateFn = vi.fn().mockReturnValue({
-    eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+    eq: vi.fn().mockResolvedValue({ data: null, error: overrides.projectUpdateError ?? null }),
   });
 
   const projectsChain = createProjectsChain(projectStatus, overrides, updateFn);
@@ -324,6 +326,39 @@ describe('generateRoadmap — 프로젝트 상태 업데이트', () => {
     } else {
       expect(updateFn).not.toHaveBeenCalled();
     }
+  });
+
+  // P6: 전이 update 가 실패해도 예외·로그 없이 성공을 반환해, 로드맵은 저장됐는데
+  // projects.status 는 INTERVIEWED 에 머무는 silent desync 가 발생했다.
+  it('status 전이 update 실패 시 로그를 남기되 로드맵 생성은 성공으로 반환한다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setupDefaultMocks('INTERVIEWED', {
+      projectUpdateError: { message: 'update failed' },
+    });
+
+    const result = await generateRoadmap('project-1', 'user-1');
+
+    // 산출물은 이미 커밋됐으므로 응답을 실패로 되돌리지 않는다
+    expect(result.roadmapId).toBe('roadmap-1');
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('status 전이 실패(INTERVIEWED→ROADMAP_DRAFTED)'),
+      'update failed'
+    );
+    errorSpy.mockRestore();
+  });
+
+  it('status 전이 update 성공 시에는 에러 로그를 남기지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setupDefaultMocks('INTERVIEWED');
+
+    await generateRoadmap('project-1', 'user-1');
+
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('status 전이 실패'),
+      expect.anything()
+    );
+    errorSpy.mockRestore();
   });
 });
 
