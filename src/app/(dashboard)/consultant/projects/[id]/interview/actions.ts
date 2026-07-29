@@ -5,6 +5,7 @@ import {
   requireAuth,
   requireAuthWithRole,
   requireConsultantProjectAccess,
+  PROJECT_CLOSED_ERROR,
 } from '@/lib/actions/auth-helpers';
 import {
   roadmapInterviewSchema,
@@ -48,10 +49,14 @@ import type { ProjectStatus, ProjectTrack } from '@/types/database';
 
 /**
  * 프로젝트에 배정된 컨설턴트인지 확인
+ *
+ * mutation 게이트웨이 — 행정 종결 프로젝트는 기본 차단한다.
+ * 열람(fetch) 경로만 { allowClosed: true }로 명시적으로 허용.
  * @returns 인증된 사용자 정보 또는 에러
  */
 async function verifyProjectAccess(
-  projectId: string
+  projectId: string,
+  options?: { allowClosed?: boolean }
 ): Promise<{ user: { id: string } } | { error: string }> {
   const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
     roleError: '컨설턴트만 접근 가능합니다.',
@@ -62,7 +67,8 @@ async function verifyProjectAccess(
     auth.supabase,
     auth.user.id,
     projectId,
-    '해당 프로젝트에 대한 접근 권한이 없습니다.'
+    '해당 프로젝트에 대한 접근 권한이 없습니다.',
+    { blockClosed: !options?.allowClosed }
   );
   if (accessCheck !== true) return accessCheck;
 
@@ -172,13 +178,16 @@ export async function saveRoadmapInterview(
 
     const { data: projectData } = await supabase
       .from('projects')
-      .select('id, status, track, assigned_consultant_id, company_name, is_test_mode')
+      .select('id, status, track, assigned_consultant_id, company_name, is_test_mode, closed_at')
       .eq('id', projectId)
       .eq('assigned_consultant_id', user.id)
       .single();
 
     if (!projectData) {
       return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
+    }
+    if (projectData.closed_at != null) {
+      return { success: false, error: PROJECT_CLOSED_ERROR };
     }
     if (projectData.track !== 'ROADMAP') {
       return { success: false, error: 'PBL 트랙 프로젝트는 PBL 인터뷰 화면을 사용해야 합니다.' };
@@ -471,7 +480,8 @@ export async function uploadInterviewAttachment(
       auth.supabase,
       auth.user.id,
       projectId,
-      '해당 프로젝트에 대한 접근 권한이 없습니다.'
+      '해당 프로젝트에 대한 접근 권한이 없습니다.',
+      { blockClosed: true }
     );
     if (accessCheck !== true) return { success: false, error: accessCheck.error };
 
@@ -552,7 +562,8 @@ export async function removeInterviewAttachment(
       auth.supabase,
       auth.user.id,
       projectId,
-      '해당 프로젝트에 대한 접근 권한이 없습니다.'
+      '해당 프로젝트에 대한 접근 권한이 없습니다.',
+      { blockClosed: true }
     );
     if (accessCheck !== true) return { success: false, error: accessCheck.error };
 
@@ -1070,7 +1081,8 @@ export async function fetchRoadmapInterviewV2(
 ): Promise<Partial<RoadmapInterviewStrict> | null> {
   try {
     // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용. 실패 시 null (UI 조회는 조용히 실패).
-    const access = await verifyProjectAccess(projectId);
+    // 열람 경로 — 종결 프로젝트도 조회 허용.
+    const access = await verifyProjectAccess(projectId, { allowClosed: true });
     if ('error' in access) return null;
 
     // (2-추가) track 가드
@@ -1253,8 +1265,8 @@ export async function fetchPBLInterviewV2(
   projectId: string
 ): Promise<Partial<PBLInterviewStrict> | null> {
   try {
-    // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용
-    const access = await verifyProjectAccess(projectId);
+    // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용. 열람 경로 — 종결 프로젝트도 조회 허용.
+    const access = await verifyProjectAccess(projectId, { allowClosed: true });
     if ('error' in access) return null;
 
     // (2-추가) track 가드

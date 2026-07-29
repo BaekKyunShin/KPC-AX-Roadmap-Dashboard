@@ -341,6 +341,8 @@ export interface ProjectWithTimeline {
   contact_email: string;
   assigned_consultant?: { id: string; name: string; email: string } | null;
   days_in_current_status: number;
+  /** 행정 종결 시각 (마이그 076) — NOT NULL이면 종결 배지 표시 */
+  closed_at: string | null;
 }
 
 export async function fetchProjectsWithTimeline(params: ProjectListParams = {}): Promise<{
@@ -365,6 +367,7 @@ export async function fetchProjectsWithTimeline(params: ProjectListParams = {}):
       created_at,
       updated_at,
       contact_email,
+      closed_at,
       assigned_consultant:users!projects_assigned_consultant_id_fkey(id, name, email)
     `,
     { count: 'exact' }
@@ -416,6 +419,7 @@ export async function fetchProjectsWithTimeline(params: ProjectListParams = {}):
       contact_email: p.contact_email,
       assigned_consultant: unwrapJoinResult(p.assigned_consultant),
       days_in_current_status: daysInCurrentStatus,
+      closed_at: p.closed_at ?? null,
     };
   });
 

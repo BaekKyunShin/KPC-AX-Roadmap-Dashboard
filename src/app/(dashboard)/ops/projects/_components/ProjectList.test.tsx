@@ -49,6 +49,7 @@ function makeProject(overrides: Partial<ProjectWithTimeline> = {}): ProjectWithT
     contact_email: 'test@corp.com',
     assigned_consultant: null,
     days_in_current_status: 5,
+    closed_at: null,
     ...overrides,
   };
 }
@@ -142,6 +143,32 @@ describe('ProjectList', () => {
       await waitFor(() => {
         expect(screen.getAllByText('박컨설턴트').length).toBeGreaterThan(0);
       });
+    });
+
+    it('행정 종결(closed_at 존재) 프로젝트는 종결 배지를 표시한다', async () => {
+      setupMocks({
+        projects: [
+          makeProject({
+            id: 'proj-closed',
+            status: 'FINALIZED',
+            closed_at: '2026-07-29T00:00:00Z',
+          }),
+        ],
+        total: 1,
+      });
+      render(<ProjectList />);
+      await waitFor(() => {
+        expect(screen.getAllByText('종결').length).toBeGreaterThan(0);
+      });
+    });
+
+    it('비종결 프로젝트는 종결 배지를 표시하지 않는다', async () => {
+      setupMocks();
+      render(<ProjectList />);
+      await waitFor(() => {
+        expect(screen.getAllByText('알파주식회사').length).toBeGreaterThan(0);
+      });
+      expect(screen.queryByText('종결')).not.toBeInTheDocument();
     });
 
     it('미배정 프로젝트는 "미배정"을 표시한다', async () => {

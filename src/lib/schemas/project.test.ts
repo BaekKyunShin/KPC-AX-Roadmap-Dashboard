@@ -7,6 +7,8 @@ import {
   createSelfAssessmentSchema,
   assignConsultantSchema,
   reassignConsultantSchema,
+  closeProjectSchema,
+  reopenProjectSchema,
 } from './project';
 
 describe('projectStatusSchema', () => {
@@ -226,6 +228,52 @@ describe('reassignConsultantSchema', () => {
       ...validReassignment,
       assignment_reason: '짧음',
     });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('closeProjectSchema', () => {
+  const validClosure = {
+    project_id: '123e4567-e89b-12d3-a456-426614174000',
+    reason: '코치가 오프라인으로 작업을 완료하여 행정 종결 처리합니다.',
+  };
+
+  it('유효한 종결 데이터를 허용한다', () => {
+    const result = closeProjectSchema.safeParse(validClosure);
+    expect(result.success).toBe(true);
+  });
+
+  it('잘못된 project_id를 거부한다', () => {
+    const result = closeProjectSchema.safeParse({ ...validClosure, project_id: 'invalid' });
+    expect(result.success).toBe(false);
+  });
+
+  it('10자 미만 종결 사유를 거부한다', () => {
+    const result = closeProjectSchema.safeParse({ ...validClosure, reason: '짧은 사유' });
+    expect(result.success).toBe(false);
+  });
+
+  it('앞뒤 공백을 제거한 뒤 10자 미만이면 거부한다', () => {
+    const result = closeProjectSchema.safeParse({ ...validClosure, reason: '   짧음   ' });
+    expect(result.success).toBe(false);
+  });
+
+  it('500자 초과 종결 사유를 거부한다', () => {
+    const result = closeProjectSchema.safeParse({ ...validClosure, reason: 'a'.repeat(501) });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('reopenProjectSchema', () => {
+  it('유효한 project_id를 허용한다', () => {
+    const result = reopenProjectSchema.safeParse({
+      project_id: '123e4567-e89b-12d3-a456-426614174000',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('잘못된 project_id를 거부한다', () => {
+    const result = reopenProjectSchema.safeParse({ project_id: 'invalid' });
     expect(result.success).toBe(false);
   });
 });

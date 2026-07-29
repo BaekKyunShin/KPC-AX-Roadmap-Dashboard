@@ -47,8 +47,7 @@ vi.mock('@/lib/services/roadmap', () => ({
   fetchRoadmapVersion: vi.fn().mockResolvedValue(null),
   /** raw row → 신규 4섹션 매퍼. 테스트에서는 identity-ish 변환으로 단순화. */
   fromRoadmapVersionColumns: vi.fn((row: Record<string, unknown>) => ({
-    diagnosis_summary:
-      typeof row?.diagnosis_summary === 'string' ? row.diagnosis_summary : '',
+    diagnosis_summary: typeof row?.diagnosis_summary === 'string' ? row.diagnosis_summary : '',
     competencies: [],
     training_structure: [],
     annual_plan: { items: [], usage_plan: '' },
@@ -71,7 +70,7 @@ vi.mock('@/lib/services/activity-log', () => ({
 
 vi.mock('@/lib/services/llm', () => ({
   getLLMUserFriendlyError: vi.fn((err: unknown) =>
-    err instanceof Error ? err.message : 'LLM 호출에 실패했습니다.',
+    err instanceof Error ? err.message : 'LLM 호출에 실패했습니다.'
   ),
 }));
 
@@ -266,6 +265,23 @@ describe('createRoadmap', () => {
     if (!result.success) expect(result.error).toContain('컨설턴트');
   });
 
+  it('종결된 프로젝트(closed_at 존재) → 생성 차단', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: {
+        assigned_consultant_id: USER_A_ID,
+        status: 'INTERVIEWED',
+        closed_at: '2026-07-29T00:00:00Z',
+      },
+      error: null,
+    });
+
+    const result = await createRoadmap(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('종결');
+  });
+
   it('Zod 검증 실패 (잘못된 projectId) → error 반환', async () => {
     // 인증 통과 후 Zod 검증 실패해야 함 (인증이 Zod보다 우선)
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
@@ -396,7 +412,7 @@ describe('createRoadmap', () => {
     expect(insertSystemActivityLog).toHaveBeenCalledWith(
       PROJECT_ID,
       USER_A_ID,
-      '로드맵이 생성되었습니다.',
+      '로드맵이 생성되었습니다.'
     );
   });
 });
@@ -461,6 +477,22 @@ describe('confirmFinalRoadmap', () => {
     const result = await confirmFinalRoadmap(ROADMAP_ID);
 
     expect(result.success).toBe(true);
+  });
+
+  it('종결된 프로젝트(closed_at 존재) → 확정 차단', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: {
+        project_id: PROJECT_ID,
+        projects: { assigned_consultant_id: USER_A_ID, closed_at: '2026-07-29T00:00:00Z' },
+      },
+      error: null,
+    });
+
+    const result = await confirmFinalRoadmap(ROADMAP_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('종결');
   });
 
   it('정상 확정 시 운영관리 경로 캐시 무효화 (#002)', async () => {
@@ -566,7 +598,9 @@ describe('fetchRoadmapVersions', () => {
 
   it('OPS_ADMIN → 서비스 함수 호출 (프로젝트 조회 생략)', async () => {
     const { fetchRoadmapVersions: fetchVersionsMock } = await import('@/lib/services/roadmap');
-    const mockVersions = [{ id: 'v1', status: 'FINAL', created_at: '2026-01-01', version_number: 1 }];
+    const mockVersions = [
+      { id: 'v1', status: 'FINAL', created_at: '2026-01-01', version_number: 1 },
+    ];
     vi.mocked(fetchVersionsMock).mockResolvedValueOnce(mockVersions as never);
 
     // getCachedProfile: role 조회 → OPS_ADMIN
@@ -782,7 +816,7 @@ describe('createRoadmap — 에러/엣지 케이스', () => {
     expect(insertSystemActivityLog).toHaveBeenCalledWith(
       PROJECT_ID,
       USER_A_ID,
-      '새 로드맵 버전이 생성되었습니다.',
+      '새 로드맵 버전이 생성되었습니다.'
     );
   });
 
@@ -855,7 +889,10 @@ describe('editRoadmapManually — 에러/엣지 케이스', () => {
     const { updateRoadmapManually } = await import('@/lib/services/roadmap');
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    serverMock.addResult({ data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } }, error: null });
+    serverMock.addResult({
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } },
+      error: null,
+    });
 
     vi.mocked(updateRoadmapManually).mockResolvedValueOnce({
       success: false,
@@ -873,7 +910,10 @@ describe('editRoadmapManually — 에러/엣지 케이스', () => {
     const { updateRoadmapManually } = await import('@/lib/services/roadmap');
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    serverMock.addResult({ data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } }, error: null });
+    serverMock.addResult({
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } },
+      error: null,
+    });
 
     vi.mocked(updateRoadmapManually).mockResolvedValueOnce({
       success: false,
@@ -890,7 +930,10 @@ describe('editRoadmapManually — 에러/엣지 케이스', () => {
     const { updateRoadmapManually } = await import('@/lib/services/roadmap');
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    serverMock.addResult({ data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } }, error: null });
+    serverMock.addResult({
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } },
+      error: null,
+    });
 
     vi.mocked(updateRoadmapManually).mockRejectedValueOnce(new Error('unexpected error'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -992,7 +1035,12 @@ describe('fetchRoadmapVersion — 에러/엣지 케이스', () => {
 
   it('OPS_ADMIN → 프로젝트 접근 검증 없이 반환', async () => {
     const { fetchRoadmapVersion: fetchVersionMock } = await import('@/lib/services/roadmap');
-    const mockRoadmap = { id: ROADMAP_ID, project_id: PROJECT_ID, version_number: 1, status: 'FINAL' };
+    const mockRoadmap = {
+      id: ROADMAP_ID,
+      project_id: PROJECT_ID,
+      version_number: 1,
+      status: 'FINAL',
+    };
     vi.mocked(fetchVersionMock).mockResolvedValueOnce(mockRoadmap as never);
 
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
@@ -1198,6 +1246,44 @@ describe('exportRoadmapAsHwpxAction', () => {
       // "dummy-hwpx-bytes" base64 = "ZHVtbXktaHdweC1ieXRlcw=="
       expect(Buffer.from(result.data.contentBase64, 'base64').toString()).toBe('dummy-hwpx-bytes');
     }
+  });
+
+  it('종결된 프로젝트(closed_at 존재)여도 내보내기는 성공한다 (열람·내보내기 유지 특성화)', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    // 1) users.role
+    mock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    // 2) requireConsultantRoadmapAccess — 종결 프로젝트
+    mock.addResult({
+      data: {
+        project_id: PROJECT_ID,
+        projects: { assigned_consultant_id: USER_A_ID, closed_at: '2026-07-29T00:00:00Z' },
+      },
+      error: null,
+    });
+    // 3) projects 조회
+    mock.addResult({ data: { id: PROJECT_ID, company_name: '테스트(주)' }, error: null });
+    // 4) interviews 조회
+    mock.addResult({ data: null, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    const { fetchRoadmapVersion: fetchRoadmapVersionMock } = await import('@/lib/services/roadmap');
+    vi.mocked(fetchRoadmapVersionMock).mockResolvedValueOnce({
+      id: ROADMAP_ID,
+      project_id: PROJECT_ID,
+      version_number: 1,
+      status: 'DRAFT',
+      consultant_profile_snapshot: { affiliation: 'KPC' },
+      diagnosis_summary: '진단',
+      roadmap_matrix: [],
+      pbl_course: {},
+      courses: [],
+      created_by: USER_A_ID,
+      created_at: '2026-04-17',
+      updated_at: '2026-04-17',
+    } as never);
+
+    const result = await exportRoadmapAsHwpxAction(ROADMAP_ID);
+    expect(result.success).toBe(true);
   });
 
   it('Python 함수 500 에러 → 사용자 친화 메시지', async () => {

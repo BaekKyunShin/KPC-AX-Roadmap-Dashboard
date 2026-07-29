@@ -8,6 +8,7 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
 import { VersionSelector } from '@/components/common/VersionSelector';
 import { VersionStatusBadge } from '@/components/common/VersionStatusBadge';
+import { ClosedBadge } from '@/components/common/ClosedBadge';
 import { DownloadButtonGroup, type DownloadType } from '@/components/result/DownloadButtonGroup';
 import { ResultTabs, type ResultTabItem } from '@/components/result/ResultTabs';
 import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
@@ -95,6 +96,8 @@ export interface RoadmapResultClientProps {
    * 가 아니면 EmptyState 의 "AI 로드맵 생성" 버튼을 차단해 사전 검증.
    */
   projectStatus?: string;
+  /** 행정 종결 여부 (closed_at NOT NULL) — 종결 시 편집·생성·확정 잠금 + 배너 표시. */
+  projectClosed?: boolean;
   /** 버전 변경 시 호출. 상위가 fetch → state 업데이트 책임. */
   onSelectVersion: (versionId: string) => void | Promise<void>;
   /** 섹션 편집 patch. OPS role 에서는 호출되지 않음(optional 로 허용). */
@@ -127,6 +130,7 @@ export function RoadmapResultClient({
   interview,
   selfAssessmentExists = false,
   projectStatus = '',
+  projectClosed = false,
   onSelectVersion,
   onEdit,
   onGenerate,
@@ -181,10 +185,12 @@ export function RoadmapResultClient({
   const isStatusEligible =
     !!projectStatus &&
     (ROADMAP_ELIGIBLE_STATUSES as readonly string[]).includes(projectStatus as ProjectStatus);
-  const canGenerateRoadmap = hasInterview && selfAssessmentExists && isStatusEligible;
+  const canGenerateRoadmap =
+    hasInterview && selfAssessmentExists && isStatusEligible && !projectClosed;
   // PR5 (R6 spec) — DRAFT/FINAL 모두 편집 허용. ARCHIVED 만 차단.
   // FINAL in-place 수정은 동일 version_number 유지, 변경 이력은 audit_logs 기록.
-  const tabReadOnly = isArchived || !capabilities.canEdit;
+  // 행정 종결(projectClosed) 시에는 전체 읽기 전용 — 열람·내보내기만 가능.
+  const tabReadOnly = isArchived || !capabilities.canEdit || projectClosed;
 
   async function handleDownload(type: DownloadType) {
     setDownloadLoading(type);
@@ -290,8 +296,9 @@ export function RoadmapResultClient({
                 />
               </>
             )}
-            {/* Consultant 전용: DRAFT 선택 시 "최종 확정" 버튼 노출 */}
-            {capabilities.canEdit && isDraft && selectedVersion && onFinalize && (
+            {projectClosed && <ClosedBadge />}
+            {/* Consultant 전용: DRAFT 선택 시 "최종 확정" 버튼 노출 (종결 시 숨김) */}
+            {capabilities.canEdit && isDraft && selectedVersion && onFinalize && !projectClosed && (
               <Button
                 type="button"
                 size="sm"
@@ -331,7 +338,7 @@ export function RoadmapResultClient({
          * RegenerateAccordion 은 versions > 0 일 때만 노출 (이미 생성된 로드맵의 "수정본"
          * 생성용). versions=0 일 때는 EmptyState 안의 큰 버튼으로 최초 생성 흐름을 유도.
          */}
-        {capabilities.showRegenerate && hasVersions && (
+        {capabilities.showRegenerate && hasVersions && !projectClosed && (
           <div ref={accordionRef}>
             <RegenerateAccordion
               value={revisionPrompt}
@@ -342,6 +349,17 @@ export function RoadmapResultClient({
               defaultOpen={isRegenerateRequested}
               autoFocus={isRegenerateRequested}
             />
+          </div>
+        )}
+
+        {/* 행정 종결 안내 배너 — 열람·내보내기만 가능 */}
+        {projectClosed && (
+          <div
+            role="status"
+            className="rounded-md border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+            data-testid="project-closed-banner"
+          >
+            <strong>종결된 프로젝트입니다.</strong> 열람과 내보내기만 가능합니다.
           </div>
         )}
 
@@ -367,6 +385,7 @@ export function RoadmapResultClient({
             selfAssessmentExists={selfAssessmentExists}
             isStatusEligible={isStatusEligible}
             canGenerateRoadmap={canGenerateRoadmap}
+            projectClosed={projectClosed}
             projectId={projectId}
           />
         )}
@@ -419,6 +438,8 @@ interface EmptyStateProps {
   isStatusEligible: boolean;
   /** #013 가드 — 위 3 조건 종합 (true 일 때만 클릭 enabled). */
   canGenerateRoadmap: boolean;
+  /** 행정 종결 여부 — 종결 시 생성 유도 대신 종결 안내. */
+  projectClosed: boolean;
   /** 인터뷰 페이지 링크 생성용. */
   projectId: string;
 }
@@ -431,8 +452,21 @@ function EmptyState({
   selfAssessmentExists,
   isStatusEligible,
   canGenerateRoadmap,
+  projectClosed,
   projectId,
 }: EmptyStateProps) {
+  // 행정 종결 — 생성 유도 없이 종결 안내만 (열람·내보내기는 상단에서 유지)
+  if (projectClosed) {
+    return (
+      <div className="rounded-lg border bg-card p-12 text-center">
+        <h3 className="text-base font-semibold">아직 생성된 로드맵이 없습니다</h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          종결된 프로젝트입니다. 새 로드맵을 생성할 수 없습니다.
+        </p>
+      </div>
+    );
+  }
+
   // CONSULTANT 이고 인터뷰 부재 — 안내 + CTA 우선 노출 (생성 버튼 disabled)
   if (canGenerate && !hasInterview) {
     return (

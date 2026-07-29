@@ -17,7 +17,14 @@ export default async function OpsPBLViewPage({ params }: { params: Promise<{ id:
   const pageDataResult = await fetchPBLPageDataV2(id);
   const pageData = pageDataResult.success
     ? pageDataResult.data
-    : { versions: [], selectedVersion: null, interview: {} };
+    : {
+        versions: [],
+        selectedVersion: null,
+        interview: {},
+        hasInterview: false,
+        projectStatus: '',
+        projectClosed: false,
+      };
 
   return (
     <OpsPBLResultPageClient
@@ -25,6 +32,9 @@ export default async function OpsPBLViewPage({ params }: { params: Promise<{ id:
       initialVersions={pageData.versions}
       initialSelected={pageData.selectedVersion}
       initialInterview={pageData.interview}
+      initialHasInterview={pageData.hasInterview}
+      initialProjectStatus={pageData.projectStatus}
+      initialProjectClosed={pageData.projectClosed}
     />
   );
 }

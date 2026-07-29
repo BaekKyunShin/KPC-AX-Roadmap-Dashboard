@@ -17,9 +17,7 @@ import {
   fetchPBLPageDataV2,
 } from '@/app/(dashboard)/consultant/projects/[id]/pbl/actions';
 import { PBLResultClient } from '@/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/PBLResultClient';
-import type {
-  ResultPBLInterviewSnapshot,
-} from '@/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/types';
+import type { ResultPBLInterviewSnapshot } from '@/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/types';
 import { usePBLDownload } from '@/hooks/usePBLDownload';
 import { useHwpxDownload } from '@/hooks/useHwpxDownload';
 import type { DownloadType } from '@/components/result/DownloadButtonGroup';
@@ -30,6 +28,11 @@ export interface OpsPBLResultPageClientProps {
   initialVersions: PBLReportRow[];
   initialSelected: PBLReportRow | null;
   initialInterview: Partial<ResultPBLInterviewSnapshot>;
+  /** 방어 — EmptyState 가 OPS 에게 엉뚱한 안내(인터뷰 유도 등)를 하지 않도록 전달 */
+  initialHasInterview?: boolean;
+  initialProjectStatus?: string;
+  /** 행정 종결 여부 — 종결 배너 일관 표출 (OPS 는 canEdit=false 라 잠금 로직 무영향) */
+  initialProjectClosed?: boolean;
 }
 
 export default function OpsPBLResultPageClient({
@@ -37,13 +40,16 @@ export default function OpsPBLResultPageClient({
   initialVersions,
   initialSelected,
   initialInterview,
+  initialHasInterview = false,
+  initialProjectStatus = '',
+  initialProjectClosed = false,
 }: OpsPBLResultPageClientProps) {
   const [versions, setVersions] = useState<PBLReportRow[]>(initialVersions);
-  const [selectedVersion, setSelectedVersion] = useState<PBLReportRow | null>(
-    initialSelected,
-  );
-  const [interview, setInterview] =
-    useState<Partial<ResultPBLInterviewSnapshot>>(initialInterview);
+  const [selectedVersion, setSelectedVersion] = useState<PBLReportRow | null>(initialSelected);
+  const [interview, setInterview] = useState<Partial<ResultPBLInterviewSnapshot>>(initialInterview);
+  const [hasInterview, setHasInterview] = useState<boolean>(initialHasInterview);
+  const [projectStatus, setProjectStatus] = useState<string>(initialProjectStatus);
+  const [projectClosed, setProjectClosed] = useState<boolean>(initialProjectClosed);
   const [isSwitchingVersion, setIsSwitchingVersion] = useState(false);
 
   const { isDownloading, downloadPDF, downloadXLSX } = usePBLDownload();
@@ -62,6 +68,9 @@ export default function OpsPBLResultPageClient({
         setVersions(result.data.versions);
         setSelectedVersion(result.data.selectedVersion);
         setInterview(result.data.interview);
+        setHasInterview(result.data.hasInterview);
+        setProjectStatus(result.data.projectStatus);
+        setProjectClosed(result.data.projectClosed);
       }
     } finally {
       setIsSwitchingVersion(false);
@@ -90,6 +99,9 @@ export default function OpsPBLResultPageClient({
         versions={versions}
         selectedVersion={selectedVersion}
         interview={interview}
+        hasInterview={hasInterview}
+        projectStatus={projectStatus}
+        projectClosed={projectClosed}
         onSelectVersion={handleSelectVersion}
         onDownload={handleDownload}
       />

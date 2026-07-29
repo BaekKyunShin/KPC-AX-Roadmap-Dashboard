@@ -21,6 +21,8 @@ export interface ConsultantProjectItem {
   assigned_at: string | null;
   has_interview: boolean;
   has_assessment: boolean;
+  /** 행정 종결 시각 (마이그 076) — NOT NULL이면 종결 배지 표시 */
+  closed_at: string | null;
 }
 
 export interface ConsultantProjectListResult {
@@ -57,6 +59,7 @@ export async function fetchConsultantProjects(
       status,
       track,
       created_at,
+      closed_at,
       self_assessments(id),
       interviews(id),
       project_assignments!inner(assigned_at, is_current)
@@ -102,6 +105,7 @@ export async function fetchConsultantProjects(
     assigned_at: p.project_assignments?.[0]?.assigned_at || null,
     has_interview: Array.isArray(p.interviews) && p.interviews.length > 0,
     has_assessment: Array.isArray(p.self_assessments) && p.self_assessments.length > 0,
+    closed_at: p.closed_at ?? null,
   }));
 
   return {

@@ -85,5 +85,22 @@ export const deleteProjectSchema = z.object({
   confirm_text: z.string().min(1, '확인 문구를 입력하세요.'),
 });
 
+// 행정 종결 — 사유는 배정 사유와 동일 규칙 (REASON_LENGTH 10~500자)
+export const closeProjectSchema = z.object({
+  project_id: z.string().uuid('유효하지 않은 프로젝트 ID입니다.'),
+  reason: z
+    .string()
+    .trim()
+    .min(10, '종결 사유를 10자 이상 입력하세요.')
+    .max(500, '종결 사유는 500자 이내로 입력하세요.'),
+});
+
+// 행정 종결 해제
+export const reopenProjectSchema = z.object({
+  project_id: z.string().uuid('유효하지 않은 프로젝트 ID입니다.'),
+});
+
 // 타입 추출
 export type DeleteProjectInput = z.infer<typeof deleteProjectSchema>;
+export type CloseProjectInput = z.infer<typeof closeProjectSchema>;
+export type ReopenProjectInput = z.infer<typeof reopenProjectSchema>;

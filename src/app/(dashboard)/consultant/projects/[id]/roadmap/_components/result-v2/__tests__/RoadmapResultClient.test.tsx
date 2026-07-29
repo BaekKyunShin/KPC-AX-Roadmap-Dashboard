@@ -596,6 +596,90 @@ describe('RoadmapResultClient — OPS role', () => {
   });
 });
 
+describe('RoadmapResultClient — 행정 종결(projectClosed)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('종결 시 배너·종결 배지 표시 + DRAFT여도 최종 확정 버튼 숨김', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        projectClosed
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+        onFinalize={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId('project-closed-banner')).toBeInTheDocument();
+    expect(screen.getByText('종결')).toBeInTheDocument();
+    expect(screen.queryByTestId('finalize-roadmap-button')).toBeNull();
+  });
+
+  it('종결 시에도 다운로드 버튼(열람·내보내기)은 유지', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        projectClosed
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText('PDF 다운로드')).toBeInTheDocument();
+    expect(screen.getByLabelText('HWPX 다운로드')).toBeInTheDocument();
+  });
+
+  it('종결 + 버전 0개 → EmptyState에 종결 안내 표시 (생성 버튼 없음)', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[]}
+        selectedVersion={null}
+        interview={baseInterview}
+        selfAssessmentExists
+        projectStatus="FINALIZED"
+        projectClosed
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
+    expect(screen.getByText(/새 로드맵을 생성할 수 없습니다/)).toBeInTheDocument();
+    expect(screen.queryByTestId('empty-state-generate-roadmap')).toBeNull();
+  });
+
+  it('미종결(기본값)이면 종결 배너를 표시하지 않는다', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion()]}
+        selectedVersion={makeVersion()}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
+    expect(screen.queryByTestId('project-closed-banner')).toBeNull();
+  });
+});
+
 describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)', () => {
   beforeEach(() => {
     vi.clearAllMocks();

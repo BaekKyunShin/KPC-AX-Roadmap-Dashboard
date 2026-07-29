@@ -620,6 +620,71 @@ describe('PBLResultClient — 다운로드 진행 중 + 새 버전 생성 토글
 
 // PBL 결과 페이지 "최종 확정" 버튼 — 로드맵 RoadmapResultClient 패턴 이식.
 // DRAFT 상태 + CONSULTANT + onFinalize 제공 시에만 노출. 클릭 → AlertDialog → 확정.
+describe('PBLResultClient — 행정 종결(projectClosed)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('종결 시 배너·종결 배지 표시 + DRAFT여도 최종 확정 버튼 숨김', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        projectClosed
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onFinalize={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId('pbl-project-closed-banner')).toBeInTheDocument();
+    expect(screen.getByText('종결')).toBeInTheDocument();
+    expect(screen.queryByTestId('finalize-pbl-button')).toBeNull();
+  });
+
+  it('종결 + 버전 0개 → EmptyState에 종결 안내 표시 (생성 버튼 없음)', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[]}
+        selectedVersion={null}
+        interview={baseInterview}
+        hasInterview
+        projectStatus="FINALIZED"
+        projectClosed
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
+    expect(screen.getByText(/새 PBL 보고서를 생성할 수 없습니다/)).toBeInTheDocument();
+    expect(screen.queryByTestId('empty-state-generate-pbl')).toBeNull();
+  });
+
+  it('미종결(기본값)이면 종결 배너를 표시하지 않는다', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion()]}
+        selectedVersion={makeVersion()}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
+    expect(screen.queryByTestId('pbl-project-closed-banner')).toBeNull();
+  });
+});
+
 describe('PBLResultClient — 최종 확정 버튼', () => {
   beforeEach(() => {
     vi.clearAllMocks();

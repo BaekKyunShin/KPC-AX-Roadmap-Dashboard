@@ -3,11 +3,13 @@
 import { revalidatePath } from 'next/cache';
 
 import { createAdminClient } from '@/lib/supabase/admin'; // admin: 인터뷰/활동일지 CRUD — projects RLS 우회
-import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess, type AuthSuccess } from '@/lib/actions/auth-helpers';
 import {
-  createActivityLogSchema,
-  updateActivityLogSchema,
-} from '@/lib/schemas/activity-log';
+  requireAuth,
+  requireAuthWithRole,
+  requireConsultantProjectAccess,
+  type AuthSuccess,
+} from '@/lib/actions/auth-helpers';
+import { createActivityLogSchema, updateActivityLogSchema } from '@/lib/schemas/activity-log';
 import {
   guideDataSchema,
   updateGuideQuestionsSchema,
@@ -56,14 +58,21 @@ export interface ActivityLogsResult {
 // ============================================================================
 
 async function verifyConsultantProjectAccess(
-  projectId: string,
+  projectId: string
 ): Promise<{ user: { id: string }; supabase: AuthSuccess['supabase'] } | { error: string }> {
   const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
     roleError: '컨설턴트만 접근 가능합니다.',
   });
   if ('error' in auth) return auth;
 
-  const accessCheck = await requireConsultantProjectAccess(auth.supabase, auth.user.id, projectId);
+  // 이 헬퍼의 호출부는 전부 mutation(활동일지·가이드·기업정보) — 행정 종결 시 무조건 차단
+  const accessCheck = await requireConsultantProjectAccess(
+    auth.supabase,
+    auth.user.id,
+    projectId,
+    undefined,
+    { blockClosed: true }
+  );
   if (accessCheck !== true) return accessCheck;
 
   return { user: { id: auth.user.id }, supabase: auth.supabase };
@@ -79,7 +88,7 @@ export async function fetchActivityLogs(
     type?: ActivityLogType;
     limit?: number;
     offset?: number;
-  },
+  }
 ): Promise<ActivityLogsResult> {
   const auth = await requireAuth();
   if ('error' in auth) return { logs: [], total: 0 };
@@ -119,7 +128,7 @@ export async function fetchActivityLogs(
 export async function createActivityLog(
   projectId: string,
   type: ManualActivityLogType,
-  content: string,
+  content: string
 ): Promise<SimpleActionResult> {
   try {
     const auth = await verifyConsultantProjectAccess(projectId);
@@ -134,14 +143,12 @@ export async function createActivityLog(
 
     const adminSupabase = createAdminClient();
 
-    const { error: insertError } = await adminSupabase
-      .from('consultant_activity_logs')
-      .insert({
-        project_id: projectId,
-        consultant_id: auth.user.id,
-        type: validation.data.type,
-        content: validation.data.content,
-      });
+    const { error: insertError } = await adminSupabase.from('consultant_activity_logs').insert({
+      project_id: projectId,
+      consultant_id: auth.user.id,
+      type: validation.data.type,
+      content: validation.data.content,
+    });
 
     if (insertError) {
       console.error('[createActivityLog Error]', insertError);
@@ -167,7 +174,7 @@ export async function createActivityLog(
 async function verifyManualLogOwnership(
   logId: string,
   userId: string,
-  action: '수정' | '삭제',
+  action: '수정' | '삭제'
 ): Promise<SimpleActionResult | null> {
   const adminSupabase = createAdminClient();
 
@@ -200,7 +207,7 @@ async function verifyManualLogOwnership(
 export async function updateActivityLog(
   logId: string,
   projectId: string,
-  content: string,
+  content: string
 ): Promise<SimpleActionResult> {
   try {
     const auth = await verifyConsultantProjectAccess(projectId);
@@ -242,7 +249,7 @@ export async function updateActivityLog(
 
 export async function deleteActivityLog(
   logId: string,
-  projectId: string,
+  projectId: string
 ): Promise<SimpleActionResult> {
   try {
     const auth = await verifyConsultantProjectAccess(projectId);
@@ -278,9 +285,7 @@ export async function deleteActivityLog(
 // 인터뷰 사전 분석 가이드 생성
 // ============================================================================
 
-export async function generateInterviewGuide(
-  projectId: string,
-): Promise<ActionResult<GuideData>> {
+export async function generateInterviewGuide(projectId: string): Promise<ActionResult<GuideData>> {
   try {
     const auth = await verifyConsultantProjectAccess(projectId);
     if ('error' in auth) {
@@ -296,7 +301,8 @@ export async function generateInterviewGuide(
     // 프로젝트 + 자가진단 데이터 조회
     const { data: projectData } = await auth.supabase
       .from('projects')
-      .select(`
+      .select(
+        `
         company_name,
         industry,
         company_size,
@@ -306,7 +312,8 @@ export async function generateInterviewGuide(
           answers,
           template:self_assessment_templates(questions)
         )
-      `)
+      `
+      )
       .eq('id', projectId)
       .single();
 
@@ -329,7 +336,10 @@ export async function generateInterviewGuide(
       return { success: false, error: '자가진단 점수 데이터가 없습니다.' };
     }
 
-    const answers = (selfAssessment.answers ?? []) as { question_id: string; answer_value: number | string }[];
+    const answers = (selfAssessment.answers ?? []) as {
+      question_id: string;
+      answer_value: number | string;
+    }[];
     const templateQuestions = (selfAssessment.template?.questions ?? []) as {
       id: string;
       order: number;
@@ -338,8 +348,8 @@ export async function generateInterviewGuide(
       weight: number;
     }[];
 
-    const companySizeLabel = COMPANY_SIZE_LABELS[projectData.company_size as CompanySizeValue]
-      || projectData.company_size;
+    const companySizeLabel =
+      COMPANY_SIZE_LABELS[projectData.company_size as CompanySizeValue] || projectData.company_size;
 
     // LLM 호출 (쿼터는 이미 원자적으로 차감됨)
     const guideData = await generateInterviewGuideData({
@@ -361,15 +371,13 @@ export async function generateInterviewGuide(
 
     // DB UPSERT (프로젝트당 1개)
     const adminSupabase = createAdminClient();
-    const { error: upsertError } = await adminSupabase
-      .from('interview_guides')
-      .upsert(
-        {
-          project_id: projectId,
-          guide_data: validation.data,
-        },
-        { onConflict: 'project_id' },
-      );
+    const { error: upsertError } = await adminSupabase.from('interview_guides').upsert(
+      {
+        project_id: projectId,
+        guide_data: validation.data,
+      },
+      { onConflict: 'project_id' }
+    );
 
     if (upsertError) {
       console.error('[generateInterviewGuide Error] DB 저장 실패:', upsertError);
@@ -400,7 +408,7 @@ export async function generateInterviewGuide(
 
 export async function updateInterviewGuideQuestions(
   projectId: string,
-  questions: GuideQuestion[],
+  questions: GuideQuestion[]
 ): Promise<SimpleActionResult> {
   try {
     const auth = await verifyConsultantProjectAccess(projectId);
@@ -474,7 +482,7 @@ export interface UpdateProjectCompanyInfoResult {
 export async function updateProjectCompanyInfo(
   projectId: string,
   input: UpdateProjectByConsultantInput,
-  expectedUpdatedAt: string,
+  expectedUpdatedAt: string
 ): Promise<ActionResult<UpdateProjectCompanyInfoResult>> {
   try {
     // ① 세션 + ② 역할 + ③ 배정 검증
@@ -489,10 +497,7 @@ export async function updateProjectCompanyInfo(
 
     // ⑤ 비즈니스 로직 — before 조회 후 변경 필드 추출
     const adminSupabase = createAdminClient();
-    const beforeSelect = [
-      ...CONSULTANT_EDITABLE_PROJECT_FIELDS,
-      'updated_at',
-    ].join(', ');
+    const beforeSelect = [...CONSULTANT_EDITABLE_PROJECT_FIELDS, 'updated_at'].join(', ');
 
     const { data: before, error: beforeError } = await adminSupabase
       .from('projects')
@@ -520,8 +525,7 @@ export async function updateProjectCompanyInfo(
     const normalize = (v: unknown) => (v === undefined ? null : v);
     const changedFields = CONSULTANT_EDITABLE_PROJECT_FIELDS.filter(
       (field) =>
-        JSON.stringify(normalize(beforeRow[field]))
-          !== JSON.stringify(normalize(after[field])),
+        JSON.stringify(normalize(beforeRow[field])) !== JSON.stringify(normalize(after[field]))
     );
 
     if (changedFields.length === 0) {
@@ -530,14 +534,10 @@ export async function updateProjectCompanyInfo(
     }
 
     // UPDATE (optimistic lock with updated_at)
-    const updateQuery = adminSupabase
-      .from('projects')
-      .update(validation.data)
-      .eq('id', projectId);
+    const updateQuery = adminSupabase.from('projects').update(validation.data).eq('id', projectId);
 
-    const { data: updatedRows, error: updateError } = await (expectedUpdatedAt
-      ? updateQuery.eq('updated_at', expectedUpdatedAt)
-      : updateQuery
+    const { data: updatedRows, error: updateError } = await (
+      expectedUpdatedAt ? updateQuery.eq('updated_at', expectedUpdatedAt) : updateQuery
     ).select('updated_at');
 
     if (updateError) {
@@ -556,7 +556,7 @@ export async function updateProjectCompanyInfo(
 
     // audit_logs 기록 (PBL 행정 필드 변경 시 sensitive 플래그)
     const sensitiveChange = changedFields.some((f) =>
-      (CONSULTANT_EDITABLE_SENSITIVE_FIELDS as readonly string[]).includes(f),
+      (CONSULTANT_EDITABLE_SENSITIVE_FIELDS as readonly string[]).includes(f)
     );
 
     await createAuditLog({

@@ -74,23 +74,34 @@ export async function requireAuthWithRole(
 }
 
 /**
+ * 행정 종결(projects.closed_at NOT NULL)된 프로젝트의 컨설턴트 mutation 차단 메시지.
+ * 잠금 판정은 status가 아니라 closed_at 기준 — 정식 확정(FINALIZED + 메타 NULL)
+ * 프로젝트의 기존 동작(새 DRAFT 생성·재확정·편집)은 불변이다.
+ */
+export const PROJECT_CLOSED_ERROR = '종결된 프로젝트는 수정할 수 없습니다.';
+
+/**
  * 컨설턴트 로드맵 접근 검증 — roadmapId에서 프로젝트를 조회하고 배정 여부를 확인합니다.
  * 성공 시 { projectId }를 반환하여 호출부에서 활용할 수 있습니다.
+ *
+ * 이 헬퍼는 mutation 게이트웨이 — 행정 종결 프로젝트는 기본 차단합니다.
+ * 열람·내보내기 경로만 { allowClosed: true }로 명시적으로 허용하세요.
  */
 
 interface RoadmapAccessRow {
   project_id: string;
-  projects: { assigned_consultant_id: string };
+  projects: { assigned_consultant_id: string; closed_at: string | null };
 }
 
 export async function requireConsultantRoadmapAccess(
   supabase: SupabaseServerClient,
   userId: string,
-  roadmapId: string
+  roadmapId: string,
+  options?: { allowClosed?: boolean }
 ): Promise<{ projectId: string } | AuthFailure> {
   const { data } = await supabase
     .from('roadmap_versions')
-    .select('project_id, projects!inner(assigned_consultant_id)')
+    .select('project_id, projects!inner(assigned_consultant_id, closed_at)')
     .eq('id', roadmapId)
     .returns<RoadmapAccessRow[]>()
     .single();
@@ -103,27 +114,39 @@ export async function requireConsultantRoadmapAccess(
     return { error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
   }
 
+  if (!options?.allowClosed && data.projects.closed_at != null) {
+    return { error: PROJECT_CLOSED_ERROR };
+  }
+
   return { projectId: data.project_id };
 }
 
 /**
  * 컨설턴트 프로젝트 접근 검증 — assigned_consultant_id와 userId를 비교합니다.
+ *
+ * 저수준 배정 검증 헬퍼 — 기본은 행정 종결 여부를 판정하지 않습니다(열람 경로 호환).
+ * mutation 호출부는 { blockClosed: true }로 종결 차단을 명시적으로 켜세요.
  */
 export async function requireConsultantProjectAccess(
   supabase: SupabaseServerClient,
   userId: string,
   projectId: string,
-  errorMessage = '배정되지 않은 프로젝트입니다.'
+  errorMessage = '배정되지 않은 프로젝트입니다.',
+  options?: { blockClosed?: boolean }
 ): Promise<true | AuthFailure> {
   const { data: projectData } = await supabase
     .from('projects')
-    .select('id')
+    .select('id, closed_at')
     .eq('id', projectId)
     .eq('assigned_consultant_id', userId)
     .single();
 
   if (!projectData) {
     return { error: errorMessage };
+  }
+
+  if (options?.blockClosed && projectData.closed_at != null) {
+    return { error: PROJECT_CLOSED_ERROR };
   }
 
   return true;

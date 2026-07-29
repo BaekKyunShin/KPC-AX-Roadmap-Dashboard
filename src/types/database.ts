@@ -106,6 +106,12 @@ export interface Project {
   // 테스트 모드 (컨설턴트 연습용)
   is_test_mode: boolean;
   test_created_by?: string; // 테스트 프로젝트 생성자 (컨설턴트 user_id)
+  // 행정 종결 메타 (마이그 076) — closed_at NOT NULL이면 행정 종결 상태.
+  // 잠금 판정은 status가 아니라 closed_at 기준 (정식 확정과 무관).
+  closed_by?: string | null; // 종결 처리한 운영관리자 user_id
+  closed_at?: string | null; // 종결 시각
+  closure_reason?: string | null; // 종결 사유 (10~500자)
+  closed_from_status?: ProjectStatus | null; // 종결 직전 status (해제 시 복원)
   // 메타
   created_by: string; // OPS_ADMIN user_id (실제 프로젝트) 또는 컨설턴트 (테스트 프로젝트)
   created_at: string;
@@ -468,7 +474,10 @@ export type AuditAction =
   | 'ROADMAP_RESULT_EDITED'
   | 'PBL_REPORT_EDITED'
   | 'INTERVIEW_FIELD_EDITED'
-  | 'RESULT_REGENERATED_FROM_REVIEW';
+  | 'RESULT_REGENERATED_FROM_REVIEW'
+  // 마이그 076에서 추가된 행정 종결 액션
+  | 'PROJECT_ADMIN_CLOSED'
+  | 'PROJECT_REOPENED';
 
 // 알림 타입
 export type NotificationType =

@@ -36,6 +36,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { CONSULTANT_PROJECT_STATUS_CONFIG } from '@/lib/constants/status';
 import { formatCompanySizeShort } from '@/lib/constants/company-size';
 import { TrackBadge } from '@/components/ui/TrackBadge';
+import { ClosedBadge } from '@/components/common/ClosedBadge';
 import { statusLabel } from '@/lib/utils/project-track';
 import { formatDateKR, formatNumberKR } from '@/lib/utils/date';
 import type { ProjectTrack } from '@/lib/constants/tracks';
@@ -62,8 +63,6 @@ const ALL_STATUS_VALUE = 'all';
 
 /** 검색 디바운스 지연 시간 (ms) */
 const SEARCH_DEBOUNCE_DELAY = 300;
-
-
 
 /** 테이블 열 설정 */
 const TABLE_COLUMNS = {
@@ -117,18 +116,16 @@ function ProjectStatusBadge({
   // 색상은 기존 CONSULTANT_PROJECT_STATUS_CONFIG 매트릭스 + PBL_DRAFTED 보정
   const colorMap: Record<string, string> = {
     ASSIGNED: CONSULTANT_PROJECT_STATUS_CONFIG.ASSIGNED?.color ?? 'bg-blue-100 text-blue-800',
-    INTERVIEWED: CONSULTANT_PROJECT_STATUS_CONFIG.INTERVIEWED?.color ?? 'bg-amber-100 text-amber-800',
-    ROADMAP_DRAFTED: CONSULTANT_PROJECT_STATUS_CONFIG.ROADMAP_DRAFTED?.color ?? 'bg-purple-100 text-purple-800',
+    INTERVIEWED:
+      CONSULTANT_PROJECT_STATUS_CONFIG.INTERVIEWED?.color ?? 'bg-amber-100 text-amber-800',
+    ROADMAP_DRAFTED:
+      CONSULTANT_PROJECT_STATUS_CONFIG.ROADMAP_DRAFTED?.color ?? 'bg-purple-100 text-purple-800',
     PBL_DRAFTED: 'bg-purple-100 text-purple-800',
     FINALIZED: CONSULTANT_PROJECT_STATUS_CONFIG.FINALIZED?.color ?? 'bg-green-100 text-green-800',
   };
   const color = colorMap[effective] ?? 'bg-gray-100 text-gray-800';
 
-  return (
-    <span className={`px-2 py-1 text-xs font-medium rounded-full ${color}`}>
-      {label}
-    </span>
-  );
+  return <span className={`px-2 py-1 text-xs font-medium rounded-full ${color}`}>{label}</span>;
 }
 
 /**
@@ -162,10 +159,7 @@ function ProjectRow({ project }: { project: ConsultantProjectItem }) {
   return (
     <TableRow>
       <TableCell className="min-w-0">
-        <div
-          className="text-sm font-medium text-gray-900 truncate"
-          title={project.company_name}
-        >
+        <div className="text-sm font-medium text-gray-900 truncate" title={project.company_name}>
           {project.company_name}
         </div>
       </TableCell>
@@ -173,13 +167,18 @@ function ProjectRow({ project }: { project: ConsultantProjectItem }) {
         <TrackBadge track={project.track} />
       </TableCell>
       <TableCell className="text-muted-foreground">{project.industry}</TableCell>
-      <TableCell className="text-muted-foreground">{formatCompanySizeShort(project.company_size)}</TableCell>
+      <TableCell className="text-muted-foreground">
+        {formatCompanySizeShort(project.company_size)}
+      </TableCell>
       <TableCell>
-        <ProjectStatusBadge
-          status={project.status}
-          track={project.track}
-          hasInterview={project.has_interview}
-        />
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <ProjectStatusBadge
+            status={project.status}
+            track={project.track}
+            hasInterview={project.has_interview}
+          />
+          {project.closed_at && <ClosedBadge />}
+        </div>
       </TableCell>
       <TableCell className="text-muted-foreground">{formatDateKR(displayDate)}</TableCell>
       <TableCell className="font-medium">
@@ -207,11 +206,14 @@ function ProjectMobileCard({ project }: { project: ConsultantProjectItem }) {
           <div className="font-medium text-gray-900">{project.company_name}</div>
           <TrackBadge track={project.track} size="sm" />
         </div>
-        <ProjectStatusBadge
-          status={project.status}
-          track={project.track}
-          hasInterview={project.has_interview}
-        />
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          <ProjectStatusBadge
+            status={project.status}
+            track={project.track}
+            hasInterview={project.has_interview}
+          />
+          {project.closed_at && <ClosedBadge />}
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
         <div className="text-gray-500">업종</div>
@@ -242,7 +244,10 @@ interface ProjectListProps {
   initialFilters?: FilterOptions | null;
 }
 
-export default function ProjectList({ initialData = null, initialFilters = null }: ProjectListProps) {
+export default function ProjectList({
+  initialData = null,
+  initialFilters = null,
+}: ProjectListProps) {
   const router = useRouter();
   const pathname = usePathname();
   const urlSearchParams = useSearchParams();
@@ -259,12 +264,12 @@ export default function ProjectList({ initialData = null, initialFilters = null 
   const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_DELAY);
 
   // 필터 옵션 — initialFilters가 있으면 즉시 사용
-  const [filterOptions, setFilterOptions] = useState<FilterOptions>(initialFilters ?? INITIAL_FILTER_OPTIONS);
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>(
+    initialFilters ?? INITIAL_FILTER_OPTIONS
+  );
 
   // initialData가 제공된 경우 첫 마운트 시 fetch를 스킵하기 위한 ref
   const isInitialMount = useRef(!!initialData);
-
-
 
   // 파생 상태
   const hasFilters = debouncedSearch || status !== ALL_STATUS_VALUE;
@@ -403,11 +408,7 @@ export default function ProjectList({ initialData = null, initialFilters = null 
           {hasFilters && (
             <div className="mt-3 flex flex-wrap gap-2">
               {debouncedSearch && (
-                <FilterBadge
-                  label="검색"
-                  value={debouncedSearch}
-                  onClear={handleClearSearch}
-                />
+                <FilterBadge label="검색" value={debouncedSearch} onClear={handleClearSearch} />
               )}
               {isStatusFiltered && (
                 <FilterBadge
@@ -451,34 +452,34 @@ export default function ProjectList({ initialData = null, initialFilters = null 
               />
             ) : (
               <>
-              {/* 데스크톱: 테이블 뷰 */}
-              <div className="hidden md:block">
-                <Table className="min-w-[780px]">
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className={TABLE_COLUMNS.company}>기업명</TableHead>
-                      <TableHead className={TABLE_COLUMNS.track}>트랙</TableHead>
-                      <TableHead className={TABLE_COLUMNS.industry}>업종</TableHead>
-                      <TableHead className={TABLE_COLUMNS.size}>규모</TableHead>
-                      <TableHead className={TABLE_COLUMNS.status}>상태</TableHead>
-                      <TableHead className={TABLE_COLUMNS.assignedAt}>배정일</TableHead>
-                      <TableHead className={TABLE_COLUMNS.actions}>작업</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {projects.map((project) => (
-                      <ProjectRow key={project.id} project={project} />
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                {/* 데스크톱: 테이블 뷰 */}
+                <div className="hidden md:block">
+                  <Table className="min-w-[780px]">
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className={TABLE_COLUMNS.company}>기업명</TableHead>
+                        <TableHead className={TABLE_COLUMNS.track}>트랙</TableHead>
+                        <TableHead className={TABLE_COLUMNS.industry}>업종</TableHead>
+                        <TableHead className={TABLE_COLUMNS.size}>규모</TableHead>
+                        <TableHead className={TABLE_COLUMNS.status}>상태</TableHead>
+                        <TableHead className={TABLE_COLUMNS.assignedAt}>배정일</TableHead>
+                        <TableHead className={TABLE_COLUMNS.actions}>작업</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {projects.map((project) => (
+                        <ProjectRow key={project.id} project={project} />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
 
-              {/* 모바일: 카드 뷰 */}
-              <div className="md:hidden space-y-3 p-4">
-                {projects.map((project) => (
-                  <ProjectMobileCard key={project.id} project={project} />
-                ))}
-              </div>
+                {/* 모바일: 카드 뷰 */}
+                <div className="md:hidden space-y-3 p-4">
+                  {projects.map((project) => (
+                    <ProjectMobileCard key={project.id} project={project} />
+                  ))}
+                </div>
               </>
             )}
           </CardContent>

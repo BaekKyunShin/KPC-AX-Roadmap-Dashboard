@@ -8,6 +8,7 @@ import {
   requireAuthWithRole,
   requireConsultantProjectAccess,
   canAccessProjectArtifact,
+  PROJECT_CLOSED_ERROR,
 } from '@/lib/actions/auth-helpers';
 import {
   PBL_ELIGIBLE_STATUSES,
@@ -76,16 +77,20 @@ interface PBLAccessResult {
 /**
  * 컨설턴트 + PBL 보고서 ID → (트랙 PBL + 배정 컨설턴트) 검증.
  * 5단계 패턴의 "배정 확인 + 트랙 가드" 통합 헬퍼.
+ *
+ * mutation 게이트웨이 — 행정 종결 프로젝트는 기본 차단한다.
+ * 내보내기(열람) 경로만 { allowClosed: true }로 명시적으로 허용.
  */
 async function requireConsultantPBLReportAccess(
   userId: string,
-  pblId: string
+  pblId: string,
+  options?: { allowClosed?: boolean }
 ): Promise<ActionResult<PBLAccessResult>> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('pbl_reports')
     .select(
-      'project_id, projects!inner(status, track, assigned_consultant_id, is_test_mode, company_name)'
+      'project_id, projects!inner(status, track, assigned_consultant_id, is_test_mode, company_name, closed_at)'
     )
     .eq('id', pblId)
     .returns<
@@ -97,6 +102,7 @@ async function requireConsultantPBLReportAccess(
           assigned_consultant_id: string | null;
           is_test_mode: boolean;
           company_name: string | null;
+          closed_at: string | null;
         };
       }>
     >()
@@ -110,6 +116,9 @@ async function requireConsultantPBLReportAccess(
   }
   if (data.projects.assigned_consultant_id !== userId) {
     return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
+  }
+  if (!options?.allowClosed && data.projects.closed_at != null) {
+    return { success: false, error: PROJECT_CLOSED_ERROR };
   }
 
   return {
@@ -276,13 +285,16 @@ export async function generatePBLAction(
     const { data: project } = await supabase
       .from('projects')
       .select(
-        'id, status, track, assigned_consultant_id, company_name, is_test_mode, industry, sub_industries, company_size, customer_comment'
+        'id, status, track, assigned_consultant_id, company_name, is_test_mode, industry, sub_industries, company_size, customer_comment, closed_at'
       )
       .eq('id', projectId)
       .single();
 
     if (!project || project.assigned_consultant_id !== user.id) {
       return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
+    }
+    if (project.closed_at != null) {
+      return { success: false, error: PROJECT_CLOSED_ERROR };
     }
     if (project.track !== 'PBL') {
       return { success: false, error: 'PBL 트랙 프로젝트만 PBL 보고서를 생성할 수 있습니다.' };
@@ -623,10 +635,13 @@ export async function exportPBLAsHwpxAction(
     }
 
     // 3) 접근 권한 확인 — 컨설턴트만 배정 체크, OPS/시스템관리자는 전체 열람 가능
+    //    내보내기는 열람 경로 — 종결 프로젝트도 허용 (allowClosed)
     const admin = createAdminClient();
     let projectId: string;
     if (role === 'CONSULTANT_APPROVED') {
-      const consultantAccess = await requireConsultantPBLReportAccess(user.id, pblId);
+      const consultantAccess = await requireConsultantPBLReportAccess(user.id, pblId, {
+        allowClosed: true,
+      });
       if (!consultantAccess.success) return { success: false, error: consultantAccess.error };
       projectId = consultantAccess.data.projectId;
     } else {
@@ -1185,6 +1200,8 @@ export interface PBLPageDataV2 {
    */
   hasInterview: boolean;
   projectStatus: string;
+  /** 행정 종결 여부 (closed_at NOT NULL) — 종결 시 편집·생성·확정 잠금 + 배너 표시 */
+  projectClosed: boolean;
 }
 
 export async function fetchPBLPageDataV2(
@@ -1251,7 +1268,7 @@ export async function fetchPBLPageDataV2(
     const admin = createAdminClient();
     const [{ data: interviewRow }, { data: projectRow }] = await Promise.all([
       admin.from('interviews').select('id').eq('project_id', projectId).maybeSingle(),
-      admin.from('projects').select('status').eq('id', projectId).maybeSingle(),
+      admin.from('projects').select('status, closed_at').eq('id', projectId).maybeSingle(),
     ]);
 
     return {
@@ -1262,6 +1279,7 @@ export async function fetchPBLPageDataV2(
         interview: snapshot,
         hasInterview: Boolean(interviewRow?.id),
         projectStatus: projectRow?.status ?? '',
+        projectClosed: projectRow?.closed_at != null,
       },
     };
   } catch (error) {

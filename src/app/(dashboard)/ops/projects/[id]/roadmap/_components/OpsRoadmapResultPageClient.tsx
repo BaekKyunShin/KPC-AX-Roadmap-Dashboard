@@ -31,6 +31,11 @@ export interface OpsRoadmapResultPageClientProps {
   initialVersions: RoadmapVersionUI[];
   initialSelected: RoadmapVersionUI | null;
   initialInterview: Partial<ResultInterviewSnapshot>;
+  /** 방어 — EmptyState 가 OPS 에게 엉뚱한 안내(자가진단 유도 등)를 하지 않도록 전달 */
+  initialSelfAssessmentExists?: boolean;
+  initialProjectStatus?: string;
+  /** 행정 종결 여부 — 종결 배너 일관 표출 (OPS 는 canEdit=false 라 잠금 로직 무영향) */
+  initialProjectClosed?: boolean;
 }
 
 export default function OpsRoadmapResultPageClient({
@@ -38,10 +43,18 @@ export default function OpsRoadmapResultPageClient({
   initialVersions,
   initialSelected,
   initialInterview,
+  initialSelfAssessmentExists = false,
+  initialProjectStatus = '',
+  initialProjectClosed = false,
 }: OpsRoadmapResultPageClientProps) {
   const [versions, setVersions] = useState<RoadmapVersionUI[]>(initialVersions);
   const [selectedVersion, setSelectedVersion] = useState<RoadmapVersionUI | null>(initialSelected);
   const [interview, setInterview] = useState<Partial<ResultInterviewSnapshot>>(initialInterview);
+  const [selfAssessmentExists, setSelfAssessmentExists] = useState<boolean>(
+    initialSelfAssessmentExists
+  );
+  const [projectStatus, setProjectStatus] = useState<string>(initialProjectStatus);
+  const [projectClosed, setProjectClosed] = useState<boolean>(initialProjectClosed);
   const [isSwitchingVersion, setIsSwitchingVersion] = useState(false);
 
   const { isDownloading, downloadPDF, downloadXLSX } = useRoadmapDownload();
@@ -60,6 +73,9 @@ export default function OpsRoadmapResultPageClient({
         setVersions(result.data.versions);
         setSelectedVersion(result.data.selectedVersion);
         setInterview(result.data.interview);
+        setSelfAssessmentExists(result.data.selfAssessmentExists);
+        setProjectStatus(result.data.projectStatus);
+        setProjectClosed(result.data.projectClosed);
       }
     } finally {
       setIsSwitchingVersion(false);
@@ -88,6 +104,9 @@ export default function OpsRoadmapResultPageClient({
         versions={versions}
         selectedVersion={selectedVersion}
         interview={interview}
+        selfAssessmentExists={selfAssessmentExists}
+        projectStatus={projectStatus}
+        projectClosed={projectClosed}
         onSelectVersion={handleSelectVersion}
         onDownload={handleDownload}
       />

@@ -92,6 +92,9 @@ export async function getActionTypes(): Promise<{ value: AuditAction; label: str
     { value: 'PBL_REPORT_SHARED', label: 'PBL 보고서 공유 토글' },
     { value: 'PBL_HWPX_EXPORTED', label: 'PBL HWPX 내보내기' },
     { value: 'ROADMAP_HWPX_EXPORTED', label: '로드맵 HWPX 내보내기' },
+    // 행정 종결 액션 (마이그 076에서 enum 확장됨)
+    { value: 'PROJECT_ADMIN_CLOSED', label: '프로젝트 종결' },
+    { value: 'PROJECT_REOPENED', label: '프로젝트 종결 해제' },
   ];
 }
 
