@@ -6,6 +6,7 @@
 | ---------- | ----------------------- | ----------------------------------------------- |
 | 2026-05-21 | 초기 작성 (스냅샷)      | 전체                                            |
 | 2026-05-21 | B1·B2·B3 해결 (P1 5건)  | #001 · #002 · #003 · #004 · #005 RESOLVED       |
+| 2026-07-29 | 승인대기 라우트 차단 (PR #135) | #007 RESOLVED (+ 대상·기술 서술 정정)    |
 
 > **📌 정본 정책:** 본 보고서는 **시작 시점 스냅샷 + 결함 추적용**이다. 실행 세션이 따르는 정본은 **`docs/plans/2026-05-21-system-bug-audit-fix-plan.md` (계획서)**. 보고서는 결함이 해결될 때마다 🔴 OPEN → 🟢 RESOLVED 로만 갱신한다. 결함의 재현 경로·수정 후 동작·기술 변경 등 실행 가이드가 계획서와 다를 경우 **계획서가 우선**한다.
 >
@@ -25,7 +26,7 @@
 총 **18건** 확정 (보안 잠재 위험 5건 별도, 테스트 사각지대 5건 부록):
 
 - **P1 차단성: 5건** — 좋아요 silent fail · 로드맵 확정/생성 후 운영 목록 stale · STT/매칭 LLM 에러 generic 토스트
-- **P2 오해 유발: 10건** — silent redirect · 미들웨어 역할 가드 누락 · 인덱스 부재로 지연 · Realtime 누락 등
+- **P2 오해 유발: 10건** — silent redirect · 승인대기 사용자 라우트 가드 누락 · 인덱스 부재로 지연 · Realtime 누락 등
 - **P3 시각·문구: 3건** — 다이얼로그 닫힘 UX · 라우팅 안내 부재 · DRAFT 다운로드 조건 약함
 
 **가장 시급한 3개 (P1 중):**
@@ -48,7 +49,7 @@
 | #004 | **P1** ★★★★★ | LLM | 컨설턴트 > 인터뷰 > 인터뷰 녹취 STT 첨부 | STT 인사이트 추출 실패 시 도메인 컨텍스트 없는 generic 토스트 | 🟢 RESOLVED |
 | #005 | **P1** ★★★★ | LLM | 운영관리 > 프로젝트 > 매칭 추천 | 매칭 API 모든 에러를 generic 500으로 반환 — 쿼터/타임아웃/토큰 한도 구분 없음 | 🟢 RESOLVED |
 | #006 | **P2** ★★★★ | 운영관리 | 운영관리 > 프로젝트 상세 > 컨설턴트 재배정 | 인터뷰 완료 이후 단계에서 재배정 시 DB 에러로 차단 | 🔴 OPEN |
-| #007 | **P2** ★★★★ | 보안/라우팅 | 모든 보호 라우트 | 미들웨어가 USER_PENDING·OPS_ADMIN_PENDING 가드 누락 | 🔴 OPEN |
+| #007 | **P2** ★★★★ | 보안/라우팅 | 갤러리 · 메시지 · 설정 · 테스트 페이지 | 승인대기 사용자가 URL 직접 입력으로 진입 — 타 기업 FINAL 산출물 열람 가능 | 🟢 RESOLVED |
 | #008 | **P2** ★★★★ | 알림 | 헤더 > 알림 벨 | 알림 벨에 Realtime 구독 없어 새 알림이 최대 30초 지연 | 🔴 OPEN |
 | #009 | **P3** ★★ | 메시지 | 헤더 > 메시지 > "새 메시지" | 새 대화 생성 실패 시 다이얼로그가 닫히지 않음 (재검증 후 P3 격하 — 의도된 UX 가능) | 🔴 OPEN |
 | #010 | **P2** ★★★ | 메시지 | 헤더 > 메시지 | 초기 로드 실패 시 빈 상태와 구분 불가 — 에러 토스트·재시도 부재 | 🔴 OPEN |
@@ -192,21 +193,44 @@
 
 ---
 
-### #007. 미들웨어가 USER_PENDING·OPS_ADMIN_PENDING 사용자의 보호 라우트 진입을 막지 않음
+### #007. 승인 대기 사용자가 URL 직접 입력으로 갤러리·메시지·설정에 진입
+
+> **⚠️ 2026-07-29 정정** — 2026-05-21 스냅샷은 이 결함을 "미들웨어가 `/ops/*` 를 통과시킨다"로
+> 기술했으나, 해결 착수 시 코드 재조사에서 **두 가지가 사실과 달랐다.** 아래 본문은 정정본이며,
+> 원 스냅샷의 오류는 이 인용 블록에 남긴다.
+>
+> 1. **`/ops/*` 는 이미 막혀 있었다** — `ops/layout.tsx:12-15` · `consultant/layout.tsx:11-14` ·
+>    `notices/page.tsx:30,40-43` 이 역할을 검사한다. 실제로 뚫린 곳은 아래 6개 경로다.
+> 2. **`src/middleware.ts` 는 존재하지 않는다** — Next.js 16 기준 진입점은 `src/proxy.ts`,
+>    본체는 `src/lib/supabase/middleware.ts` 의 `updateSession` 이다. 이 함수는 role 을 조회하지
+>    않고 로그인 여부만 본다(설계상 의도 — 매 요청 DB 조회를 피하기 위함).
 
 - **등급:** P2 ★★★★
 - **영향 받는 사용자:** USER_PENDING·OPS_ADMIN_PENDING 역할 사용자
-- **현상:** 가입 신청은 했지만 아직 운영팀 승인을 받지 않은 사용자가 주소창에 `/ops/users` 같은 URL을 직접 입력하면, 미들웨어는 인증 여부만 확인하고 통과시킨다. 그 후 Server Component가 권한 부족으로 빈 화면 또는 silent redirect를 보여줘 사용자가 혼란.
+- **현상:** 가입 신청 후 운영팀 승인을 받지 않은 사용자는 좌측 메뉴에 갤러리 등이 보이지 않지만,
+  주소창에 URL 을 직접 입력하면 그대로 진입한다. 특히 **`/gallery` 에서 타 기업의 공유된 FINAL
+  로드맵·PBL 보고서를 열람할 수 있었다** — 승인 심사 전에 산출물이 노출되는 것이 핵심 위험이다.
+- **뚫려 있던 경로 6개:** `/gallery` · `/gallery/[id]` · `/dashboard/messages` ·
+  `/dashboard/settings` · `/test-roadmap` · `/test-pbl`
 - **재현 경로:**
   1. 회원가입 직후 `USER_PENDING` 상태로 로그인
-  2. 주소창에 `/ops/users` 입력
-  → 미들웨어 통과 → 페이지 로드 시점에 권한 검사 실패 → silent redirect 또는 빈 화면.
-- **기대 동작:** 미승인 사용자는 미들웨어에서 즉시 `/dashboard`(승인 대기 카드)로 리다이렉트 + 토스트 안내.
-- **해결 방향:** "가입 승인 대기 중인 사용자가 운영관리·컨설턴트 페이지에 직접 접근하지 못하도록 미들웨어 단계에서 차단하고 안내합니다."
+  2. 주소창에 `/gallery` 입력
+  → 갤러리 목록이 그대로 표시되고, 카드를 클릭하면 타 기업 FINAL 로드맵 상세까지 열린다.
+- **기대 동작:** 승인 대기 사용자는 `/dashboard`(기존 `PendingApprovalCard` 화면)로 리다이렉트.
+- **해결 방향:** "가입 승인 대기 중인 사용자가 갤러리·메시지·설정 페이지에 직접 접근하지 못하도록
+  차단하고 승인 대기 안내 화면으로 돌려보냅니다."
 - **기술 근거:**
-  - 파일: `src/lib/supabase/middleware.ts:40-86`
-  - 인용: `if (!user && isProtectedRoute) { ... redirect to /login }` — user 존재 여부만 검사. role/status 분기 없음.
-  - 원인: 페이지·Server Action 계층의 `requireAuthWithRole` 이 막아주긴 하지만, 미들웨어 가드 부재로 일관성 깨짐.
+  - 파일: `src/lib/supabase/middleware.ts` (`updateSession`)
+  - 인용: `if (!user && isProtectedRoute) { ... redirect to /login }` — user 존재 여부만 검사. role 분기 없음.
+  - 원인: `/ops/*`·`/consultant/*` 는 레이아웃이 역할을 검사했으나 위 6개 경로에는 그 가드가 없었다.
+- **상태 변경:** 🔴 OPEN → 🟢 RESOLVED (2026-07-29, PR #135) — **미들웨어가 아니라 레이아웃/페이지
+  레벨**에 가드를 추가했다. `getCachedProfile` 이 `react.cache` 로 감싸져 있어(`lib/supabase/cached.ts:8,22`)
+  같은 요청 내 추가 DB 조회가 **0** 이고, 기존 `ops/layout.tsx`·`consultant/layout.tsx` 패턴과도 일치한다.
+  신규 `PENDING_ROLES`·`isPendingApproval`(`lib/constants/status.ts`) + 신규 `gallery/layout.tsx`
+  (하위 경로 추가 시 누락 방지) + `test-roadmap`·`test-pbl` layout + `messages`·`settings` page.
+  라우트만 막으면 Server Action 직접 호출로 우회 가능하므로 `gallery/actions/queries.ts` 4곳
+  (`fetchGalleryRoadmaps`·`fetchRoadmapDetail`·`fetchGalleryPBLReports`·`fetchPBLReportDetail`)에도
+  같은 검사를 넣었다. 단위 테스트 신규 6파일.
 
 ---
 
