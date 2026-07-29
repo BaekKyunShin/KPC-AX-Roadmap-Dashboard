@@ -17,7 +17,14 @@ export default async function OpsRoadmapViewPage({ params }: { params: Promise<{
   const pageDataResult = await fetchRoadmapPageDataV2(id);
   const pageData = pageDataResult.success
     ? pageDataResult.data
-    : { versions: [], selectedVersion: null, interview: {} };
+    : {
+        versions: [],
+        selectedVersion: null,
+        interview: {},
+        selfAssessmentExists: false,
+        projectStatus: '',
+        projectClosed: false,
+      };
 
   return (
     <OpsRoadmapResultPageClient
@@ -25,6 +32,9 @@ export default async function OpsRoadmapViewPage({ params }: { params: Promise<{
       initialVersions={pageData.versions}
       initialSelected={pageData.selectedVersion}
       initialInterview={pageData.interview}
+      initialSelfAssessmentExists={pageData.selfAssessmentExists}
+      initialProjectStatus={pageData.projectStatus}
+      initialProjectClosed={pageData.projectClosed}
     />
   );
 }
