@@ -299,6 +299,17 @@ describe('saveRoadmapInterviewV2', () => {
     expect(r.success).toBe(true);
   });
 
+  it('정식 확정(FINALIZED)·비종결 프로젝트 → autoSave 저장 성공 (특성화)', async () => {
+    await mockCachedAuth();
+    serverMock.addResult({ data: { id: PROJECT_ID, closed_at: null }, error: null }); // 배정 검증 (비종결)
+    mockProjectMeta(adminMock, { track: 'ROADMAP', status: 'FINALIZED' });
+    adminMock.addResult({ data: null, error: null }); // maybeSingle 기존 interview → null
+    adminMock.addResult({ data: null, error: null }); // insert
+
+    const r = await saveRoadmapInterviewV2(PROJECT_ID, {}, { autoSave: true });
+    expect(r.success).toBe(true);
+  });
+
   it('autoSave=false (제출) + strict 검증 실패 (빈 객체) → error', async () => {
     await mockCachedAuth();
     mockProjectAssignmentCheck(serverMock);
@@ -507,6 +518,25 @@ describe('fetchRoadmapInterviewV2', () => {
 
     const r = await fetchRoadmapInterviewV2(PROJECT_ID);
     expect(r).toBeNull();
+  });
+
+  it('종결된 프로젝트(closed_at 존재)여도 조회는 성공한다 (열람 유지 특성화)', async () => {
+    await mockCachedAuth();
+    serverMock.addResult({
+      data: { id: PROJECT_ID, closed_at: '2026-07-29T00:00:00Z' },
+      error: null,
+    });
+    mockProjectMeta(adminMock, { track: 'ROADMAP' });
+    adminMock.addResult({
+      data: {
+        company_details: { roadmap_overview: { establishment_necessity: '종결 후 열람' } },
+      },
+      error: null,
+    });
+
+    const r = await fetchRoadmapInterviewV2(PROJECT_ID);
+    expect(r).not.toBeNull();
+    expect(r?.establishmentNecessity).toBe('종결 후 열람');
   });
 
   it('DB snake_case row → camelCase 복원 (extractedText 포함)', async () => {

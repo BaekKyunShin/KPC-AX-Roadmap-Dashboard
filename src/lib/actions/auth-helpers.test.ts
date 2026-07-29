@@ -205,6 +205,25 @@ describe('requireConsultantRoadmapAccess', () => {
 
     expect(result).toEqual({ projectId: 'proj-1' });
   });
+
+  it('비종결 프로젝트(closed_at null)면 projectId를 반환한다 (특성화)', async () => {
+    const mock = createMockSupabase();
+    mock.addResult({
+      data: {
+        project_id: 'proj-1',
+        projects: { assigned_consultant_id: 'user-1', closed_at: null },
+      },
+      error: null,
+    });
+
+    const result = await requireConsultantRoadmapAccess(
+      mock.client as never,
+      'user-1',
+      'roadmap-1'
+    );
+
+    expect(result).toEqual({ projectId: 'proj-1' });
+  });
 });
 
 // ============================================================================
@@ -224,6 +243,15 @@ describe('requireConsultantProjectAccess', () => {
   it('정상이면 true를 반환한다', async () => {
     const mock = createMockSupabase();
     mock.addResult({ data: { id: 'proj-1' }, error: null });
+
+    const result = await requireConsultantProjectAccess(mock.client as never, 'user-1', 'proj-1');
+
+    expect(result).toBe(true);
+  });
+
+  it('옵션 미지정 시 종결 프로젝트(closed_at 존재)여도 true를 반환한다 (열람 경로 기본 동작 특성화)', async () => {
+    const mock = createMockSupabase();
+    mock.addResult({ data: { id: 'proj-1', closed_at: '2026-07-29T00:00:00Z' }, error: null });
 
     const result = await requireConsultantProjectAccess(mock.client as never, 'user-1', 'proj-1');
 

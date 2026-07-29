@@ -1398,6 +1398,30 @@ describe('exportPBLAsHwpxAction', () => {
     }
   });
 
+  it('종결된 프로젝트(closed_at 존재)여도 내보내기는 성공한다 (열람·내보내기 유지 특성화)', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    // requireConsultantPBLReportAccess — 종결 프로젝트
+    adminMock.addResult({
+      data: {
+        ...PBL_ACCESS_SUCCESS_ROW,
+        projects: { ...PBL_ACCESS_SUCCESS_ROW.projects, closed_at: '2026-07-29T00:00:00Z' },
+      },
+      error: null,
+    });
+    // pbl_reports 상세 조회
+    adminMock.addResult({
+      data: { id: PBL_ID, version_number: 1, pbl_content: VALID_PBL_CONTENT },
+      error: null,
+    });
+    // projects 조회
+    adminMock.addResult({ data: { id: PROJECT_ID, company_name: '테스트기업' }, error: null });
+    // interviews 조회
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await exportPBLAsHwpxAction(PBL_ID);
+    expect(result.success).toBe(true);
+  });
+
   it('OPS_ADMIN + 성공 → base64 반환 + after 감사로그', async () => {
     const { createAuditLog } = await import('@/lib/services/audit');
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
