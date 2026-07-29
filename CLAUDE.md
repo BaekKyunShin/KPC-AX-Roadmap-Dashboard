@@ -1,41 +1,31 @@
 # CLAUDE.md
 
-이 파일은 Claude Code (claude.ai/code)가 본 저장소에서 작업할 때 참고하는 지침입니다.
-
-**항상 한국어로 답변할 것.**
-
 ## 프로젝트 개요
 
-KPC AI 훈련 로드맵 대시보드 — 기업 AI 교육 진단·컨설턴트 매칭·로드맵 생성 B2B 내부 도구.
+KPC AI 훈련 로드맵 대시보드 — 기업 AI 교육 진단·컨설턴트 매칭·산출물 생성 B2B 내부 도구.
 
-**워크플로우:** 기업 진단 → 컨설턴트 배정 → 현장 인터뷰 → AI 훈련 로드맵 출력
+**워크플로우:** 기업 진단 → 컨설턴트 배정 → 현장 인터뷰 → 산출물 출력
+
+**2트랙 (`ProjectTrack`):** `ROADMAP`(AI 훈련 로드맵) · `PBL`(프로젝트 기반 학습 보고서). 트랙마다 초안 상태(`ROADMAP_DRAFTED` / `PBL_DRAFTED`)·서비스(`services/roadmap` / `services/pbl`)·내보내기 템플릿이 갈린다. 상태·자격 판정은 반드시 `src/lib/constants/status.ts` 상수 사용.
 
 ## 명령어
 
 ```bash
-npm run dev              # 개발 서버 (Next.js, localhost:3000)
-npm run dev:vercel       # vercel dev (Python Functions 포함, HWPX 다운로드 테스트)
-npm run dev:with-hwpx    # HWPX 브리지 서버 + Next.js 프록시 (권장)
-npm run build            # 프로덕션 빌드
-npm run lint:fix         # ESLint 자동 수정
-npm run format           # Prettier 포맷팅
-npm run knip             # 미사용 파일·export·의존성 탐지 (dead code, 정보성)
-npm run validate         # typecheck + lint + test 통합 검증 (CI와 동일)
-npm run test             # Vitest 단위 테스트
-npm run test:watch       # Vitest 워치 모드
-npm run test:coverage    # 커버리지 리포트
-npm run test:e2e         # Playwright E2E
-npm run db:start         # 로컬 Supabase 시작 (Docker Desktop 필요)
-npm run db:reset         # 로컬 Supabase 리셋 (마이그레이션 재적용)
+npm run validate      # typecheck + lint + test (CI 동일) — 작업 완료 판정 기준
+npm run build         # 프로덕션 빌드 — validate 통과 후 필수
+npm run dev           # 개발 서버 (localhost:3000, HWPX 제외)
+npm run test:e2e      # Playwright — 사전에 db:start 필요 (Docker Desktop 기동 확인)
+npm run db:start      # 로컬 Supabase (Docker Desktop 필요) / db:reset 은 마이그 재적용
+npm run knip          # dead code 탐지 (정보성, CI 비차단)
 ```
 
-**작업 완료 검증:** 코드 수정 후 반드시 `npm run validate && npm run build` 통과 확인.
+**완료 판정:** `npm run validate && npm run build` 통과 확인 없이 "완료" 보고 금지.
 
-**배포 전 체크리스트:** `npm run validate` → `npm run build` → Vercel 배포.
+**커밋 시 자동 수정:** husky pre-commit → lint-staged 가 스테이지 파일에 `eslint --fix` + `prettier --write` 를 적용한다. 커밋 후 diff 가 예상과 다르면 이 훅을 먼저 의심.
 
 ## 핵심 규칙
 
-**브랜치 워크플로우 (엄수):**
+**브랜치 (엄수):**
 
 - `main`에 **직접 커밋 금지** — 모든 작업은 `git checkout -b <type>/<slug>` 분기 후 PR (Squash merge 환경에서 분기 누적 방지)
 
@@ -47,72 +37,44 @@ npm run db:reset         # 로컬 Supabase 리셋 (마이그레이션 재적용)
 - 과거 수동 적용 마이그는 멱등 패치(`DROP IF EXISTS + CREATE`, `IF NOT EXISTS`)로 재등록
 - ⚠️ `src/types/database.ts`는 **수동 작성 파일** — `supabase gen types`로 덮어쓰면 40+ 타입 참조가 깨짐. 마이그 후 신규 enum 값·인터페이스는 수동 편집 필수
 
-**PR CI 통과 판정:** `gh pr checks <PR>`의 **모든 check** (Lint & Typecheck · Unit Test · Build · **E2E Test** · Vercel)가 pass 일 때만 "✅ 통과" 결정. Unit Test 만 보고 단정 금지 — E2E 가 별도 job 으로 가장 마지막. exit code 0 ≠ 모든 pass (출력 파싱이 정답).
+**PR CI 통과 판정:** `gh pr checks <PR>` 출력을 **파싱**해 모든 check 가 pass 일 때만 "✅ 통과" 결정. job: Lint & Typecheck · Unit Test · Build · **E2E Test** · Lighthouse CI · Vercel (+ Knip 정보성). E2E 가 별도 job 으로 가장 마지막에 끝나므로 Unit Test 만 보고 단정 금지. exit code 0 ≠ 모든 pass.
 
-**사전 grep으로 영향 범위 점검 (엄수):**
+**회귀 차단 3단 (엄수):**
 
-UI 라벨·플로우·Server Action 시그니처·Helper 시맨틱·Component prop·라우트·환경변수·Enum 값을 변경한 직후, 푸쉬 전에 다음 한 줄 그렙으로 사용처 전수를 확인한다. CI 안전망에 의존하기 전에 30초로 막아야 한다.
+기능 개발·버그 수정·리팩터링 등 **모든 코드 변경**은 명시적으로 의도한 것 외에 기존 로직·UI·기능을 바꾸지 않는다. 착수 → 작업 → 완료 각 시점에 아래를 수행한다.
 
-| 변경 종류                        | 그렙 키워드                                                                |
-| -------------------------------- | -------------------------------------------------------------------------- |
-| UI 버튼·라벨 텍스트              | 새 라벨 + 옛 라벨 (예: `"배정하기"`, `"확인"`)                             |
-| Server Action 시그니처·반환 타입 | 함수명 (예: `assignConsultant`)                                            |
-| Helper/훅 시맨틱 변경            | helper 이름 + 의존 키워드 (예: `window.location.reload`, `router.refresh`) |
-| Component prop 추가·이름 변경    | 컴포넌트명 (예: `ManualAssignmentForm`)                                    |
-| URL 라우트 변경                  | 옛 path                                                                    |
-| 토스트·다이얼로그 워딩           | 워딩 일부 문자열                                                           |
-| Enum/타입 값                     | enum 값명                                                                  |
-| 환경변수                         | ENV 변수명                                                                 |
+1. **착수 — 변경 허용 목록 선언**: 바뀌어도 되는 파일·동작을 먼저 적는다. 목록 밖 변경 금지. 작업 중 필요해지면 임의로 넓히지 말고 사용자에게 확인.
+2. **작업 중 — 특성화 테스트 선작성**: 손대기 전 현재 동작을 고정하는 테스트를 추가한다. 기존 테스트가 그 동작을 단언하지 않으면 안전망이 없는 것이다. 회귀를 실제로 잡는지 의심되면 결함을 일부러 주입해 실패를 확인한 뒤 제거한다 (주입·원복 모두 Edit 역치환으로, `git checkout` 금지 — 미커밋 구현이 소실됨).
+3. **완료 — grep 전수 + diff 대조**: 아래 표대로 사용처를 grep 하고, `git diff --stat` 을 허용 목록과 대조한다. 벗어난 변경은 되돌리거나 사용자에게 보고 후 결정을 받는다.
 
-검색 범위: `src/` + `e2e/`. 의심 spec 발견 시 `npx playwright test e2e/<path>.spec.ts`로 부분 실행. 단위 테스트(`npm run validate`) 통과해도 통합 흐름 결함은 못 잡으므로 그렙은 별도로 필수.
+| 변경 종류                        | grep 키워드                                    |
+| -------------------------------- | ---------------------------------------------- |
+| UI 라벨·토스트·다이얼로그 워딩   | 새 라벨 + **옛 라벨** 양쪽                     |
+| Server Action 시그니처·반환 타입 | 함수명 (예: `assignConsultant`)                |
+| Helper/훅 시맨틱                 | helper 명 + 의존 키워드 (예: `router.refresh`) |
+| Component prop 추가·개명         | 컴포넌트명 (예: `ManualAssignmentForm`)        |
+| 라우트·환경변수·Enum 값          | 옛 path · ENV 명 · enum 값명                   |
 
-**의도치 않은 기존 동작 변경 차단 (엄수):**
-
-기능 개발·버그 수정·리팩터링 등 **모든 코드 변경**은 명시적으로 의도한 것 외에 기존 로직·UI·기능을 바꾸지 않는다. 위 사전 grep이 착수 전 점검이라면, 아래 3단은 사후까지 덮는다.
-
-1. **착수 시 — 변경 허용 목록 선언**: 바뀌어도 되는 파일·동작을 먼저 적는다. 목록 밖 변경 금지. 작업 중 필요해지면 임의로 넓히지 말고 사용자에게 확인.
-2. **작업 중 — 특성화 테스트 선작성**: 손대기 전 현재 동작을 고정하는 테스트를 추가한다. 기존 테스트가 그 동작을 단언하지 않으면 안전망이 없는 것이다.
-3. **완료 시 — diff 전수 대조**: `git diff --stat`을 허용 목록과 대조. 벗어난 변경은 되돌리거나 사용자에게 보고 후 결정을 받는다.
-
-테스트가 회귀를 실제로 잡는지 의심되면 결함을 일부러 주입해 실패를 확인한 뒤 제거한다.
+검색 범위 `src/` + `e2e/`. 의심 spec 은 `npx playwright test e2e/<path>.spec.ts` 부분 실행. **`npm run validate` 통과는 통합 흐름 결함을 못 잡는다 — grep 은 별도로 필수.**
 
 ## HWPX 로컬 테스트
 
-`/api/hwpx/generate`는 Vercel Python Function — `next dev`에서 동작하지 않음. 권장 워크플로우(브리지 서버):
-
-```bash
-npm run dev:hwpx:setup   # 최초 1회 (Python venv 생성)
-npm run dev:hwpx         # 터미널 A: 브리지 서버 (포트 3010)
-npm run dev:with-hwpx    # 터미널 B: Next.js + 프록시 (포트 3000)
-```
-
-`next.config.ts`의 `rewrites()`가 `HWPX_DEV_PROXY_URL` 감지 시 `/api/hwpx/*`를 브리지로 포워딩 → 프로덕션 동일 출력 보장 (PBL 117KB · ROADMAP 411KB ZIP 검증 완료). 브리지 서버 없이 `npm run dev`로 HWPX 버튼 누르면 클라이언트에 3가지 해결 옵션 안내 메시지가 표출됨.
-
-**대안:** ① Preview 배포(`git push` → Preview URL)에서 테스트 ② `npm run dev:vercel` — ⚠️ Vercel CLI 51.7+ 필수 (구버전은 Python 런타임 빌드 실패).
+`/api/hwpx/generate` 는 Vercel Python Function — `next dev` 에서 동작하지 않는다. 터미널 A `npm run dev:hwpx` (브리지 3010) + 터미널 B `npm run dev:with-hwpx` 로 테스트. 최초 1회 `npm run dev:hwpx:setup`. 상세·대안·트러블슈팅: `docs/references/HWPX_LOCAL_DEV.md`.
 
 ## 아키텍처
 
 ```text
-src/app/                       # Next.js App Router
-├── (auth)/                    # 로그인·회원가입
-├── (dashboard)/               # 인증 필요
-│   ├── dashboard/             # 공통 + 프로필 + 메시지(Realtime DM)
-│   ├── consultant/            # 컨설턴트 (home, profile, projects)
-│   ├── gallery/               # 로드맵 갤러리 (공유·좋아요)
-│   ├── ops/                   # 운영관리자 (프로젝트·사용자·템플릿·감사·쿼터)
-│   └── notifications/         # 알림 Server Actions
-├── api/                       # 최소화 (Server Actions 우선)
-└── middleware.ts              # 세션 관리
-
+src/app/
+  (auth)/         로그인·회원가입
+  (dashboard)/    인증 필요 — dashboard(공통·프로필·Realtime DM) · consultant · ops
+                  · gallery · notices · notifications · search
+  assessment/     토큰 링크 기반 공개 진단     api/    최소화 (Server Actions 우선)
+src/proxy.ts      세션 갱신 — Next.js 16 은 middleware.ts 가 아니라 proxy.ts 다
 src/lib/
-├── services/                  # 핵심 로직 (roadmap·matching·pbl·interview·
-│                              #   export·llm·quota·notification·stt·audit·email)
-├── supabase/                  # client(브라우저) · server(SSR) · admin(RLS우회) · middleware
-├── schemas/                   # Zod 검증 + 테스트
-├── actions/                   # 공유 Server Action 헬퍼 (인증·역할 검증)
-├── constants/                 # 역할·상태·업종 상수
-├── utils/                     # 유틸 (에러·토스트 등)
-└── types/                     # ActionResult 등 공통 타입
+  services/       roadmap · pbl · matching · interview · export · llm · quota
+                  · notification · stt · audit · email · storage · file-parser
+  supabase/       client(브라우저) · server(SSR) · admin(RLS우회) · middleware
+  schemas/(Zod)  actions/(공유 인증 헬퍼)  constants/  utils/  types/  data/  fixtures/
 ```
 
 **Backend:** Supabase (Postgres + RLS · Auth · Realtime · Storage). 시스템 다이어그램: `docs/ARCHITECTURE.md`.
@@ -132,7 +94,9 @@ src/lib/
 - `client.ts` — 브라우저 (anon key)
 - `server.ts` — Server Components/Actions (세션 갱신 포함)
 - `admin.ts` — 서비스 역할 (RLS 우회, 내부 작업 전용)
-- `middleware.ts` — 미들웨어 세션 확인
+- `middleware.ts` — 세션 갱신 (`src/proxy.ts` 가 호출)
+
+Server Component/Action 에서 사용자·프로필 조회는 `supabase/cached.ts` 의 `getCachedUser()` / `getCachedProfile()` 사용 — `React.cache` 로 감싸 layout → page → Action 체인에서 1회만 실행된다. `createClient()` 직후 `auth.getUser()` 를 직접 부르면 요청당 중복 호출이 쌓인다.
 
 **RBAC (6역할):** `PUBLIC`, `USER_PENDING`, `OPS_ADMIN_PENDING`, `CONSULTANT_APPROVED`, `OPS_ADMIN`, `SYSTEM_ADMIN`. RLS 정책으로 DB 수준 보안 (`docs/RLS.md`).
 
@@ -142,30 +106,26 @@ src/lib/
 
 - `(group)/` — 라우트 그룹 (URL 영향 없음, 레이아웃 분리용)
 - `_components/` — 라우트 내부 전용 컴포넌트 (라우팅 제외)
-- `_meta.ts` — `PAGE_TITLE` / `PAGE_DESCRIPTION` 등 헤더 텍스트 단일 출처 (page와 loading이 같이 import)
+- `_meta.ts` — `PAGE_TITLE` / `PAGE_DESCRIPTION` 등 헤더 텍스트 단일 출처
 - `actions.ts` — 라우트별 Server Action 정의
 - `__tests__/` — 단위 테스트 코로케이션
 
-**page ↔ loading 헤더 텍스트 동기화 (엄수):**
+**page ↔ loading 헤더 동기화:**
 
-`page.tsx` 의 `PageHeader` 텍스트(또는 `<h1>`/`<p>`)는 같은 디렉터리의 `_meta.ts` 에서 export 한 상수만 사용한다. 같은 디렉터리의 `loading.tsx` 도 동일 상수를 import 해 사용한다. 하드코딩 금지. 두 파일에 같은 문자열이 직접 박혀 있으면 page만 수정되고 loading 이 누락되어 drift(공지 관리 → 게시글 클릭 시 잘못된 헤더 깜빡 등) 가 누적된다. 헤더 텍스트 수정은 `_meta.ts` 한 곳에서만 수행.
+`page.tsx` 와 `loading.tsx` 의 헤더 텍스트는 같은 디렉터리 `_meta.ts` 상수만 import 한다. 양쪽에 문자열이 직접 박히면 page 만 고쳐지고 loading 이 누락돼 drift(잘못된 헤더 깜빡)가 쌓인다. **신규 page+loading 쌍은 `_meta.ts` 필수. 기존 미적용분은 그 디렉터리를 손댈 때 함께 도입.**
 
 **프로젝트 상태 흐름:**
 
 ```text
-NEW → DIAGNOSED → MATCH_RECOMMENDED → ASSIGNED → INTERVIEWED → ROADMAP_DRAFTED → FINALIZED
+NEW → DIAGNOSED → MATCH_RECOMMENDED → ASSIGNED → INTERVIEWED ─┬→ ROADMAP_DRAFTED ─┐
+                                                              └→ PBL_DRAFTED ─────┴→ FINALIZED
 ```
 
-각 상태 의미:
+진단 설문 완료 → LLM 매칭 추천 → 운영관리자 배정 → 컨설턴트 인터뷰 완료 → 트랙별 DRAFT 생성(LLM 호출) → 운영관리자 FINAL 확정. 상태 집합은 하드코딩 금지 — `ROADMAP_ELIGIBLE_STATUSES` · `PBL_ELIGIBLE_STATUSES` · `EXPORT_ELIGIBLE_STATUSES` (`src/lib/constants/status.ts`) 사용.
 
-- `NEW` → `DIAGNOSED`: 기업이 진단 설문 완료
-- `DIAGNOSED` → `MATCH_RECOMMENDED`: LLM 매칭으로 컨설턴트 후보 추천
-- `MATCH_RECOMMENDED` → `ASSIGNED`: 운영관리자가 컨설턴트 배정
-- `ASSIGNED` → `INTERVIEWED`: 컨설턴트가 현장 인터뷰 완료
-- `INTERVIEWED` → `ROADMAP_DRAFTED`: 로드맵 DRAFT 생성 (LLM 호출)
-- `ROADMAP_DRAFTED` → `FINALIZED`: 운영관리자가 FINAL 확정
+**버전 관리(로드맵·PBL 공통):** DRAFT 무제한, FINAL 생성 시 기존 FINAL은 ARCHIVED. 내보내기(PDF/XLSX/HWPX)는 저장 데이터 사용 (LLM 재호출 없음).
 
-**로드맵 버전 관리:** DRAFT 무제한, FINAL 생성 시 기존 FINAL은 ARCHIVED. 내보내기(PDF/XLSX/HWPX)는 저장 데이터 사용 (LLM 재호출 없음).
+**행정 종결:** 잠금 판정은 status 가 아니라 `projects.closed_at` 기준 (마이그 076).
 
 ## 기술 스택
 
@@ -177,55 +137,30 @@ Next.js 16.x (App Router · React Compiler) + TypeScript 5.x strict / Supabase /
 
 **선택:** `LLM_API_BASE_URL`, `DAILY_LLM_CALL_LIMIT`(기본 50), `MONTHLY_LLM_CALL_LIMIT`(기본 500), `NEXT_PUBLIC_APP_URL`, SMTP (`SMTP_HOST/PORT/USER/PASS`, `EMAIL_FROM`).
 
-## 커밋 메시지 규칙
+## 커밋·PR 제목
 
-```text
-<타입>: <한국어 제목>
+형식·타입·길이는 전역 지침(`~/.claude/CLAUDE.md`)을 따른다 — 타입은 commitlint 표준 11종.
 
-<본문 (선택)>
-```
-
-**타입:** `feat`(신규), `fix`(버그), `refactor`(리팩토링), `docs`, `style`, `test`, `chore`(빌드·설정).
-
-**예시:**
-
-```text
-feat: 로드맵 PDF 내보내기 기능 추가
-
-- jspdf 사용한 PDF 생성 로직 구현
-- 한글 폰트 지원 추가
-```
-
-**PR 제목도 동일 규칙.** 본 저장소는 Squash merge → PR 제목이 그대로 main 커밋 메시지가 됨.
+**PR 제목도 동일 규칙** — 본 저장소는 Squash merge 라 PR 제목이 그대로 main 커밋 메시지가 된다.
 
 ## 스킬 규칙
 
-IMPORTANT: Superpowers 플러그인 설치됨. 작업 전 관련 superpowers 스킬 확인·호출. **TDD 전면 적용** (예외: 일회성 프로토타입, 생성 코드, 설정 파일).
+IMPORTANT: Superpowers 플러그인 설치됨. 작업 전 관련 superpowers 스킬 확인·호출. **TDD 전면 적용** (예외: 일회성 프로토타입, 생성 코드, 설정 파일). 작업 완료 전 `verification-before-completion` 호출.
 
-**해당 영역 코드 수정 시 반드시 호출:**
+**아래 영역을 건드리면 반드시 해당 스킬을 먼저 호출한다. 여러 개 해당 시 전부.**
 
-| 조건                              | 스킬                    | 범위     |
-| --------------------------------- | ----------------------- | -------- |
-| UI 컴포넌트·페이지 작성           | `frontend-guide`        | 프로젝트 |
-| UI 검수 (접근성·UX 감사)          | `web-design-guidelines` | 전역     |
-| React/Next.js 작성·리뷰·성능      | `react-best-practices`  | 전역     |
-| 컴포넌트 구조 설계·리팩토링       | `composition-patterns`  | 전역     |
-| Server Action (`actions.ts`) 수정 | `check-server-action`   | 프로젝트 |
-| 마이그레이션·RLS·DB 함수 작성     | `supabase-dev`          | 프로젝트 |
-| 리팩터링·코드 정리                | `refactoring`           | 전역     |
-
-여러 스킬 해당 시 모두 호출. 스킬 호출 후 작업 컨텍스트에 맞게 적용.
+| 대상                         | 스킬                                                      |
+| ---------------------------- | --------------------------------------------------------- |
+| UI 컴포넌트·페이지 작성      | `frontend-guide` (UI 검수는 `web-design-guidelines` 병행) |
+| React/Next.js 작성·리뷰·성능 | `react-best-practices`                                    |
+| 컴포넌트 구조 설계           | `composition-patterns`                                    |
+| Server Action (`actions.ts`) | `check-server-action`                                     |
+| 마이그레이션·RLS·DB 함수     | `supabase-dev`                                            |
+| 리팩터링·코드 정리           | `refactoring`                                             |
+| HWPX 문서 생성·편집          | `hwpx-docgen`                                             |
 
 ## 문서
 
-| 문서                                           | 용도                                     |
-| ---------------------------------------------- | ---------------------------------------- |
-| `docs/ARCHITECTURE.md`                         | 시스템 다이어그램·데이터 흐름            |
-| `docs/RLS.md`                                  | Row-Level Security 정책                  |
-| `docs/DECISIONS.md`                            | 아키텍처 결정 기록 (ADR)                 |
-| `docs/CONSULTANT_PROFILE_SPEC.md`              | 컨설턴트 프로필 명세                     |
-| `docs/PERFORMANCE_BUDGET.md`                   | 성능 예산·측정 기준                      |
-| `docs/PROJECT_OUTLINE.md`                      | 초기 기획서 (아카이브)                   |
-| `docs/references/HWPX_TEMPLATE_MAINTENANCE.md` | HWPX 템플릿 유지보수·새 양식 적용 가이드 |
+`docs/` — `ARCHITECTURE.md`(다이어그램·데이터 흐름) · `RLS.md`(RLS 정책) · `DECISIONS.md`(ADR) · `CONSULTANT_PROFILE_SPEC.md` · `PERFORMANCE_BUDGET.md` · `PROJECT_OUTLINE.md`(초기 기획, 아카이브) · `references/`(HWPX 템플릿·로컬 개발) · `plans/` `reports/` `decisions/` `testing/`
 
-**네이밍:** 상시 참조는 `UPPER_SNAKE_CASE.md` (예: `ARCHITECTURE.md`), 시점 기반 기획·설계는 `YYYY-MM-DD-kebab-case.md`.
+**네이밍:** 상시 참조는 `UPPER_SNAKE_CASE.md`, 시점 기반 기획·설계는 `YYYY-MM-DD-kebab-case.md`.
