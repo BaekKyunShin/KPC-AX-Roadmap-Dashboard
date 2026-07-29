@@ -734,6 +734,31 @@ describe('generatePBLAction', () => {
     consoleSpy.mockRestore();
   });
 
+  it('종결된 프로젝트(closed_at 존재) → 생성 차단', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: {
+        id: PROJECT_ID,
+        status: 'INTERVIEWED',
+        track: 'PBL',
+        assigned_consultant_id: USER_A_ID,
+        company_name: '테스트기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
+        closed_at: '2026-07-29T00:00:00Z',
+      },
+      error: null,
+    });
+
+    const result = await generatePBLAction(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('종결');
+  });
+
   it('성공 → pblId 반환 + after 콜백(활동 일지) 호출', async () => {
     const { generatePBLContent } = await import('@/lib/services/pbl/pbl-generator');
     const { createDraftVersion } = await import('@/lib/services/pbl/pbl-crud');
@@ -936,6 +961,21 @@ describe('savePBLDraftAction', () => {
     const result = await savePBLDraftAction(PBL_ID, {});
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toContain('PBL 보고서');
+  });
+
+  it('종결된 프로젝트(closed_at 존재) → 저장 차단', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    adminMock.addResult({
+      data: {
+        ...PBL_ACCESS_SUCCESS_ROW,
+        projects: { ...PBL_ACCESS_SUCCESS_ROW.projects, closed_at: '2026-07-29T00:00:00Z' },
+      },
+      error: null,
+    });
+
+    const result = await savePBLDraftAction(PBL_ID, {});
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('종결');
   });
 
   it('타 컨설턴트 PBL → error', async () => {

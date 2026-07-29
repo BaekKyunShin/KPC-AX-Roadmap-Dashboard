@@ -299,6 +299,18 @@ describe('saveRoadmapInterviewV2', () => {
     expect(r.success).toBe(true);
   });
 
+  it('종결된 프로젝트(closed_at 존재) → 저장 차단', async () => {
+    await mockCachedAuth();
+    serverMock.addResult({
+      data: { id: PROJECT_ID, closed_at: '2026-07-29T00:00:00Z' },
+      error: null,
+    });
+
+    const r = await saveRoadmapInterviewV2(PROJECT_ID, {}, { autoSave: true });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error).toContain('종결');
+  });
+
   it('정식 확정(FINALIZED)·비종결 프로젝트 → autoSave 저장 성공 (특성화)', async () => {
     await mockCachedAuth();
     serverMock.addResult({ data: { id: PROJECT_ID, closed_at: null }, error: null }); // 배정 검증 (비종결)
@@ -645,6 +657,18 @@ describe('savePBLInterviewV2', () => {
 
     const r = await savePBLInterviewV2(PROJECT_ID, {}, { autoSave: true });
     expect(r.success).toBe(true);
+  });
+
+  it('종결된 프로젝트(closed_at 존재) → 저장 차단', async () => {
+    await mockCachedAuth();
+    serverMock.addResult({
+      data: { id: PROJECT_ID, closed_at: '2026-07-29T00:00:00Z' },
+      error: null,
+    });
+
+    const r = await savePBLInterviewV2(PROJECT_ID, {}, { autoSave: true });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error).toContain('종결');
   });
 
   it('정상 제출 → pbl_data JSONB 에 camelCase 저장 + INTERVIEWED 전이', async () => {

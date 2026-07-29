@@ -265,6 +265,23 @@ describe('createRoadmap', () => {
     if (!result.success) expect(result.error).toContain('컨설턴트');
   });
 
+  it('종결된 프로젝트(closed_at 존재) → 생성 차단', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: {
+        assigned_consultant_id: USER_A_ID,
+        status: 'INTERVIEWED',
+        closed_at: '2026-07-29T00:00:00Z',
+      },
+      error: null,
+    });
+
+    const result = await createRoadmap(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('종결');
+  });
+
   it('Zod 검증 실패 (잘못된 projectId) → error 반환', async () => {
     // 인증 통과 후 Zod 검증 실패해야 함 (인증이 Zod보다 우선)
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
@@ -460,6 +477,22 @@ describe('confirmFinalRoadmap', () => {
     const result = await confirmFinalRoadmap(ROADMAP_ID);
 
     expect(result.success).toBe(true);
+  });
+
+  it('종결된 프로젝트(closed_at 존재) → 확정 차단', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: {
+        project_id: PROJECT_ID,
+        projects: { assigned_consultant_id: USER_A_ID, closed_at: '2026-07-29T00:00:00Z' },
+      },
+      error: null,
+    });
+
+    const result = await confirmFinalRoadmap(ROADMAP_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('종결');
   });
 
   it('정상 확정 시 운영관리 경로 캐시 무효화 (#002)', async () => {

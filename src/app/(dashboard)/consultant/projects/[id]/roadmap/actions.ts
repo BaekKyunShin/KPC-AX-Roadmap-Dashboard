@@ -9,6 +9,7 @@ import {
   requireConsultantProjectAccess,
   requireConsultantRoadmapAccess,
   canAccessProjectArtifact,
+  PROJECT_CLOSED_ERROR,
 } from '@/lib/actions/auth-helpers';
 import { ROADMAP_ELIGIBLE_STATUSES, isOpsManager } from '@/lib/constants/status';
 import {
@@ -101,12 +102,16 @@ export async function createRoadmap(
     // 프로젝트 접근 권한 확인
     const { data: projectData } = await supabase
       .from('projects')
-      .select('assigned_consultant_id, status')
+      .select('assigned_consultant_id, status, closed_at')
       .eq('id', parsed.data.projectId)
       .single();
 
     if (!projectData || projectData.assigned_consultant_id !== user.id) {
       return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
+    }
+
+    if (projectData.closed_at != null) {
+      return { success: false, error: PROJECT_CLOSED_ERROR };
     }
 
     if (!ROADMAP_ELIGIBLE_STATUSES.includes(projectData.status)) {
@@ -407,9 +412,12 @@ export async function exportRoadmapAsHwpxAction(
     }
 
     // 3) 접근 권한 확인 — 컨설턴트만 배정 체크, OPS/시스템관리자는 전체 열람 가능
+    //    내보내기는 열람 경로 — 종결 프로젝트도 허용 (allowClosed)
     let projectId: string;
     if (role === 'CONSULTANT_APPROVED') {
-      const access = await requireConsultantRoadmapAccess(supabase, user.id, roadmapId);
+      const access = await requireConsultantRoadmapAccess(supabase, user.id, roadmapId, {
+        allowClosed: true,
+      });
       if ('error' in access) return { success: false, error: access.error };
       projectId = access.projectId;
     } else {
