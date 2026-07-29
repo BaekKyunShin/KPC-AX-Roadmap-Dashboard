@@ -53,6 +53,45 @@ export function isPendingApproval(role: UserRole): boolean {
 }
 
 /**
+ * 컨설턴트 재배정이 가능한 프로젝트 상태
+ *
+ * ⚠️ RPC `assign_consultant` 의 허용 목록과 **반드시 일치**해야 한다
+ * (supabase/migrations/058_reassign_return_previous.sql:31).
+ * 화면이 더 넓으면 운영자가 후보를 다 고른 뒤에야 DB 에러로 거절당하고(#006),
+ * 더 좁으면 가능한 재배정을 막게 된다. 한쪽만 바꾸지 말 것.
+ *
+ * ALLOWED_STATUS_TRANSITIONS 와는 별개다. 저쪽은 "어떤 상태로 갈 수 있는가"이고
+ * 이 상수는 "재배정 조작을 허용하는가"다.
+ */
+export const REASSIGNABLE_STATUSES: readonly ProjectStatus[] = [
+  'DIAGNOSED',
+  'MATCH_RECOMMENDED',
+  'ASSIGNED',
+] as const;
+
+/**
+ * 현재 상태에서 컨설턴트 재배정이 가능한지 확인
+ *
+ * @param status 프로젝트 상태 (DB 값이 아닌 문자열이 들어와도 안전하게 false)
+ */
+export function canReassignConsultant(status: string): boolean {
+  return REASSIGNABLE_STATUSES.includes(status as ProjectStatus);
+}
+
+/**
+ * 재배정이 막힌 상태에서 사용자에게 보여줄 사유
+ *
+ * 키가 없는 상태(NEW)는 안내를 띄우지 않는다 — 아직 배정된 적 없어
+ * "변경할 수 없습니다"가 성립하지 않기 때문이다.
+ */
+export const REASSIGN_BLOCKED_MESSAGE: Partial<Record<ProjectStatus, string>> = {
+  INTERVIEWED: '인터뷰가 완료되어 담당 컨설턴트를 변경할 수 없습니다.',
+  ROADMAP_DRAFTED: '인터뷰가 완료되어 담당 컨설턴트를 변경할 수 없습니다.',
+  PBL_DRAFTED: '인터뷰가 완료되어 담당 컨설턴트를 변경할 수 없습니다.',
+  FINALIZED: '최종 확정된 프로젝트는 담당 컨설턴트를 변경할 수 없습니다.',
+};
+
+/**
  * 현재 사용자 역할에 따라 관리 가능한 역할 목록 반환
  */
 export function getManageableRoles(currentUserRole: UserRole): readonly UserRole[] {
