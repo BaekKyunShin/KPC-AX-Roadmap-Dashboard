@@ -347,6 +347,49 @@ describe('saveRoadmapInterviewV2', () => {
     );
   });
 
+  // P6 — status 전이 update 의 error 를 확인하지 않아, 전이가 실패해도
+  // statusTransitioned=true 로 두고 그 플래그로 "인터뷰 완료" 알림을 보냈다.
+  // 운영자는 알림을 받고 목록을 열었는데 여전히 '배정됨'인 모순을 겪는다.
+  it('status 전이 성공 시 운영관리자에게 인터뷰 완료 알림을 보낸다', async () => {
+    const { createNotificationForAdmins } = await import('@/lib/services/notification');
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'ROADMAP' });
+    adminMock.addResult({ data: null, error: null }); // interviews maybeSingle
+    adminMock.addResult({ data: null, error: null }); // insert
+    adminMock.addResult({ data: null, error: null }); // project status update
+
+    await saveRoadmapInterviewV2(PROJECT_ID, validRoadmapV2());
+    await flushAfterCallbacks();
+
+    expect(createNotificationForAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'interview_complete' })
+    );
+  });
+
+  it('status 전이 실패 시 로그를 남기고 알림을 보내지 않는다', async () => {
+    const { createNotificationForAdmins } = await import('@/lib/services/notification');
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'ROADMAP' });
+    adminMock.addResult({ data: null, error: null }); // interviews maybeSingle
+    adminMock.addResult({ data: null, error: null }); // insert
+    adminMock.addResult({ data: null, error: { message: 'update failed' } }); // status update 실패
+
+    const r = await saveRoadmapInterviewV2(PROJECT_ID, validRoadmapV2());
+    await flushAfterCallbacks();
+
+    // 인터뷰 자체는 이미 저장됐으므로 응답은 성공을 유지한다
+    expect(r.success).toBe(true);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('status 전이 실패(ASSIGNED→INTERVIEWED)'),
+      'update failed'
+    );
+    expect(createNotificationForAdmins).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
   // (#4) Lost update 차단 — 부분 patch 가 다른 필드를 보존하는지 검증.
   // 두 탭 동시 편집 시 stale base 로 인한 데이터 손실 방지의 핵심 가드.
   it('autoSave 부분 patch 가 기존 row 의 다른 필드를 보존한다 (deep merge)', async () => {
@@ -647,6 +690,46 @@ describe('savePBLInterviewV2', () => {
         meta: expect.objectContaining({ schema_version: 'v2_camelCase' }),
       })
     );
+  });
+
+  // P6 — 로드맵 트랙과 동일 구조. 전이 실패 시에도 "인터뷰 완료" 알림이 나갔다.
+  it('status 전이 성공 시 운영관리자에게 인터뷰 완료 알림을 보낸다', async () => {
+    const { createNotificationForAdmins } = await import('@/lib/services/notification');
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'PBL' });
+    adminMock.addResult({ data: null, error: null }); // maybeSingle
+    adminMock.addResult({ data: null, error: null }); // insert
+    adminMock.addResult({ data: null, error: null }); // status update
+
+    await savePBLInterviewV2(PROJECT_ID, validPBLV2());
+    await flushAfterCallbacks();
+
+    expect(createNotificationForAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'interview_complete' })
+    );
+  });
+
+  it('status 전이 실패 시 로그를 남기고 알림을 보내지 않는다', async () => {
+    const { createNotificationForAdmins } = await import('@/lib/services/notification');
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'PBL' });
+    adminMock.addResult({ data: null, error: null }); // maybeSingle
+    adminMock.addResult({ data: null, error: null }); // insert
+    adminMock.addResult({ data: null, error: { message: 'update failed' } }); // status update 실패
+
+    const r = await savePBLInterviewV2(PROJECT_ID, validPBLV2());
+    await flushAfterCallbacks();
+
+    expect(r.success).toBe(true);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('status 전이 실패(ASSIGNED→INTERVIEWED)'),
+      'update failed'
+    );
+    expect(createNotificationForAdmins).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 
   // (#4) PBL Lost update 차단.

@@ -145,11 +145,18 @@ export async function submitPublicAssessment(
     .eq('id', tokenData.id);
 
   // 프로젝트 상태 전환 (NEW→DIAGNOSED)
-  await adminSupabase
+  // 이미 DIAGNOSED 이면 0행 매치가 정상이므로 행 수는 보지 않고 error 만 검사한다.
+  const { error: statusError } = await adminSupabase
     .from('projects')
     .update({ status: 'DIAGNOSED' })
     .eq('id', projectId)
     .eq('status', 'NEW');
+  if (statusError) {
+    console.error(
+      `[submitPublicAssessment] status 전이 실패(NEW→DIAGNOSED) project=${projectId}:`,
+      statusError.message
+    );
+  }
 
   // 감사로그 + OPS_ADMIN 알림 (응답 차단 방지를 위해 after()로 지연)
   after(async () => {

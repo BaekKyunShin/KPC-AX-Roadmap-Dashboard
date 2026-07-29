@@ -451,6 +451,42 @@ describe('updateProjectStatusIfNeeded', () => {
     // 이미 MATCH_RECOMMENDED 상태이면 전이 불가 → update 호출 안 함
     expect(supabase.from).toHaveBeenCalledTimes(1);
   });
+
+  // P6: update error 를 확인하지 않아, 추천은 저장됐는데 상태는 DIAGNOSED 에
+  // 머무는 desync 가 로그 없이 발생했다.
+  // 호출부(matching-llm.ts)는 preserveStatus=false(최초 매칭)일 때만 이 함수를
+  // 부르므로, 재계산 경로에서 로그가 없는 것은 정상이다.
+  it('update 실패 시 로그를 남기되 예외를 던지지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const supabase = createSequentialSupabase([
+      { data: { status: 'DIAGNOSED' } },
+      { data: null, error: { message: 'update failed' } },
+    ]);
+
+    // 추천은 이미 저장됐으므로 매칭 전체를 실패로 되돌리지 않는다
+    await expect(
+      updateProjectStatusIfNeeded(supabase as never, projectId)
+    ).resolves.toBeUndefined();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('status 전이 실패(DIAGNOSED→MATCH_RECOMMENDED)'),
+      'update failed'
+    );
+    errorSpy.mockRestore();
+  });
+
+  it('update 성공 시에는 에러 로그를 남기지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const supabase = createSequentialSupabase([
+      { data: { status: 'DIAGNOSED' } },
+      { data: null },
+    ]);
+
+    await updateProjectStatusIfNeeded(supabase as never, projectId);
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
 });
 
 // ─── filterValidRecommendations — 빈 validCandidateIds ───
