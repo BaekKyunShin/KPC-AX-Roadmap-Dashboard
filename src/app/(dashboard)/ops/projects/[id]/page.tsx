@@ -18,11 +18,13 @@ import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/comp
 import { RoadmapInterviewSummary } from '@/components/interview/RoadmapInterviewSummary';
 import { PblInterviewSummary } from '@/components/interview/PblInterviewSummary';
 import { TrackBadge } from '@/components/ui/TrackBadge';
+import { ClosedBadge } from '@/components/common/ClosedBadge';
 import { formatDateKR } from '@/lib/utils/date';
 import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
 import type { PBLInterview } from '@/lib/schemas/interview-pbl';
 import { getLatestToken } from '../actions';
 import ProjectTimeline from '../_components/ProjectTimeline';
+import { ProjectClosureControls } from './_components/ProjectClosureControls';
 
 // ============================================================================
 // 공통 타입
@@ -41,10 +43,15 @@ type ProjectRow = {
   customer_comment: string | null;
   assigned_consultant_id: string | null;
   is_test_mode: boolean;
+  // 행정 종결 메타 (마이그 076)
+  closed_at: string | null;
+  closure_reason: string | null;
+  closed_from_status: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
   assigned_consultant: { id: string; name: string; email: string } | null;
+  closed_by_user: { name: string } | null;
 };
 
 // ============================================================================
@@ -293,8 +300,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       id, company_name, industry, company_size, status, track,
       contact_name, contact_email, contact_phone,
       customer_comment, assigned_consultant_id, is_test_mode,
+      closed_at, closure_reason, closed_from_status,
       created_by, created_at, updated_at,
-      assigned_consultant:users!projects_assigned_consultant_id_fkey(id, name, email)
+      assigned_consultant:users!projects_assigned_consultant_id_fkey(id, name, email),
+      closed_by_user:users!projects_closed_by_fkey(name)
     `
     )
     .eq('id', id)
@@ -326,9 +335,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">기업 정보</CardTitle>
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
-              {statusInfo.label}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
+                {statusInfo.label}
+              </span>
+              {projectData.closed_at && <ClosedBadge />}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -391,6 +403,28 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </div>
             </div>
           )}
+
+          {/* 행정 종결 정보 - 종결 상태에서만 표시 */}
+          {projectData.closed_at && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <div className="flex items-start gap-2">
+                <span className="text-xs text-gray-500 flex-shrink-0 pt-0.5">종결 정보</span>
+                <div className="text-sm text-gray-700 space-y-0.5">
+                  <p>
+                    {formatDateKR(projectData.closed_at)}
+                    {projectData.closed_by_user?.name && ` · ${projectData.closed_by_user.name}`}
+                    {projectData.closed_from_status &&
+                      ` · '${getProjectStatusBadge(projectData.closed_from_status as ProjectStatus).label}' 상태에서 종결`}
+                  </p>
+                  {projectData.closure_reason && (
+                    <p className="text-gray-600 break-keep break-words">
+                      사유: {projectData.closure_reason}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -449,6 +483,16 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </Card>
         )}
       </div>
+
+      {/* 행정 종결/해제 컨트롤 — 드문 관리 작업이라 최하단 배치.
+          정식 확정(FINALIZED + 종결 메타 없음) 프로젝트는 종결 대상이 아니므로 미노출 */}
+      {!(projectData.status === 'FINALIZED' && !projectData.closed_at) && (
+        <ProjectClosureControls
+          projectId={id}
+          companyName={projectData.company_name}
+          closedAt={projectData.closed_at}
+        />
+      )}
     </div>
   );
 }

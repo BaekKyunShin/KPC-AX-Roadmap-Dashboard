@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ProjectTableSkeleton } from '@/components/ui/Skeleton';
+import { ClosedBadge } from '@/components/common/ClosedBadge';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PROJECT_STATUS_CONFIG, getStatusFilterOptions } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
@@ -122,7 +123,7 @@ function OpsProjectMobileCard({
         <div className="text-gray-900">{formatDateKR(project.created_at)}</div>
       </div>
 
-      {/* 진행 상태: MiniStepper */}
+      {/* 진행 상태: MiniStepper (+ 행정 종결 배지) */}
       <div className="pt-2 border-t">
         <MiniStepper
           status={project.status as ProjectStatus}
@@ -131,6 +132,7 @@ function OpsProjectMobileCard({
           showDays={true}
           track={project.track}
         />
+        {project.closed_at && <ClosedBadge className="mt-1" />}
       </div>
     </div>
   );
@@ -500,7 +502,7 @@ export default function ProjectList({
                         {projectItem.industry}
                       </TableCell>
                       <TableCell className="align-top">
-                        <div className="flex justify-center">
+                        <div className="flex flex-col items-center gap-1">
                           <MiniStepper
                             status={projectItem.status as ProjectStatus}
                             daysInCurrentStatus={projectItem.days_in_current_status}
@@ -508,6 +510,7 @@ export default function ProjectList({
                             showDays={true}
                             track={projectItem.track}
                           />
+                          {projectItem.closed_at && <ClosedBadge />}
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground align-top truncate">
