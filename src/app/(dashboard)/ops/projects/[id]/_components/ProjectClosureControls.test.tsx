@@ -9,6 +9,14 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Radix Tooltip(react-use-size)이 요구하는 ResizeObserver — jsdom 미제공 폴리필
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+vi.stubGlobal('ResizeObserver', ResizeObserverMock);
+
 const mockCloseProject = vi.fn();
 const mockReopenProject = vi.fn();
 vi.mock('../../actions', () => ({
