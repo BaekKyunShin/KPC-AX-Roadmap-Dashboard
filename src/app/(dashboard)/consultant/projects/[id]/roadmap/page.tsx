@@ -3,11 +3,7 @@ import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { fetchProjectInfo, fetchRoadmapPageDataV2 } from './actions';
 import RoadmapResultPageClient from './_components/RoadmapResultPageClient';
 
-export default async function RoadmapPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function RoadmapPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCachedUser();
   if (!user) redirect('/login');
 
@@ -27,9 +23,8 @@ export default async function RoadmapPage({
     redirect(`/consultant/projects/${id}`);
   }
 
-  const companyName = projectInfoResult.success && projectInfoResult.data
-    ? projectInfoResult.data.companyName
-    : '';
+  const companyName =
+    projectInfoResult.success && projectInfoResult.data ? projectInfoResult.data.companyName : '';
 
   const pageData = pageDataResult.success
     ? pageDataResult.data
@@ -39,6 +34,7 @@ export default async function RoadmapPage({
         interview: {},
         selfAssessmentExists: false,
         projectStatus: '',
+        projectClosed: false,
       };
 
   return (
@@ -50,6 +46,7 @@ export default async function RoadmapPage({
       initialInterview={pageData.interview}
       initialSelfAssessmentExists={pageData.selfAssessmentExists}
       initialProjectStatus={pageData.projectStatus}
+      initialProjectClosed={pageData.projectClosed}
     />
   );
 }

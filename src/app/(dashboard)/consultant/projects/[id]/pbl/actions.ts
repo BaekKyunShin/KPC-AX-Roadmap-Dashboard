@@ -1189,6 +1189,8 @@ export interface PBLPageDataV2 {
    */
   hasInterview: boolean;
   projectStatus: string;
+  /** 행정 종결 여부 (closed_at NOT NULL) — 종결 시 편집·생성·확정 잠금 + 배너 표시 */
+  projectClosed: boolean;
 }
 
 export async function fetchPBLPageDataV2(
@@ -1255,7 +1257,7 @@ export async function fetchPBLPageDataV2(
     const admin = createAdminClient();
     const [{ data: interviewRow }, { data: projectRow }] = await Promise.all([
       admin.from('interviews').select('id').eq('project_id', projectId).maybeSingle(),
-      admin.from('projects').select('status').eq('id', projectId).maybeSingle(),
+      admin.from('projects').select('status, closed_at').eq('id', projectId).maybeSingle(),
     ]);
 
     return {
@@ -1266,6 +1268,7 @@ export async function fetchPBLPageDataV2(
         interview: snapshot,
         hasInterview: Boolean(interviewRow?.id),
         projectStatus: projectRow?.status ?? '',
+        projectClosed: projectRow?.closed_at != null,
       },
     };
   } catch (error) {

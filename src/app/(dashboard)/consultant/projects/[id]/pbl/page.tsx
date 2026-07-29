@@ -42,6 +42,7 @@ export default async function PBLPage({ params }: { params: Promise<{ id: string
         interview: {},
         hasInterview: false,
         projectStatus: '',
+        projectClosed: false,
       };
 
   // 선행 로드맵 인터뷰 복원 후 PBL 수정값(roadmapOverrides)을 얹는다 (Ⅱ장 렌더용).
@@ -62,6 +63,7 @@ export default async function PBLPage({ params }: { params: Promise<{ id: string
       initialInterview={pageData.interview}
       initialHasInterview={pageData.hasInterview}
       initialProjectStatus={pageData.projectStatus}
+      initialProjectClosed={pageData.projectClosed}
       linkedRoadmap={linkedRoadmap}
     />
   );

@@ -775,6 +775,8 @@ export interface RoadmapPageDataV2 {
    */
   selfAssessmentExists: boolean;
   projectStatus: string;
+  /** 행정 종결 여부 (closed_at NOT NULL) — 종결 시 편집·생성·확정 잠금 + 배너 표시 */
+  projectClosed: boolean;
 }
 
 export async function fetchRoadmapPageDataV2(
@@ -851,7 +853,7 @@ export async function fetchRoadmapPageDataV2(
     const admin = createAdminClient();
     const [{ data: selfAssessmentRow }, { data: projectRow }] = await Promise.all([
       admin.from('self_assessments').select('id').eq('project_id', projectId).maybeSingle(),
-      admin.from('projects').select('status').eq('id', projectId).maybeSingle(),
+      admin.from('projects').select('status, closed_at').eq('id', projectId).maybeSingle(),
     ]);
 
     return {
@@ -862,6 +864,7 @@ export async function fetchRoadmapPageDataV2(
         interview: interviewSnapshot,
         selfAssessmentExists: Boolean(selfAssessmentRow?.id),
         projectStatus: projectRow?.status ?? '',
+        projectClosed: projectRow?.closed_at != null,
       },
     };
   } catch (error) {

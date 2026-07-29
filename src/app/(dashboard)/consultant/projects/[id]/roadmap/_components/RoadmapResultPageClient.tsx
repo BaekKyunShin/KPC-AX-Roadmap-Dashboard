@@ -30,10 +30,7 @@ import { isCancelledError } from '@/lib/services/llm';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 
 import { RoadmapResultClient } from './result-v2/RoadmapResultClient';
-import type {
-  ResultInterviewSnapshot,
-  RoadmapResultEditPayload,
-} from './result-v2/types';
+import type { ResultInterviewSnapshot, RoadmapResultEditPayload } from './result-v2/types';
 
 export interface RoadmapResultPageClientProps {
   projectId: string;
@@ -44,6 +41,8 @@ export interface RoadmapResultPageClientProps {
   /** #013 fix — EmptyState 가드 강화용. */
   initialSelfAssessmentExists: boolean;
   initialProjectStatus: string;
+  /** 행정 종결 여부 — 종결 시 편집·생성·확정 잠금 + 배너 표시 (기본 false) */
+  initialProjectClosed?: boolean;
 }
 
 export default function RoadmapResultPageClient({
@@ -54,17 +53,16 @@ export default function RoadmapResultPageClient({
   initialInterview,
   initialSelfAssessmentExists,
   initialProjectStatus,
+  initialProjectClosed = false,
 }: RoadmapResultPageClientProps) {
   const [versions, setVersions] = useState<RoadmapVersionUI[]>(initialVersions);
-  const [selectedVersion, setSelectedVersion] = useState<RoadmapVersionUI | null>(
-    initialSelected,
-  );
-  const [interview, setInterview] =
-    useState<Partial<ResultInterviewSnapshot>>(initialInterview);
+  const [selectedVersion, setSelectedVersion] = useState<RoadmapVersionUI | null>(initialSelected);
+  const [interview, setInterview] = useState<Partial<ResultInterviewSnapshot>>(initialInterview);
   const [selfAssessmentExists, setSelfAssessmentExists] = useState<boolean>(
-    initialSelfAssessmentExists,
+    initialSelfAssessmentExists
   );
   const [projectStatus, setProjectStatus] = useState<string>(initialProjectStatus);
+  const [projectClosed, setProjectClosed] = useState<boolean>(initialProjectClosed);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerationComplete, setIsGenerationComplete] = useState(false);
   const [isSwitchingVersion, setIsSwitchingVersion] = useState(false);
@@ -84,6 +82,7 @@ export default function RoadmapResultPageClient({
       setInterview(result.data.interview);
       setSelfAssessmentExists(result.data.selfAssessmentExists);
       setProjectStatus(result.data.projectStatus);
+      setProjectClosed(result.data.projectClosed);
     }
   }
 
@@ -176,6 +175,7 @@ export default function RoadmapResultPageClient({
         interview={interview}
         selfAssessmentExists={selfAssessmentExists}
         projectStatus={projectStatus}
+        projectClosed={projectClosed}
         onSelectVersion={handleSelectVersion}
         onEdit={handleEdit}
         onGenerate={handleGenerate}

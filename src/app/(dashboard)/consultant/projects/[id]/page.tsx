@@ -10,18 +10,26 @@ import type { SelfAssessmentScores } from '@/lib/constants/score-color';
 import { RoadmapInterviewSummary } from '@/components/interview/RoadmapInterviewSummary';
 import { PblInterviewSummary } from '@/components/interview/PblInterviewSummary';
 import { TrackBadge } from '@/components/ui/TrackBadge';
+import { ClosedBadge } from '@/components/common/ClosedBadge';
 import { formatDateKR } from '@/lib/utils/date';
 import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
 import type { PBLInterview } from '@/lib/schemas/interview-pbl';
 import type { ProjectTrack } from '@/lib/constants/tracks';
-import { AssessmentDetailAccordion, type AssessmentAnswer, type AssessmentQuestion } from './_components/AssessmentDetailAccordion';
+import {
+  AssessmentDetailAccordion,
+  type AssessmentAnswer,
+  type AssessmentQuestion,
+} from './_components/AssessmentDetailAccordion';
 import { CompanyInfoEditableCard } from './_components/CompanyInfoEditableCard';
 import { ProjectDetailTabs } from './_components/ProjectDetailTabs';
 import { InterviewGuide } from './_components/InterviewGuide';
 import ActivityLog from './_components/ActivityLog';
 
 const ConsultantAssessmentResult = dynamic(
-  () => import('./_components/ConsultantAssessmentResult').then(mod => ({ default: mod.ConsultantAssessmentResult })),
+  () =>
+    import('./_components/ConsultantAssessmentResult').then((mod) => ({
+      default: mod.ConsultantAssessmentResult,
+    })),
   { loading: () => <div className="h-[200px] animate-pulse rounded bg-gray-100" /> }
 );
 
@@ -47,7 +55,8 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
   const [{ data: projectData }, { data: interviewGuide }] = await Promise.all([
     supabase
       .from('projects')
-      .select(`
+      .select(
+        `
         *,
         self_assessments(
           id,
@@ -72,7 +81,8 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
           stt_insights,
           pbl_data
         )
-      `)
+      `
+      )
       .eq('id', projectId)
       .eq('assigned_consultant_id', user.id)
       .single(),
@@ -94,13 +104,14 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
   // 자가진단 점수 요약
   const assessmentScores = selfAssessment?.scores as SelfAssessmentScores | null;
   const assessmentAnswers = (selfAssessment?.answers ?? []) as AssessmentAnswer[];
-  const templateQuestions = ((selfAssessment?.template as { questions?: unknown[] } | null)?.questions ?? []) as AssessmentQuestion[];
+  const templateQuestions = ((selfAssessment?.template as { questions?: unknown[] } | null)
+    ?.questions ?? []) as AssessmentQuestion[];
 
   // 기업 규모 라벨 변환
-  const companySizeLabel = COMPANY_SIZE_LABELS[projectData.company_size as CompanySizeValue]
-    ?.replace(/\d+[~,]?\d*명\s*/, '')
-    ?.replace(/[()]/g, '')
-    || projectData.company_size;
+  const companySizeLabel =
+    COMPANY_SIZE_LABELS[projectData.company_size as CompanySizeValue]
+      ?.replace(/\d+[~,]?\d*명\s*/, '')
+      ?.replace(/[()]/g, '') || projectData.company_size;
 
   const hasSelfAssessment = !!selfAssessment && !!assessmentScores;
 
@@ -114,22 +125,30 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
         actions={
           <div className="flex items-center gap-3">
             <TrackBadge track={projectData.track as ProjectTrack} />
+            {projectData.closed_at && <ClosedBadge />}
+            {/* 행정 종결 시 인터뷰 입력·수정 진입 숨김 (산출물 열람 링크는 유지) */}
             {!interview ? (
-              <Link
-                href={`/consultant/projects/${projectId}/interview`}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                인터뷰 입력
-              </Link>
-            ) : (
-              <>
+              !projectData.closed_at && (
                 <Link
                   href={`/consultant/projects/${projectId}/interview`}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                  인터뷰 수정
+                  인터뷰 입력
                 </Link>
-                {['INTERVIEWED', 'ROADMAP_DRAFTED', 'PBL_DRAFTED', 'FINALIZED'].includes(projectData.status) && (
+              )
+            ) : (
+              <>
+                {!projectData.closed_at && (
+                  <Link
+                    href={`/consultant/projects/${projectId}/interview`}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    인터뷰 수정
+                  </Link>
+                )}
+                {['INTERVIEWED', 'ROADMAP_DRAFTED', 'PBL_DRAFTED', 'FINALIZED'].includes(
+                  projectData.status
+                ) && (
                   <Link
                     href={projectDetailHref(projectId, inferTrack(projectData.track))}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
@@ -217,9 +236,7 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
                   interview={(interview.pbl_data ?? {}) as Partial<PBLInterview>}
                 />
               ) : (
-                <RoadmapInterviewSummary
-                  interview={mapInterviewRowToRoadmapInterview(interview)}
-                />
+                <RoadmapInterviewSummary interview={mapInterviewRowToRoadmapInterview(interview)} />
               )}
             </div>
           ) : (
@@ -228,9 +245,7 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
             </div>
           )
         }
-        activityContent={
-          <ActivityLog projectId={projectId} />
-        }
+        activityContent={<ActivityLog projectId={projectId} />}
       />
     </div>
   );

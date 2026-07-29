@@ -1,6 +1,8 @@
 import { redirect, notFound } from 'next/navigation';
+import Link from 'next/link';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createClient } from '@/lib/supabase/server';
+import { ClosedBadge } from '@/components/common/ClosedBadge';
 import { resolveHrdSignedUrl } from '@/lib/services/storage/hrd-signed-url';
 import { fetchPBLInterviewV2, fetchRoadmapInterviewV2 } from './actions';
 import {
@@ -75,11 +77,36 @@ export default async function InterviewPage({
   const supabase = await createClient();
   const { data: project } = await supabase
     .from('projects')
-    .select('id, track')
+    .select('id, track, closed_at')
     .eq('id', id)
     .single();
 
   if (!project) notFound();
+
+  // 행정 종결 프로젝트 — 편집 클라이언트를 마운트하지 않고 잠금 안내 카드 표시
+  // (서버 액션도 차단되지만, 진입 자체를 막아 혼란 방지. 열람은 상세 페이지가 담당)
+  if (project.closed_at) {
+    return (
+      <div className="mx-auto max-w-2xl py-12">
+        <div className="flex flex-col items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 px-6 py-10 text-center">
+          <ClosedBadge />
+          <div className="space-y-1">
+            <h1 className="text-lg font-semibold text-gray-900">종결된 프로젝트입니다</h1>
+            <p className="text-sm text-gray-600">
+              운영관리자가 종결 처리하여 인터뷰를 수정할 수 없습니다. 산출물 열람과 내보내기는 계속
+              가능합니다.
+            </p>
+          </div>
+          <Link
+            href={`/consultant/projects/${id}`}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+          >
+            프로젝트 상세로 돌아가기
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // PBL 트랙 — V2 Client (camelCase 스키마 + 10 스텝[양식 9 + STT 첨부 1] + 자동저장)
   // `?track=PBL` 쿼리가 있을 때도 동일 경로. `fetchPBLInterviewV2` 가 DB pbl_data

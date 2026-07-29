@@ -57,7 +57,9 @@ vi.mock('@/lib/constants/company-size', () => ({
 
 vi.mock('@/components/ui/Skeleton', () => ({
   ConsultantProjectTableSkeleton: ({ rows }: { rows?: number }) => (
-    <div data-testid="table-skeleton" data-rows={rows}>로딩 중...</div>
+    <div data-testid="table-skeleton" data-rows={rows}>
+      로딩 중...
+    </div>
   ),
 }));
 
@@ -93,6 +95,7 @@ function makeProject(overrides: Partial<ConsultantProjectItem> = {}): Consultant
     assigned_at: '2026-01-20T00:00:00Z',
     has_interview: false,
     has_assessment: false,
+    closed_at: null,
     ...overrides,
   };
 }
@@ -180,7 +183,7 @@ describe('ProjectList', () => {
       render(<ProjectList />);
       await waitFor(() => {
         expect(
-          screen.getByText('운영 관리자가 프로젝트를 배정하면 여기에 표시됩니다.'),
+          screen.getByText('운영 관리자가 프로젝트를 배정하면 여기에 표시됩니다.')
         ).toBeInTheDocument();
       });
     });
@@ -241,9 +244,7 @@ describe('ProjectList', () => {
     it('검색 입력창이 존재한다', async () => {
       render(<ProjectList />);
       await waitFor(() => {
-        expect(
-          screen.getByPlaceholderText('기업명 또는 업종 검색...'),
-        ).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('기업명 또는 업종 검색...')).toBeInTheDocument();
       });
     });
 
@@ -332,9 +333,14 @@ describe('ProjectList', () => {
       });
 
       // 빈 문자열 → 전체 목록 로드 호출
-      await waitFor(() => {
-        expect(mockFetchConsultantProjects.mock.calls.length).toBeGreaterThan(callCountBeforeClear);
-      }, { timeout: 2000 });
+      await waitFor(
+        () => {
+          expect(mockFetchConsultantProjects.mock.calls.length).toBeGreaterThan(
+            callCountBeforeClear
+          );
+        },
+        { timeout: 2000 }
+      );
     });
 
     it('1글자 검색어도 debounce 후 필터 배지가 표시된다', async () => {
@@ -428,7 +434,9 @@ describe('ProjectList', () => {
       render(<ProjectList initialData={initialData} initialFilters={initialFilters} />);
       expect(screen.queryByTestId('table-skeleton')).not.toBeInTheDocument();
       expect(screen.getAllByText('프리페치기업').length).toBeGreaterThan(0);
-      expect(screen.getByText('프리페치컨설턴트님의 담당 프로젝트 목록입니다.')).toBeInTheDocument();
+      expect(
+        screen.getByText('프리페치컨설턴트님의 담당 프로젝트 목록입니다.')
+      ).toBeInTheDocument();
     });
 
     it('initialData가 있으면 초기 마운트 시 fetchConsultantProjects를 호출하지 않는다', async () => {

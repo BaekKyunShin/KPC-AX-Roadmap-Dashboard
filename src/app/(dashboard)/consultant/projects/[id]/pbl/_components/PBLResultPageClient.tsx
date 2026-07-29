@@ -44,6 +44,8 @@ export interface PBLResultPageClientProps {
   /** #013 fix — EmptyState 가드 강화용. */
   initialHasInterview: boolean;
   initialProjectStatus: string;
+  /** 행정 종결 여부 — 종결 시 편집·생성·확정 잠금 + 배너 표시 (기본 false) */
+  initialProjectClosed?: boolean;
   /** 선행 로드맵 인터뷰(연계) — Ⅱ장 읽기 전용 렌더용. 미연계 시 null. */
   linkedRoadmap?: Partial<RoadmapInterviewStrict> | null;
 }
@@ -57,6 +59,7 @@ export default function PBLResultPageClient({
   initialInterview,
   initialHasInterview,
   initialProjectStatus,
+  initialProjectClosed = false,
   linkedRoadmap,
 }: PBLResultPageClientProps) {
   const [versions, setVersions] = useState<PBLReportRow[]>(initialVersions);
@@ -64,6 +67,7 @@ export default function PBLResultPageClient({
   const [interview, setInterview] = useState<Partial<ResultPBLInterviewSnapshot>>(initialInterview);
   const [hasInterview, setHasInterview] = useState<boolean>(initialHasInterview);
   const [projectStatus, setProjectStatus] = useState<string>(initialProjectStatus);
+  const [projectClosed, setProjectClosed] = useState<boolean>(initialProjectClosed);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSwitchingVersion, setIsSwitchingVersion] = useState(false);
 
@@ -82,6 +86,7 @@ export default function PBLResultPageClient({
       setInterview(result.data.interview);
       setHasInterview(result.data.hasInterview);
       setProjectStatus(result.data.projectStatus);
+      setProjectClosed(result.data.projectClosed);
     }
   }
 
@@ -165,6 +170,7 @@ export default function PBLResultPageClient({
         interview={interview}
         hasInterview={hasInterview}
         projectStatus={projectStatus}
+        projectClosed={projectClosed}
         onSelectVersion={handleSelectVersion}
         onEdit={handleEdit}
         onGenerate={handleGenerate}

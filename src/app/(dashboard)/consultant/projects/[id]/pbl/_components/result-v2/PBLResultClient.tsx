@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { VersionSelector } from '@/components/common/VersionSelector';
 import { VersionStatusBadge } from '@/components/common/VersionStatusBadge';
+import { ClosedBadge } from '@/components/common/ClosedBadge';
 import { DownloadButtonGroup, type DownloadType } from '@/components/result/DownloadButtonGroup';
 import { ResultTabs, type ResultTabItem } from '@/components/result/ResultTabs';
 import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
@@ -83,6 +84,8 @@ export interface PBLResultClientProps {
   hasInterview?: boolean;
   /** #013 fix — 프로젝트 status. PBL_ELIGIBLE_STATUSES 가드용. */
   projectStatus?: string;
+  /** 행정 종결 여부 (closed_at NOT NULL) — 종결 시 편집·생성·확정 잠금 + 배너 표시. */
+  projectClosed?: boolean;
   /** 버전 변경 시 호출. 상위가 fetch → state 업데이트 책임. */
   onSelectVersion: (versionId: string) => void | Promise<void>;
   /** 섹션 편집 patch. OPS role 에서는 호출되지 않음(optional 로 허용). */
@@ -118,6 +121,7 @@ export function PBLResultClient({
   linkedRoadmap,
   hasInterview = false,
   projectStatus = '',
+  projectClosed = false,
   onSelectVersion,
   onEdit,
   onGenerate,
@@ -167,9 +171,10 @@ export function PBLResultClient({
   const isStatusEligible =
     !!projectStatus &&
     (PBL_ELIGIBLE_STATUSES as readonly string[]).includes(projectStatus as ProjectStatus);
-  const canGeneratePbl = hasInterview && isStatusEligible;
+  const canGeneratePbl = hasInterview && isStatusEligible && !projectClosed;
   // PR5 (R6 spec) — DRAFT/FINAL 모두 편집 허용. ARCHIVED 만 차단.
-  const tabReadOnly = isArchived || !capabilities.canEdit;
+  // 행정 종결(projectClosed) 시에는 전체 읽기 전용 — 열람·내보내기만 가능.
+  const tabReadOnly = isArchived || !capabilities.canEdit || projectClosed;
 
   async function handleDownload(type: DownloadType) {
     setDownloadLoading(type);
@@ -263,8 +268,9 @@ export function PBLResultClient({
                 versionNumber={selectedVersion.version_number}
               />
             )}
-            {/* Consultant 전용: DRAFT 선택 시 "최종 확정" 버튼 노출 (로드맵 패턴 동일) */}
-            {capabilities.canEdit && isDraft && selectedVersion && onFinalize && (
+            {projectClosed && <ClosedBadge />}
+            {/* Consultant 전용: DRAFT 선택 시 "최종 확정" 버튼 노출 (로드맵 패턴 동일, 종결 시 숨김) */}
+            {capabilities.canEdit && isDraft && selectedVersion && onFinalize && !projectClosed && (
               <Button
                 type="button"
                 size="sm"
@@ -294,7 +300,7 @@ export function PBLResultClient({
          * (이미 생성된 PBL의 "수정본" 생성용). versions=0 일 때는 EmptyState 안의
          * 큰 버튼으로 최초 생성 흐름을 유도해 사용자 혼란 차단.
          */}
-        {capabilities.showRegenerate && hasVersions && (
+        {capabilities.showRegenerate && hasVersions && !projectClosed && (
           <div ref={accordionRef}>
             <RegenerateAccordion
               value={revisionPrompt}
@@ -305,6 +311,17 @@ export function PBLResultClient({
               defaultOpen={isRegenerateRequested}
               autoFocus={isRegenerateRequested}
             />
+          </div>
+        )}
+
+        {/* 행정 종결 안내 배너 — 열람·내보내기만 가능 */}
+        {projectClosed && (
+          <div
+            role="status"
+            className="rounded-md border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+            data-testid="pbl-project-closed-banner"
+          >
+            <strong>종결된 프로젝트입니다.</strong> 열람과 내보내기만 가능합니다.
           </div>
         )}
 
@@ -328,6 +345,7 @@ export function PBLResultClient({
             hasInterview={hasInterview}
             isStatusEligible={isStatusEligible}
             canGeneratePbl={canGeneratePbl}
+            projectClosed={projectClosed}
             onGenerate={() => void handleRegenerate()}
           />
         )}
@@ -375,6 +393,8 @@ interface EmptyStateProps {
   isStatusEligible: boolean;
   /** 인터뷰 + status 가 모두 충족돼야 생성 버튼이 enabled. */
   canGeneratePbl: boolean;
+  /** 행정 종결 여부 — 종결 시 생성 유도 대신 종결 안내. */
+  projectClosed: boolean;
   onGenerate: () => void;
 }
 
@@ -384,8 +404,21 @@ function EmptyState({
   hasInterview,
   isStatusEligible,
   canGeneratePbl,
+  projectClosed,
   onGenerate,
 }: EmptyStateProps) {
+  // 행정 종결 — 생성 유도 없이 종결 안내만 (열람·내보내기는 상단에서 유지)
+  if (projectClosed) {
+    return (
+      <div className="rounded-lg border bg-card p-12 text-center">
+        <h3 className="text-base font-semibold">아직 생성된 PBL 보고서가 없습니다</h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          종결된 프로젝트입니다. 새 PBL 보고서를 생성할 수 없습니다.
+        </p>
+      </div>
+    );
+  }
+
   // #013 fix — 인터뷰/status 부재 케이스를 안내 문구로 명확히 구분
   const guideMessage = !hasInterview
     ? '아직 인터뷰 입력이 없습니다. 인터뷰 페이지에서 입력을 진행해주세요.'
