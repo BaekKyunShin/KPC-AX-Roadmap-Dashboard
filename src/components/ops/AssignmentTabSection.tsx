@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Sparkles, Info } from 'lucide-react';
 import ManualAssignmentForm from './ManualAssignmentForm';
 import {
   AlertMessage,
@@ -12,7 +12,9 @@ import type { TabType } from './assignment';
 import RecommendationResults from './assignment/RecommendationResults';
 import useAssignmentMatching from './assignment/useAssignmentMatching';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { canReassignConsultant, REASSIGN_BLOCKED_MESSAGE } from '@/lib/constants/status';
 import { cn } from '@/lib/utils';
+import type { ProjectStatus } from '@/types/database';
 import type { ConsultantInfo, Recommendation, ValidRecommendation } from './assignment/utils';
 
 // ============================================================================
@@ -170,6 +172,13 @@ export default function AssignmentTabSection({
 
   // 이미 배정된 경우
   if (projectData.assigned_consultant) {
+    // 재배정 가능 여부는 RPC assign_consultant 의 허용 상태와 같은 규칙을 쓴다.
+    // 화면이 더 넓으면 운영자가 후보를 다 고른 뒤에야 DB 에러로 거절당한다(#006).
+    const canReassign = canReassignConsultant(projectData.status);
+    const blockedMessage = canReassign
+      ? undefined
+      : REASSIGN_BLOCKED_MESSAGE[projectData.status as ProjectStatus];
+
     return (
       <Card ref={cardRef}>
         <CardHeader className="pb-3">
@@ -179,10 +188,17 @@ export default function AssignmentTabSection({
           <CurrentAssignmentInfo
             consultant={projectData.assigned_consultant}
             assignmentReason={latestAssignment?.assignment_reason}
-            canReassign={!['FINALIZED'].includes(projectData.status)}
+            canReassign={canReassign}
             showReassignForm={showReassignForm}
             onToggleReassign={handleToggleReassign}
           />
+
+          {blockedMessage && (
+            <p className="flex items-start gap-2 text-sm text-gray-500">
+              <Info className="h-4 w-4 mt-0.5 shrink-0 text-gray-400" aria-hidden="true" />
+              <span>{blockedMessage}</span>
+            </p>
+          )}
 
           {showReassignForm && (
             <div className="border-t pt-4">
