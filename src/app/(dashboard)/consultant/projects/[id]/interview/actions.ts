@@ -250,10 +250,23 @@ export async function saveRoadmapInterview(
       auditAction = 'INTERVIEW_CREATE';
     }
 
+    // 전이 실패 시 statusTransitioned 를 세우지 않는다 — 이 플래그가 아래
+    // "인터뷰 완료" 알림의 조건이라, 상태는 그대로인데 알림만 나가면
+    // 운영자가 목록에서 '배정됨'을 보고 모순을 겪는다.
     let statusTransitioned = false;
     if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
-      await adminSupabase.from('projects').update({ status: 'INTERVIEWED' }).eq('id', projectId);
-      statusTransitioned = true;
+      const { error: statusError } = await adminSupabase
+        .from('projects')
+        .update({ status: 'INTERVIEWED' })
+        .eq('id', projectId);
+      if (statusError) {
+        console.error(
+          `[saveRoadmapInterview] status 전이 실패(${projectData.status}→INTERVIEWED) project=${projectId}:`,
+          statusError.message
+        );
+      } else {
+        statusTransitioned = true;
+      }
     }
 
     after(async () => {
@@ -990,10 +1003,23 @@ export async function saveRoadmapInterviewV2(
       auditAction = 'INTERVIEW_CREATE';
     }
 
+    // 전이 실패 시 statusTransitioned 를 세우지 않는다 — 이 플래그가 아래
+    // "인터뷰 완료" 알림의 조건이라, 상태는 그대로인데 알림만 나가면
+    // 운영자가 목록에서 '배정됨'을 보고 모순을 겪는다.
     let statusTransitioned = false;
     if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
-      await adminSupabase.from('projects').update({ status: 'INTERVIEWED' }).eq('id', projectId);
-      statusTransitioned = true;
+      const { error: statusError } = await adminSupabase
+        .from('projects')
+        .update({ status: 'INTERVIEWED' })
+        .eq('id', projectId);
+      if (statusError) {
+        console.error(
+          `[saveRoadmapInterviewV2] status 전이 실패(${projectData.status}→INTERVIEWED) project=${projectId}:`,
+          statusError.message
+        );
+      } else {
+        statusTransitioned = true;
+      }
     }
 
     after(async () => {
@@ -1169,10 +1195,23 @@ export async function savePBLInterviewV2(
       }
     }
 
+    // 전이 실패 시 statusTransitioned 를 세우지 않는다 — 이 플래그가 아래
+    // "인터뷰 완료" 알림의 조건이라, 상태는 그대로인데 알림만 나가면
+    // 운영자가 목록에서 '배정됨'을 보고 모순을 겪는다.
     let statusTransitioned = false;
     if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
-      await adminSupabase.from('projects').update({ status: 'INTERVIEWED' }).eq('id', projectId);
-      statusTransitioned = true;
+      const { error: statusError } = await adminSupabase
+        .from('projects')
+        .update({ status: 'INTERVIEWED' })
+        .eq('id', projectId);
+      if (statusError) {
+        console.error(
+          `[savePBLInterviewV2] status 전이 실패(${projectData.status}→INTERVIEWED) project=${projectId}:`,
+          statusError.message
+        );
+      } else {
+        statusTransitioned = true;
+      }
     }
 
     after(async () => {

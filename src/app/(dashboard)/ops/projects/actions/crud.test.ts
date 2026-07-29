@@ -415,6 +415,28 @@ describe('createSelfAssessment', () => {
     const result = await createSelfAssessment(makeAssessmentFormData());
     expect(result).toEqual({ success: false, error: '자가진단 저장에 실패했습니다.' });
   });
+
+  // P6: NEW→DIAGNOSED 전이 update 의 error 를 확인하지 않아, 자가진단은
+  // 저장됐는데 상태는 NEW 에 머무는 desync 가 로그 없이 발생했다.
+  it('status 전이 update 실패 시 로그를 남기되 저장은 성공으로 반환한다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const auth = createAuthSuccess();
+    mockAuthResult.mockResolvedValue(auth);
+
+    adminMock.addResult({ data: { version: 1, questions: [] }, error: null });
+    adminMock.addResult({ data: null, error: null }); // insert 성공
+    adminMock.addResult({ data: null, error: { message: 'update failed' } }); // status 전이 실패
+
+    const result = await createSelfAssessment(makeAssessmentFormData());
+
+    // 자가진단은 이미 커밋됐으므로 응답을 실패로 되돌리지 않는다
+    expect(result).toEqual({ success: true });
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('status 전이 실패(NEW→DIAGNOSED)'),
+      'update failed'
+    );
+    errorSpy.mockRestore();
+  });
 });
 
 // ─── assignConsultant ───────────────────────────────────────────────────────

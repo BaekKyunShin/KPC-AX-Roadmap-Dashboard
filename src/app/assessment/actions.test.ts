@@ -194,6 +194,38 @@ describe('submitPublicAssessment - 전체 커버리지', () => {
     expect(result).toEqual({ success: true });
   });
 
+  // P6: NEW→DIAGNOSED 전이 update 의 error 를 확인하지 않아, 진단 응답은
+  // 저장됐는데 상태는 NEW 에 머무는 desync 가 로그 없이 발생했다.
+  it('status 전이 update 실패 시 로그를 남기되 제출은 성공으로 반환한다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    adminMock.addResult(validTokenResult());
+    adminMock.addResult({ data: null, error: null }); // 기존 진단: 없음
+    adminMock.addResult({
+      data: {
+        version: 1,
+        questions: [
+          { id: 'q1', dimension: 'AI_LITERACY', weight: 1 },
+          { id: 'q2', dimension: 'AI_LITERACY', weight: 1 },
+        ],
+      },
+      error: null,
+    }); // 템플릿
+    adminMock.addResult({ data: null, error: null }); // INSERT
+    adminMock.addResult({ data: null, error: null }); // 토큰 update
+    adminMock.addResult({ data: null, error: { message: 'update failed' } }); // 프로젝트 update 실패
+    adminMock.addResult({ data: { company_name: '테스트 주식회사' }, error: null });
+
+    const result = await submitPublicAssessment(validFormData());
+
+    // 진단 응답은 이미 커밋됐으므로 응답을 실패로 되돌리지 않는다
+    expect(result).toEqual({ success: true });
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('status 전이 실패(NEW→DIAGNOSED)'),
+      'update failed'
+    );
+    errorSpy.mockRestore();
+  });
+
   // 2. 토큰 만료
   it('토큰 만료 → 링크 만료 에러 반환', async () => {
     vi.useFakeTimers();

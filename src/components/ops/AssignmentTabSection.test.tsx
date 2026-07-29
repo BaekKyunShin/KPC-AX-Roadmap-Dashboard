@@ -334,6 +334,64 @@ describe('AssignmentTabSection', () => {
       render(<AssignmentTabSection {...finalizedProps} />);
       expect(screen.queryByRole('button', { name: '재배정' })).not.toBeInTheDocument();
     });
+
+    it('ASSIGNED 상태에서는 차단 안내를 표시하지 않는다', () => {
+      // 버튼이 보이는 상태에서 "변경할 수 없습니다" 안내가 함께 뜨면 모순이다.
+      render(<AssignmentTabSection {...assignedProps} />);
+      expect(screen.queryByText(/변경할 수 없습니다/)).not.toBeInTheDocument();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // #006 인터뷰 완료 이후 재배정 차단 + 사유 안내
+  //
+  // RPC assign_consultant 는 DIAGNOSED·MATCH_RECOMMENDED·ASSIGNED 만 허용하는데
+  // 화면은 FINALIZED 만 제외했다. 그래서 운영자가 후보를 다 고르고 "배정 확인"까지
+  // 누른 뒤에야 DB 에러로 거절당했다. 이제 조작 자체를 막고 이유를 보여준다.
+  // --------------------------------------------------------------------------
+
+  describe('#006 재배정 차단 상태', () => {
+    const withStatus = (status: string) => ({
+      ...assignedProps,
+      projectData: { ...assignedProps.projectData, status },
+    });
+
+    it.each(['INTERVIEWED', 'ROADMAP_DRAFTED', 'PBL_DRAFTED'])(
+      '%s 상태에서는 재배정 버튼 대신 인터뷰 완료 사유를 표시한다',
+      (status) => {
+        render(<AssignmentTabSection {...withStatus(status)} />);
+
+        expect(screen.queryByRole('button', { name: '재배정' })).not.toBeInTheDocument();
+        expect(
+          screen.getByText('인터뷰가 완료되어 담당 컨설턴트를 변경할 수 없습니다.')
+        ).toBeInTheDocument();
+      }
+    );
+
+    it('FINALIZED 상태에서는 최종 확정 사유를 표시한다', () => {
+      render(<AssignmentTabSection {...withStatus('FINALIZED')} />);
+
+      expect(
+        screen.getByText('최종 확정된 프로젝트는 담당 컨설턴트를 변경할 수 없습니다.')
+      ).toBeInTheDocument();
+    });
+
+    it('차단 상태에서는 재배정 폼을 열 수 없다', () => {
+      // 버튼이 없으니 "다른 컨설턴트로 재배정합니다" 안내와 탭도 나타나지 않아야 한다.
+      render(<AssignmentTabSection {...withStatus('INTERVIEWED')} />);
+
+      expect(screen.queryByText(/다른 컨설턴트로 재배정합니다/)).not.toBeInTheDocument();
+      expect(screen.queryByText('수동 매칭')).not.toBeInTheDocument();
+    });
+
+    it('NEW + 배정됨(비정상 데이터)은 버튼도 안내도 표시하지 않는다', () => {
+      // RPC 가 NEW 를 거부하므로 버튼은 막되, 배정된 적 없는 상태라
+      // "변경할 수 없습니다" 안내는 성립하지 않는다.
+      render(<AssignmentTabSection {...withStatus('NEW')} />);
+
+      expect(screen.queryByRole('button', { name: '재배정' })).not.toBeInTheDocument();
+      expect(screen.queryByText(/변경할 수 없습니다/)).not.toBeInTheDocument();
+    });
   });
 
   // --------------------------------------------------------------------------

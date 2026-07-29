@@ -387,7 +387,18 @@ export async function generatePBLAction(
 
       // 프로젝트 상태 전이 (INTERVIEWED → PBL_DRAFTED)
       if (validateStatusTransition(project.status, 'PBL_DRAFTED')) {
-        await adminSupabase.from('projects').update({ status: 'PBL_DRAFTED' }).eq('id', projectId);
+        // 전이가 실패해도 보고서는 이미 저장됐으므로 응답은 유지한다.
+        // 다만 로그가 없으면 desync 를 사후 추적할 수 없으므로 error 를 남긴다.
+        const { error: statusError } = await adminSupabase
+          .from('projects')
+          .update({ status: 'PBL_DRAFTED' })
+          .eq('id', projectId);
+        if (statusError) {
+          console.error(
+            `[generatePBLAction] status 전이 실패(${project.status}→PBL_DRAFTED) project=${projectId}:`,
+            statusError.message
+          );
+        }
       }
 
       // 감사로그 + 활동 일지

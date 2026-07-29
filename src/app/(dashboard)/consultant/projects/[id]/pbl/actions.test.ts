@@ -804,6 +804,51 @@ describe('generatePBLAction', () => {
     );
   });
 
+  // P6: 전이 update 가 실패해도 예외·로그 없이 success 를 반환해, PBL 초안은
+  // 저장됐는데 projects.status 는 INTERVIEWED 에 머무는 silent desync 가 발생했다.
+  it('status 전이 update 실패 시 로그를 남기되 생성은 성공으로 반환한다', async () => {
+    const { generatePBLContent } = await import('@/lib/services/pbl/pbl-generator');
+    const { createDraftVersion } = await import('@/lib/services/pbl/pbl-crud');
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(createDraftVersion).mockResolvedValueOnce({
+      id: 'draft-id',
+      version_number: 1,
+    } as never);
+    vi.mocked(generatePBLContent).mockResolvedValueOnce({ content: VALID_PBL_CONTENT } as never);
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: {
+        id: PROJECT_ID,
+        status: 'INTERVIEWED',
+        track: 'PBL',
+        assigned_consultant_id: USER_A_ID,
+        company_name: '테스트기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: { pbl_data: VALID_PBL_INTERVIEW_DATA }, error: null });
+    adminMock.addResult({ data: null, error: null });
+    adminMock.addResult({ data: null, error: null });
+    // projects.update (상태 전이) — 실패 주입
+    adminMock.addResult({ data: null, error: { message: 'update failed' } });
+
+    const result = await generatePBLAction(PROJECT_ID);
+
+    // 보고서는 이미 커밋됐으므로 응답을 실패로 되돌리지 않는다
+    expect(result.success).toBe(true);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('status 전이 실패(INTERVIEWED→PBL_DRAFTED)'),
+      'update failed'
+    );
+    errorSpy.mockRestore();
+  });
+
   it('성공 시 운영관리 경로 캐시 무효화 (#003)', async () => {
     const { generatePBLContent } = await import('@/lib/services/pbl/pbl-generator');
     const { createDraftVersion } = await import('@/lib/services/pbl/pbl-crud');

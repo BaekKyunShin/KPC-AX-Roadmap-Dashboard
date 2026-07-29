@@ -24,6 +24,9 @@ import {
   OPS_ADMIN_MANAGEABLE_ROLES,
   PENDING_ROLES,
   isPendingApproval,
+  REASSIGNABLE_STATUSES,
+  canReassignConsultant,
+  REASSIGN_BLOCKED_MESSAGE,
   getStatusFilterOptions,
   getStatusesByFilterKey,
 } from './status';
@@ -137,6 +140,58 @@ describe('isPendingApproval', () => {
     // PENDING_ROLES 는 승인 전 역할만 (접근 차단 대상). 혼동 방지용 회귀 단언.
     expect(PENDING_ROLES).not.toContain('CONSULTANT_APPROVED');
     expect(PENDING_ROLES).not.toContain('OPS_ADMIN');
+  });
+});
+
+// =============================================================================
+// canReassignConsultant (#006 인터뷰 완료 후 재배정 차단)
+// =============================================================================
+
+describe('canReassignConsultant', () => {
+  it.each<[ProjectStatus, boolean]>([
+    ['DIAGNOSED', true],
+    ['MATCH_RECOMMENDED', true],
+    ['ASSIGNED', true],
+    ['NEW', false],
+    ['INTERVIEWED', false],
+    ['ROADMAP_DRAFTED', false],
+    ['PBL_DRAFTED', false],
+    ['FINALIZED', false],
+  ])('상태 "%s" → %s', (status, expected) => {
+    expect(canReassignConsultant(status)).toBe(expected);
+  });
+
+  it('RPC assign_consultant 의 허용 목록과 정확히 일치한다', () => {
+    // supabase/migrations/058_reassign_return_previous.sql:31
+    //   IF v_current_status NOT IN ('DIAGNOSED', 'MATCH_RECOMMENDED', 'ASSIGNED') THEN
+    // 이 배열이 RPC 보다 넓어지면 #006(화면은 되는데 DB가 거절)이 그대로 재발한다.
+    expect(REASSIGNABLE_STATUSES).toEqual(['DIAGNOSED', 'MATCH_RECOMMENDED', 'ASSIGNED']);
+  });
+
+  it('알 수 없는 상태 문자열은 재배정 불가로 판정한다', () => {
+    expect(canReassignConsultant('UNKNOWN_STATUS')).toBe(false);
+  });
+});
+
+describe('REASSIGN_BLOCKED_MESSAGE', () => {
+  it.each<[ProjectStatus, string]>([
+    ['INTERVIEWED', '인터뷰가 완료되어 담당 컨설턴트를 변경할 수 없습니다.'],
+    ['ROADMAP_DRAFTED', '인터뷰가 완료되어 담당 컨설턴트를 변경할 수 없습니다.'],
+    ['PBL_DRAFTED', '인터뷰가 완료되어 담당 컨설턴트를 변경할 수 없습니다.'],
+    ['FINALIZED', '최종 확정된 프로젝트는 담당 컨설턴트를 변경할 수 없습니다.'],
+  ])('상태 "%s" 의 안내 문구', (status, expected) => {
+    expect(REASSIGN_BLOCKED_MESSAGE[status]).toBe(expected);
+  });
+
+  it('재배정이 가능한 상태에는 안내 문구가 없다', () => {
+    // 버튼이 보이는 상태에서 "변경할 수 없습니다" 안내가 함께 뜨면 모순이다.
+    for (const status of REASSIGNABLE_STATUSES) {
+      expect(REASSIGN_BLOCKED_MESSAGE[status]).toBeUndefined();
+    }
+  });
+
+  it('NEW 는 안내 문구가 없다 — 배정된 적 없는 상태라 침묵이 정상', () => {
+    expect(REASSIGN_BLOCKED_MESSAGE.NEW).toBeUndefined();
   });
 });
 
