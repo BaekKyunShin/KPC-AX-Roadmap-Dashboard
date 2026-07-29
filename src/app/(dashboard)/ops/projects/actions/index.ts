@@ -1,6 +1,7 @@
 // CRUD (변경 함수)
 export { createProject, createSelfAssessment, assignConsultant } from './crud';
 export { deleteProject } from './delete-project';
+export { closeProject, reopenProject } from './close-project';
 
 // 진단 토큰
 export { createAssessmentToken, getLatestToken } from './assessment-token';
