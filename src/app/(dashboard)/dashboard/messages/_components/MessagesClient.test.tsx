@@ -115,10 +115,7 @@ vi.mock('./MessageThread', () => ({
           {m.content}
         </div>
       ))}
-      <button
-        data-testid="send-btn"
-        onClick={() => onSendMessage('테스트 메시지')}
-      >
+      <button data-testid="send-btn" onClick={() => onSendMessage('테스트 메시지')}>
         전송
       </button>
       <button data-testid="mobile-back" onClick={onMobileBack}>
@@ -183,7 +180,9 @@ import type { ConversationWithPreview, Message } from '@/types/database';
 // 헬퍼
 // =============================================================================
 
-function createConversation(overrides: Partial<ConversationWithPreview> = {}): ConversationWithPreview {
+function createConversation(
+  overrides: Partial<ConversationWithPreview> = {}
+): ConversationWithPreview {
   return {
     id: `conv-${Math.random().toString(36).slice(2, 7)}`,
     last_message_at: '2025-01-15T10:00:00Z',
@@ -282,7 +281,12 @@ describe('MessagesClient', () => {
 
   describe('대화 목록 표시', () => {
     it('대화 목록이 로드되면 ConversationList가 렌더링된다', async () => {
-      const convs = [createConversation({ id: 'c1', other_user: { id: 'u1', name: '김영희', role: 'OPS_ADMIN' } })];
+      const convs = [
+        createConversation({
+          id: 'c1',
+          other_user: { id: 'u1', name: '김영희', role: 'OPS_ADMIN' },
+        }),
+      ];
       mockFetchConversations.mockResolvedValue(successConvResult(convs));
 
       await renderAndWait();
@@ -295,7 +299,11 @@ describe('MessagesClient', () => {
 
     it('초기 로드 시 로딩 표시가 나타난다', async () => {
       let resolveConvs!: (value: unknown) => void;
-      mockFetchConversations.mockReturnValue(new Promise((r) => { resolveConvs = r; }));
+      mockFetchConversations.mockReturnValue(
+        new Promise((r) => {
+          resolveConvs = r;
+        })
+      );
 
       render(<MessagesClient />);
 
@@ -314,7 +322,10 @@ describe('MessagesClient', () => {
   describe('대화 선택', () => {
     it('대화 선택 시 fetchMessages가 호출된다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c1', other_user: { id: 'u1', name: '클릭대화', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c1',
+        other_user: { id: 'u1', name: '클릭대화', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
 
@@ -333,7 +344,10 @@ describe('MessagesClient', () => {
 
     it('대화 선택 시 MessageThread가 표시된다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c1', other_user: { id: 'u1', name: '스레드유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c1',
+        other_user: { id: 'u1', name: '스레드유저', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
 
@@ -353,7 +367,10 @@ describe('MessagesClient', () => {
 
     it('대화 선택 시 markConversationRead가 호출된다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c-read', other_user: { id: 'u1', name: '읽음처리', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c-read',
+        other_user: { id: 'u1', name: '읽음처리', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
 
@@ -370,7 +387,10 @@ describe('MessagesClient', () => {
 
     it('대화 선택 시 메시지가 스레드에 표시된다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c1', other_user: { id: 'u1', name: '메시지있는유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c1',
+        other_user: { id: 'u1', name: '메시지있는유저', role: 'OPS_ADMIN' },
+      });
       const msgs = [createMessage({ id: 'msg-1', content: '로드된 메시지' })];
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult(msgs));
@@ -392,7 +412,10 @@ describe('MessagesClient', () => {
   describe('URL ?conversation= 파라미터 자동 선택', () => {
     it('?conversation= 파라미터가 있으면 해당 대화를 자동 선택한다', async () => {
       mockGet.mockReturnValue('c-url');
-      const conv = createConversation({ id: 'c-url', other_user: { id: 'u1', name: 'URL선택유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c-url',
+        other_user: { id: 'u1', name: 'URL선택유저', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
 
@@ -406,7 +429,10 @@ describe('MessagesClient', () => {
 
     it('?conversation= 파라미터가 없으면 대화가 자동 선택되지 않는다', async () => {
       mockGet.mockReturnValue(null);
-      const conv = createConversation({ id: 'c1', other_user: { id: 'u1', name: '미선택유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c1',
+        other_user: { id: 'u1', name: '미선택유저', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
 
       await renderAndWait();
@@ -422,7 +448,10 @@ describe('MessagesClient', () => {
   describe('메시지 전송', () => {
     it('sendMessage 성공 시 새 메시지가 스레드에 추가된다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c1', other_user: { id: 'u1', name: '전송유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c1',
+        other_user: { id: 'u1', name: '전송유저', role: 'OPS_ADMIN' },
+      });
       const newMsg = createMessage({ id: 'new-msg', content: '새로 전송된 메시지' });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
@@ -443,7 +472,10 @@ describe('MessagesClient', () => {
 
     it('sendMessage 실패 시 showErrorToast가 호출된다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c1', other_user: { id: 'u1', name: '전송실패유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c1',
+        other_user: { id: 'u1', name: '전송실패유저', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
       mockSendMessage.mockResolvedValue({ success: false as const, error: '전송 오류' });
@@ -467,7 +499,10 @@ describe('MessagesClient', () => {
   describe('새 대화 생성', () => {
     it('새 메시지 버튼 클릭 시 다이얼로그가 열린다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c1', other_user: { id: 'u1', name: '기존유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c1',
+        other_user: { id: 'u1', name: '기존유저', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
 
       await renderAndWait();
@@ -482,8 +517,14 @@ describe('MessagesClient', () => {
 
     it('대화 생성 완료 시 해당 대화를 선택한다', async () => {
       const user = userEvent.setup();
-      const existingConv = createConversation({ id: 'c1', other_user: { id: 'u1', name: '기존유저', role: 'OPS_ADMIN' } });
-      const newConv = createConversation({ id: 'new-conv-id', other_user: { id: 'u2', name: '새대화유저', role: 'OPS_ADMIN' } });
+      const existingConv = createConversation({
+        id: 'c1',
+        other_user: { id: 'u1', name: '기존유저', role: 'OPS_ADMIN' },
+      });
+      const newConv = createConversation({
+        id: 'new-conv-id',
+        other_user: { id: 'u2', name: '새대화유저', role: 'OPS_ADMIN' },
+      });
 
       mockFetchConversations
         .mockResolvedValueOnce(successConvResult([existingConv]))
@@ -512,7 +553,10 @@ describe('MessagesClient', () => {
   describe('모바일 뒤로가기', () => {
     it('뒤로가기 버튼 클릭 시 MessageThread가 숨겨진다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c1', other_user: { id: 'u1', name: '뒤로가기유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c1',
+        other_user: { id: 'u1', name: '뒤로가기유저', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
 
@@ -535,7 +579,10 @@ describe('MessagesClient', () => {
   describe('폴링 fallback', () => {
     it('대화 선택 후 MessageThread가 표시되며 폴링 준비 상태가 된다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c-poll', other_user: { id: 'u1', name: '폴링유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c-poll',
+        other_user: { id: 'u1', name: '폴링유저', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
 
@@ -568,6 +615,52 @@ describe('MessagesClient', () => {
         expect(loadingIndicator).not.toBeInTheDocument();
       });
     });
+
+    // #010 — 실패와 "대화 없음"을 구분한다.
+    it('목록 로드 실패 시 빈 상태가 아니라 에러 화면을 보여준다', async () => {
+      mockFetchConversations.mockResolvedValue({ success: false as const, error: '서버 오류' });
+
+      render(<MessagesClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('메시지를 불러오지 못했습니다')).toBeInTheDocument();
+      });
+      expect(
+        screen.getByText('잠시 후 다시 시도해주세요. 계속되면 운영팀에 문의해주세요.')
+      ).toBeInTheDocument();
+      // 실패를 "대화가 하나도 없다"로 오해하게 만들던 기존 문구가 나오면 안 된다
+      expect(screen.queryByText('아직 메시지가 없습니다')).toBeNull();
+    });
+
+    it('"다시 시도" 클릭 시 목록을 다시 불러오고 에러 화면이 사라진다', async () => {
+      const user = userEvent.setup();
+      mockFetchConversations.mockResolvedValue({ success: false as const, error: '서버 오류' });
+
+      render(<MessagesClient />);
+      await waitFor(() =>
+        expect(screen.getByText('메시지를 불러오지 못했습니다')).toBeInTheDocument()
+      );
+
+      const conv = createConversation({
+        other_user: { id: 'u1', name: '재시도유저', role: 'OPS_ADMIN' },
+      });
+      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
+
+      await user.click(screen.getByRole('button', { name: '다시 시도' }));
+
+      await waitFor(() => expect(screen.getByText('재시도유저')).toBeInTheDocument());
+      expect(screen.queryByText('메시지를 불러오지 못했습니다')).toBeNull();
+    });
+
+    // 특성화 — 에러 화면을 넣으면서 "정상적으로 대화가 0건인 경우"까지 덮으면 퇴보다.
+    it('성공했지만 대화가 0건이면 기존 빈 상태 화면이 그대로 유지된다', async () => {
+      mockFetchConversations.mockResolvedValue(successConvResult([]));
+
+      await renderAndWait();
+
+      await waitFor(() => expect(screen.getByText('아직 메시지가 없습니다')).toBeInTheDocument());
+      expect(screen.queryByText('메시지를 불러오지 못했습니다')).toBeNull();
+    });
   });
 
   // ─── fetchMessages 실패/예외 ──────────────────────────────────────────
@@ -575,7 +668,10 @@ describe('MessagesClient', () => {
   describe('fetchMessages 예외 처리', () => {
     it('fetchMessages 예외(throw) 발생 시 showErrorToast를 호출한다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c-exc2', other_user: { id: 'u1', name: '메시지예외', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c-exc2',
+        other_user: { id: 'u1', name: '메시지예외', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       // throw로 catch 블록 진입 — 이것이 showErrorToast를 호출하는 경로
       mockFetchMessages.mockRejectedValue(new Error('네트워크 예외'));
@@ -591,7 +687,10 @@ describe('MessagesClient', () => {
 
     it('fetchMessages 실패(success=false) 시 빈 메시지로 스레드가 표시된다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c-fail2', other_user: { id: 'u1', name: '메시지실패', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c-fail2',
+        other_user: { id: 'u1', name: '메시지실패', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue({ success: false as const, error: '조회 오류' });
 
@@ -604,6 +703,53 @@ describe('MessagesClient', () => {
         expect(screen.getByTestId('message-thread')).toBeInTheDocument();
       });
     });
+
+    // #010 — 예외(throw)만 토스트를 띄우고 구조적 실패(success=false)는 조용히 넘어가던 두 경로.
+    it('대화 클릭 시 메시지 조회가 실패하면 사유를 토스트로 알린다', async () => {
+      const user = userEvent.setup();
+      const conv = createConversation({
+        id: 'c-silent',
+        other_user: { id: 'u1', name: '조용한실패', role: 'OPS_ADMIN' },
+      });
+      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
+      mockFetchMessages.mockResolvedValue({
+        success: false as const,
+        error: '조회 권한이 없습니다.',
+      });
+
+      await renderAndWait();
+      await waitFor(() => expect(screen.getByText('조용한실패')).toBeInTheDocument());
+      await user.click(screen.getByText('조용한실패'));
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalledWith(
+          '메시지 로드 실패',
+          '조회 권한이 없습니다.'
+        );
+      });
+    });
+
+    it('URL 로 자동 선택된 대화의 메시지 조회가 실패하면 사유를 토스트로 알린다', async () => {
+      mockGet.mockReturnValue('c-url-fail');
+      const conv = createConversation({
+        id: 'c-url-fail',
+        other_user: { id: 'u1', name: 'URL실패유저', role: 'OPS_ADMIN' },
+      });
+      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
+      mockFetchMessages.mockResolvedValue({
+        success: false as const,
+        error: '대화를 찾을 수 없습니다.',
+      });
+
+      render(<MessagesClient />);
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalledWith(
+          '메시지 로드 실패',
+          '대화를 찾을 수 없습니다.'
+        );
+      });
+    });
   });
 
   // ─── hasMore 분기 — 더 불러오기 ────────────────────────────────────
@@ -611,8 +757,13 @@ describe('MessagesClient', () => {
   describe('hasMore 분기', () => {
     it('hasMore=true인 경우 컴포넌트가 올바르게 렌더링된다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c-more', other_user: { id: 'u1', name: '더보기유저', role: 'OPS_ADMIN' } });
-      const msgs = Array.from({ length: 3 }, (_, i) => createMessage({ id: `msg-${i}`, content: `메시지 ${i}` }));
+      const conv = createConversation({
+        id: 'c-more',
+        other_user: { id: 'u1', name: '더보기유저', role: 'OPS_ADMIN' },
+      });
+      const msgs = Array.from({ length: 3 }, (_, i) =>
+        createMessage({ id: `msg-${i}`, content: `메시지 ${i}` })
+      );
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult(msgs, true));
 
@@ -639,7 +790,10 @@ describe('MessagesClient', () => {
       });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
-      mockMarkConversationRead.mockResolvedValue({ success: false as const, error: '읽음처리 실패' });
+      mockMarkConversationRead.mockResolvedValue({
+        success: false as const,
+        error: '읽음처리 실패',
+      });
 
       await renderAndWait();
       await waitFor(() => expect(screen.getByText('읽음실패유저')).toBeInTheDocument());
@@ -657,7 +811,10 @@ describe('MessagesClient', () => {
   describe('sendMessage 예외 처리', () => {
     it('sendMessage 예외 발생 시 showErrorToast를 호출한다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c-exc', other_user: { id: 'u1', name: '예외유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c-exc',
+        other_user: { id: 'u1', name: '예외유저', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
       mockSendMessage.mockRejectedValue(new Error('네트워크 오류'));
@@ -686,7 +843,10 @@ describe('MessagesClient', () => {
       // createRetryHandler는 MessagesClient 내부에서 사용됨
       // 대화 선택 후 구독이 설정되는 경로를 통해 간접 커버
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c-retry', other_user: { id: 'u1', name: '재시도유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c-retry',
+        other_user: { id: 'u1', name: '재시도유저', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
 
@@ -719,7 +879,10 @@ describe('MessagesClient', () => {
   describe('appendMessageIfNew — 중복 방지', () => {
     it('동일 ID 메시지를 두 번 전송해도 한 번만 추가된다', async () => {
       const user = userEvent.setup();
-      const conv = createConversation({ id: 'c-dup', other_user: { id: 'u1', name: '중복유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c-dup',
+        other_user: { id: 'u1', name: '중복유저', role: 'OPS_ADMIN' },
+      });
       const msg = createMessage({ id: 'dup-msg', content: '중복 메시지' });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
@@ -763,7 +926,10 @@ describe('MessagesClient', () => {
   describe('URL ?conversation= 파라미터 — 목록에 없는 경우', () => {
     it('URL 파라미터 ID가 대화 목록에 없으면 자동 선택되지 않는다', async () => {
       mockGet.mockReturnValue('nonexistent-id');
-      const conv = createConversation({ id: 'c-other', other_user: { id: 'u1', name: '다른유저', role: 'OPS_ADMIN' } });
+      const conv = createConversation({
+        id: 'c-other',
+        other_user: { id: 'u1', name: '다른유저', role: 'OPS_ADMIN' },
+      });
       mockFetchConversations.mockResolvedValue(successConvResult([conv]));
 
       render(<MessagesClient />);
