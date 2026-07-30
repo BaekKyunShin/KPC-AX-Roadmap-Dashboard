@@ -9,16 +9,32 @@
 // 본 스펙은 전환 후 scrollY <= 100px 인지 검증한다.
 import { test, expect } from '@playwright/test';
 
+// ⚠️ **이 두 감시는 아직 잠들어 있다 — 데이터로도 화면 크기로도 살릴 수 없었다.**
+// (2026-07-30 계측) 두 폼 모두 아래로 스크롤할 여지가 없다:
+//   1280×720 → 여유 0px · 390×844 → 0px · 390×640 → 여전히 `beforeY < 100` 미달.
+// 로그인 전 화면이라 늘릴 목록도 없고, 더 낮추면 실제로 존재하지 않는 화면이 된다.
+//
+// 다만 **숨어 있던 진짜 결함 하나는 고쳤다**: 아래 역할 선택 로케이터가 실제 마크업과
+// 달라(버튼 ↔ 라디오) 폼 높이와 무관하게 항상 미노출 판정이 나고 있었다. 폼이 길어지면
+// (필드 추가 등) 이 감시는 별도 수정 없이 자동으로 살아난다.
+
 test.describe('스크롤 위치 유지 — 인증 폼 상태 전환', () => {
   test('회원가입 Step1 → Step2 전환 시 페이지 최상단으로 스크롤', async ({ page }) => {
     await page.goto('/register');
     await page.waitForLoadState('networkidle');
 
-    // 컨설턴트 가입 흐름 진입 (Step1 폼 노출)
-    const consultantButton = page.getByRole('button', { name: /컨설턴트/ }).first();
-    const hasConsultantButton = await consultantButton.isVisible().catch(() => false);
-    test.skip(!hasConsultantButton, '회원가입 역할 선택 버튼 미노출');
-    await consultantButton.click();
+    // 컨설턴트 가입 흐름 진입 (Step1 폼 노출).
+    //
+    // 가입 유형은 버튼이 아니라 **label 로 감싼 라디오**다(`register/page.tsx:443-468`).
+    // ① 이전에는 `getByRole('button')` 으로 찾아 항상 미노출 판정 → 감시가 통째로 skip 됐다.
+    // ② 그렇다고 라디오를 직접 클릭할 수도 없다 — `className="sr-only"` 로 시각적으로
+    //    숨겨져 있어 클릭이 타임아웃된다. 실사용자가 누르는 것도 카드(label)이다.
+    const consultantOption = page
+      .locator('label:has(input[type="radio"][value="CONSULTANT"])')
+      .first();
+    const hasConsultantOption = await consultantOption.isVisible().catch(() => false);
+    test.skip(!hasConsultantOption, '회원가입 역할 선택 카드 미노출');
+    await consultantOption.click();
 
     // Step1 필드 채우기 (라벨 기반 — 마크업 변경에 비교적 안전)
     const fillIfVisible = async (label: RegExp, value: string) => {
@@ -49,7 +65,7 @@ test.describe('스크롤 위치 유지 — 인증 폼 상태 전환', () => {
     const afterY = await page.evaluate(() => window.scrollY);
     expect(
       afterY,
-      `Step2 전환 후 scrollY 가 최상단(<=100) 이어야 함 (before=${beforeY}, after=${afterY})`,
+      `Step2 전환 후 scrollY 가 최상단(<=100) 이어야 함 (before=${beforeY}, after=${afterY})`
     ).toBeLessThan(100);
   });
 
@@ -78,7 +94,7 @@ test.describe('스크롤 위치 유지 — 인증 폼 상태 전환', () => {
     const afterY = await page.evaluate(() => window.scrollY);
     expect(
       afterY,
-      `메일 발송 후 scrollY 가 최상단(<=100) 이어야 함 (before=${beforeY}, after=${afterY})`,
+      `메일 발송 후 scrollY 가 최상단(<=100) 이어야 함 (before=${beforeY}, after=${afterY})`
     ).toBeLessThan(100);
   });
 });
