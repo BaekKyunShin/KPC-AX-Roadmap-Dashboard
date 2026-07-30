@@ -19,6 +19,17 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/consultant/projects/p1/pbl',
 }));
 
+// ShareToggle — Server Action 의존 모킹 (로드맵 테스트와 동일 패턴).
+// track 을 data 속성으로 노출해 **PBL 트랙으로 넘기는지**까지 단언한다.
+// 이게 없으면 PBL 화면이 로드맵 액션을 호출해도 테스트가 통과해 버린다.
+vi.mock('@/components/gallery/ShareToggle', () => ({
+  ShareToggle: ({ roadmapVersionId, track }: { roadmapVersionId: string; track?: string }) => (
+    <div data-testid="share-toggle" data-version-id={roadmapVersionId} data-track={track}>
+      ShareToggle Mock
+    </div>
+  ),
+}));
+
 import { PBLResultClient } from '../PBLResultClient';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
 import { createEmptyOutcomeAnalysis } from '@/lib/services/pbl/__fixtures__/empty-outcome-analysis';
@@ -904,5 +915,96 @@ describe('PBLResultClient — ?regenerate=open scroll timing (M-2)', () => {
     expect(routerReplaceMock).toHaveBeenCalledWith('/consultant/projects/p1/pbl', {
       scroll: false,
     });
+  });
+});
+
+/**
+ * #011 — PBL 결과 화면 갤러리 공유.
+ *
+ * 서버 액션(`togglePBLShare`)·DB 컬럼(`is_shared`)·갤러리 PBL 카드는 이미 있었고
+ * 화면만 없었다. 로드맵(`RoadmapResultClient`)과 **동일한 규칙**을 적용한다:
+ * FINAL 버전에서만, 컨설턴트는 토글 / Ops 는 읽기 전용 배지.
+ */
+describe('PBLResultClient — 갤러리 공유 (#011)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('role="CONSULTANT" + FINAL 이면 공유 토글이 PBL 트랙으로 노출된다', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ id: 'pbl-9', status: 'FINAL' })]}
+        selectedVersion={makeVersion({ id: 'pbl-9', status: 'FINAL' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
+
+    const toggle = screen.getByTestId('share-toggle');
+    expect(toggle).toBeInTheDocument();
+    // 로드맵 액션을 타면 서버에서 "보고서를 찾을 수 없다"로 실패한다 — 트랙 단언이 핵심.
+    expect(toggle).toHaveAttribute('data-track', 'PBL');
+    expect(toggle).toHaveAttribute('data-version-id', 'pbl-9');
+  });
+
+  it('DRAFT 상태에서는 공유 토글도 배지도 노출되지 않는다 (서버 가드와 동일 조건)', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('share-toggle')).toBeNull();
+    expect(screen.queryByText(/^갤러리 (공유됨|미공유)$/)).toBeNull();
+  });
+
+  it('role="OPS" + FINAL 은 읽기 전용 배지만 보고 토글은 볼 수 없다', () => {
+    render(
+      <PBLResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'FINAL', is_shared: true })]}
+        selectedVersion={makeVersion({ status: 'FINAL', is_shared: true })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('갤러리 공유됨')).toBeInTheDocument();
+    expect(screen.queryByTestId('share-toggle')).toBeNull();
+  });
+
+  it('role="OPS" + FINAL + is_shared=false 이면 "갤러리 미공유" 배지를 노출한다', () => {
+    render(
+      <PBLResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'FINAL', is_shared: false })]}
+        selectedVersion={makeVersion({ status: 'FINAL', is_shared: false })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('갤러리 미공유')).toBeInTheDocument();
   });
 });

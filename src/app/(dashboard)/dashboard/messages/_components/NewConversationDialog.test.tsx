@@ -67,18 +67,8 @@ function createGroup(overrides: Partial<RecipientGroup> = {}): RecipientGroup {
   };
 }
 
-function renderDialog({
-  open = true,
-  onOpenChange = vi.fn(),
-  onCreated = vi.fn(),
-} = {}) {
-  render(
-    <NewConversationDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      onCreated={onCreated}
-    />,
-  );
+function renderDialog({ open = true, onOpenChange = vi.fn(), onCreated = vi.fn() } = {}) {
+  render(<NewConversationDialog open={open} onOpenChange={onOpenChange} onCreated={onCreated} />);
   return { onOpenChange, onCreated };
 }
 
@@ -90,7 +80,10 @@ describe('NewConversationDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetchAvailableRecipients.mockResolvedValue({ success: true, data: [] });
-    mockCreateConversation.mockResolvedValue({ success: true, data: { conversationId: 'conv-new' } });
+    mockCreateConversation.mockResolvedValue({
+      success: true,
+      data: { conversationId: 'conv-new' },
+    });
   });
 
   // ─── 다이얼로그 열기/닫기 ────────────────────────────────────────────
@@ -133,7 +126,11 @@ describe('NewConversationDialog', () => {
   describe('로딩 상태', () => {
     it('수신자 로드 중 스켈레톤이 표시된다', async () => {
       let resolve!: (value: unknown) => void;
-      mockFetchAvailableRecipients.mockReturnValue(new Promise((r) => { resolve = r; }));
+      mockFetchAvailableRecipients.mockReturnValue(
+        new Promise((r) => {
+          resolve = r;
+        })
+      );
 
       renderDialog();
 
@@ -183,8 +180,16 @@ describe('NewConversationDialog', () => {
 
     it('여러 그룹의 사용자가 모두 표시된다', async () => {
       const groups = [
-        createGroup({ role: 'OPS_ADMIN', role_label: '운영관리자', users: [{ id: 'u1', name: '운영자A' }] }),
-        createGroup({ role: 'CONSULTANT_APPROVED', role_label: '컨설턴트', users: [{ id: 'u2', name: '컨설턴트B' }] }),
+        createGroup({
+          role: 'OPS_ADMIN',
+          role_label: '운영관리자',
+          users: [{ id: 'u1', name: '운영자A' }],
+        }),
+        createGroup({
+          role: 'CONSULTANT_APPROVED',
+          role_label: '컨설턴트',
+          users: [{ id: 'u2', name: '컨설턴트B' }],
+        }),
       ];
       mockFetchAvailableRecipients.mockResolvedValue({ success: true, data: groups });
 
@@ -284,7 +289,10 @@ describe('NewConversationDialog', () => {
       const onCreated = vi.fn();
       const group = createGroup({ users: [{ id: 'u1', name: '성공유저' }] });
       mockFetchAvailableRecipients.mockResolvedValue({ success: true, data: [group] });
-      mockCreateConversation.mockResolvedValue({ success: true, data: { conversationId: 'conv-abc' } });
+      mockCreateConversation.mockResolvedValue({
+        success: true,
+        data: { conversationId: 'conv-abc' },
+      });
 
       renderDialog({ onCreated });
 
@@ -321,7 +329,11 @@ describe('NewConversationDialog', () => {
     it('생성 중 "메시지 준비 중..." 텍스트가 표시된다', async () => {
       const user = userEvent.setup();
       let resolveCreate!: (value: unknown) => void;
-      mockCreateConversation.mockReturnValue(new Promise((r) => { resolveCreate = r; }));
+      mockCreateConversation.mockReturnValue(
+        new Promise((r) => {
+          resolveCreate = r;
+        })
+      );
 
       const group = createGroup({ users: [{ id: 'u1', name: '준비중유저' }] });
       mockFetchAvailableRecipients.mockResolvedValue({ success: true, data: [group] });
@@ -343,7 +355,11 @@ describe('NewConversationDialog', () => {
     it('생성 중에는 사용자 버튼이 비활성화된다', async () => {
       const user = userEvent.setup();
       let resolveCreate!: (value: unknown) => void;
-      mockCreateConversation.mockReturnValue(new Promise((r) => { resolveCreate = r; }));
+      mockCreateConversation.mockReturnValue(
+        new Promise((r) => {
+          resolveCreate = r;
+        })
+      );
 
       const group = createGroup({ users: [{ id: 'u1', name: '비활유저' }] });
       mockFetchAvailableRecipients.mockResolvedValue({ success: true, data: [group] });
@@ -361,6 +377,109 @@ describe('NewConversationDialog', () => {
 
       // cleanup
       resolveCreate({ success: true, data: { conversationId: 'conv-1' } });
+    });
+  });
+
+  // ─── 생성 실패 안내 (#009) ──────────────────────────────────────────
+  //
+  // 기존에는 토스트만 띄웠다. 토스트는 몇 초 뒤 사라지므로 사용자가 다른 수신자를
+  // 고르는 사이 "왜 안 됐는지"가 화면에서 없어진다. 창 안에 사유를 남긴다.
+  // ⚠️ 다이얼로그를 닫지 않는 기존 정책은 그대로다(재선택 UX).
+
+  describe('생성 실패 안내 (#009)', () => {
+    const failingGroup = () => createGroup({ users: [{ id: 'u1', name: '실패유저' }] });
+
+    async function clickUserAndFail(errorMessage = '권한이 없는 사용자입니다.') {
+      const user = userEvent.setup();
+      mockFetchAvailableRecipients.mockResolvedValue({ success: true, data: [failingGroup()] });
+      mockCreateConversation.mockResolvedValue({ success: false, error: errorMessage });
+
+      const handles = renderDialog();
+      await waitFor(() => expect(screen.getByText('실패유저')).toBeInTheDocument());
+      await user.click(screen.getByText('실패유저'));
+
+      return { user, ...handles };
+    }
+
+    it('실패 사유가 창 안에 남는다', async () => {
+      await clickUserAndFail('권한이 없는 사용자입니다.');
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+      expect(screen.getByText('권한이 없는 사용자입니다.')).toBeInTheDocument();
+      expect(screen.getByText('다른 사용자를 선택해 다시 시도해주세요.')).toBeInTheDocument();
+    });
+
+    it('토스트도 기존대로 함께 표시된다', async () => {
+      await clickUserAndFail('권한이 없는 사용자입니다.');
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalledWith(
+          '메시지 생성 실패',
+          '권한이 없는 사용자입니다.'
+        );
+      });
+    });
+
+    // 특성화 — 실패 시 창을 닫지 않는 기존 정책을 고정한다.
+    it('실패해도 다이얼로그는 닫히지 않는다', async () => {
+      const { onOpenChange, onCreated } = await clickUserAndFail();
+
+      await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect(onCreated).not.toHaveBeenCalled();
+    });
+
+    it('닫기 버튼으로 안내를 지울 수 있다', async () => {
+      const { user } = await clickUserAndFail();
+
+      await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+      await user.click(screen.getByRole('button', { name: '오류 안내 닫기' }));
+
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('다른 사용자를 다시 고르면 이전 안내가 사라진다', async () => {
+      const user = userEvent.setup();
+      const group = createGroup({
+        users: [
+          { id: 'u1', name: '실패유저' },
+          { id: 'u2', name: '성공유저' },
+        ],
+      });
+      mockFetchAvailableRecipients.mockResolvedValue({ success: true, data: [group] });
+      mockCreateConversation.mockResolvedValue({ success: false, error: '권한이 없습니다.' });
+
+      renderDialog();
+      await waitFor(() => expect(screen.getByText('실패유저')).toBeInTheDocument());
+      await user.click(screen.getByText('실패유저'));
+      await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+
+      mockCreateConversation.mockResolvedValue({
+        success: true,
+        data: { conversationId: 'conv-ok' },
+      });
+      await user.click(screen.getByText('성공유저'));
+
+      await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    });
+
+    it('성공한 경우에는 안내가 표시되지 않는다', async () => {
+      const user = userEvent.setup();
+      const group = createGroup({ users: [{ id: 'u1', name: '성공유저' }] });
+      mockFetchAvailableRecipients.mockResolvedValue({ success: true, data: [group] });
+      mockCreateConversation.mockResolvedValue({
+        success: true,
+        data: { conversationId: 'conv-ok' },
+      });
+
+      const { onCreated } = renderDialog();
+      await waitFor(() => expect(screen.getByText('성공유저')).toBeInTheDocument());
+      await user.click(screen.getByText('성공유저'));
+
+      await waitFor(() => expect(onCreated).toHaveBeenCalledWith('conv-ok'));
+      expect(screen.queryByRole('alert')).toBeNull();
     });
   });
 });
