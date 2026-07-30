@@ -14,7 +14,15 @@
 //   → `scrollToY` 를 `behavior:'instant'` + 목표 clamp + 정착 대기로 고쳐 해결
 //     (실사용자의 휠 스크롤과 같은 조건). 상세는 helpers/scroll.helper.ts 주석 참조.
 import { test, expect } from '../fixtures/auth.fixture';
-import { isScrollable, scrollToY, expectScrollPreserved } from '../helpers/scroll.helper';
+import { isScrollable, scrollToRevealing, expectScrollPreserved } from '../helpers/scroll.helper';
+import { registerConsultantProjectSeed } from '../helpers/bulk-seed.helper';
+
+// 아래 두 번째 감시는 `?industry=IT/SW` 진입 시 목록이 2건이라 스크롤이 없어 skip 됐다.
+// 시드는 업종을 IT/SW·제조업으로 번갈아 만들므로 절반이 IT/SW 로 잡혀 목록이 길어진다.
+// (헬퍼 이름은 consultant 지만 `/ops/projects` 는 전체 프로젝트를 보여주므로 그대로 쓴다.
+//  created_at 이 2025년으로 고정돼 시드기업A~D 를 2페이지로 밀어내지 않는다 —
+//  `e2e/ops/projects-deeplink.spec.ts` 가 그 노출에 의존한다.)
+registerConsultantProjectSeed();
 
 test.describe('스크롤 위치 유지 — 운영 프로젝트 관리 필터', () => {
   test('업종 필터 변경 시 스크롤 위치 유지', async ({ opsPage: page }) => {
@@ -22,12 +30,14 @@ test.describe('스크롤 위치 유지 — 운영 프로젝트 관리 필터', (
     await page.waitForLoadState('networkidle');
 
     test.skip(!(await isScrollable(page)), '운영 프로젝트 시드 데이터 부족');
-    await scrollToY(page, 400);
+
+    const industryCombo = page.getByRole('combobox', { name: /업종/ });
+    await scrollToRevealing(page, industryCombo, 400);
 
     await expectScrollPreserved(
       page,
       async () => {
-        await page.getByRole('combobox', { name: /업종/ }).click();
+        await industryCombo.click();
         await page.getByRole('option').nth(1).click();
       },
       async () => {
@@ -55,15 +65,13 @@ test.describe('스크롤 위치 유지 — 운영 프로젝트 관리 필터', (
     await page.goto('/ops/projects?industry=IT%2FSW');
     await page.waitForLoadState('networkidle');
 
-    test.skip(
-      !(await isScrollable(page)),
-      '업종 필터 적용 후 목록이 2건이라 스크롤 불가 — 시드 확대 시 해소'
-    );
-    await scrollToY(page, 400);
+    test.skip(!(await isScrollable(page)), '업종 필터 적용 후 목록이 짧아 스크롤 불가');
 
     const resetButton = page.getByRole('button', { name: /초기화|리셋/ }).first();
     const hasReset = await resetButton.isVisible().catch(() => false);
     test.skip(!hasReset, '필터 초기화 버튼 미노출');
+
+    await scrollToRevealing(page, resetButton, 400);
 
     await expectScrollPreserved(
       page,
