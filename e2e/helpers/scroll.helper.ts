@@ -10,8 +10,16 @@ import { type Locator, type Page, expect } from '@playwright/test';
 const DEFAULT_TARGET_PX = 400;
 const DEFAULT_TOLERANCE_PX = 50;
 const MIN_SCROLLABLE_HEIGHT = 200;
-/** 클릭 대상을 뷰포트 상단에 딱 붙이지 않고 남겨 두는 여백 (sticky 헤더 등에 가리지 않도록) */
-const REVEAL_MARGIN_PX = 120;
+/**
+ * 클릭 대상을 뷰포트 상단에 딱 붙이지 않고 남겨 두는 여백.
+ *
+ * sticky 헤더(`globals.css` 의 `--sticky-top: 4rem` = 64px)에 가리면 Playwright 가
+ * 클릭 전 자동 스크롤을 해버리므로 그보다 커야 한다. 반대로 **너무 크면 스크롤 여지를
+ * 스스로 깎아 감시가 무력해진다** — 120px 이던 시절 상단 필터의 스크롤 여지가 50~65px
+ * 밖에 남지 않아, `{ scroll: false }` 를 지워도 점프 폭이 허용 오차(50px) 안에 들어
+ * 결함 주입 테스트가 통과해 버렸다(2026-07-30 계측). 64px + 최소 여유로 잡는다.
+ */
+const REVEAL_MARGIN_PX = 72;
 
 /**
  * 페이지가 충분히 스크롤 가능한 분량을 가졌는지 확인.

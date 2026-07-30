@@ -155,6 +155,194 @@ export function registerGallerySeed(count = 24): void {
   });
 }
 
+// ─── 공지사항 ──────────────────────────────────────────────────────────────────
+
+/** 태그가 붙은 시드 공지를 제거한다. 첨부(`notice_attachments`)는 CASCADE. */
+export async function purgeSeededNotices(): Promise<void> {
+  const { error } = await supabase.from('notices').delete().like('title', `${SEED_TAG}%`);
+  if (error) {
+    throw new Error(`[purgeSeededNotices] 정리 실패: ${error.message}`);
+  }
+}
+
+/**
+ * 공지를 `count` 개 만든다.
+ *
+ * 목록은 `per_page=10`(`notices/page.tsx:49`)이므로 **24개**면 2페이지도 가득 차
+ * 페이지네이션 감시까지 살아난다. 13개처럼 애매한 수는 2페이지가 짧아져 다시 skip 된다.
+ */
+export async function seedNotices(count: number, authorId: string): Promise<string[]> {
+  await purgeSeededNotices();
+
+  const rows = Array.from({ length: count }, (_, i) => ({
+    title: `${SEED_TAG} 공지 ${String(i + 1).padStart(2, '0')}`,
+    body: `스크롤 회귀 감시를 위한 시드 공지 본문입니다. (${i + 1}번)`,
+    author_id: authorId,
+    created_at: seedCreatedAt(i),
+  }));
+
+  const { data, error } = await supabase.from('notices').insert(rows).select('id');
+  if (error || !data || data.length !== count) {
+    throw new Error(`[seedNotices] 생성 실패: ${error?.message ?? '개수 불일치'}`);
+  }
+  return data.map((r) => r.id as string);
+}
+
+/** 공지 시드의 생성·정리를 현재 파일에 등록한다. spec 최상단에서 한 번 호출. */
+export function registerNoticeSeed(count = 24): void {
+  test.beforeAll(async () => {
+    const authorId = await fetchUserIdByEmail(process.env.E2E_OPS_ADMIN_EMAIL);
+    await seedNotices(count, authorId);
+  });
+
+  test.afterAll(async () => {
+    await purgeSeededNotices();
+  });
+}
+
+// ─── 감사 로그 ─────────────────────────────────────────────────────────────────
+
+/**
+ * 시드 감사 로그 식별자 — `target_type` 에 태그를 넣어 정리 기준으로 쓴다.
+ *
+ * spec 에서도 쓴다: 감사 화면의 "필터 초기화" 버튼은 `hasFilters` 가
+ * `action||target||user||start||end` 일 때만 렌더되고 **`search` 는 포함되지 않는다**
+ * (`AuditLogClient.tsx:328`). 그래서 초기화 감시는 `?target=<이 값>` 으로 진입해야 한다.
+ */
+export const AUDIT_TARGET_TYPE = `${SEED_TAG}대상`;
+
+/** 태그가 붙은 시드 감사 로그를 제거한다. */
+export async function purgeSeededAuditLogs(): Promise<void> {
+  const { error } = await supabase.from('audit_logs').delete().eq('target_type', AUDIT_TARGET_TYPE);
+  if (error) {
+    throw new Error(`[purgeSeededAuditLogs] 정리 실패: ${error.message}`);
+  }
+}
+
+/**
+ * 감사 로그를 `count` 개 만든다. `AUDIT_PAGE_SIZE=20` 이므로 40개면 2페이지가 찬다.
+ *
+ * `actor_user_id` 를 **한 사람으로 통일하는 것이 중요하다** — 감사 로그 검색은 서버가
+ * 아니라 클라이언트에서 `actor.name`/`actor.email`/`target_id` 로 필터한다
+ * (`AuditLogClient.tsx:228-233`). 작성자를 통일해 두면 spec 이 그 이메일로 검색해 목록을
+ * 남길 수 있고, 결과가 0건이 되어 문서가 짧아지는 바람에 감시가 다시 skip 되는 일을 막는다.
+ *
+ * `actor_user_id` 는 FK `ON DELETE RESTRICT` 이므로 **기존 사용자를 재사용**한다.
+ */
+export async function seedAuditLogs(count: number, actorId: string): Promise<void> {
+  await purgeSeededAuditLogs();
+
+  const rows = Array.from({ length: count }, (_, i) => ({
+    actor_user_id: actorId,
+    action: 'PROJECT_UPDATE' as const,
+    target_type: AUDIT_TARGET_TYPE,
+    // target_id 는 UUID NOT NULL — 실제 행을 가리키지 않아도 스키마상 문제없다
+    target_id: crypto.randomUUID(),
+    meta: { seed: SEED_TAG, index: i + 1 },
+    success: true,
+    created_at: seedCreatedAt(i),
+  }));
+
+  const { error } = await supabase.from('audit_logs').insert(rows);
+  if (error) {
+    throw new Error(`[seedAuditLogs] 생성 실패: ${error.message}`);
+  }
+}
+
+/** 감사 로그 시드의 생성·정리를 현재 파일에 등록한다. */
+export function registerAuditLogSeed(count = 40): void {
+  test.beforeAll(async () => {
+    const actorId = await fetchUserIdByEmail(process.env.E2E_OPS_ADMIN_EMAIL);
+    await seedAuditLogs(count, actorId);
+  });
+
+  test.afterAll(async () => {
+    await purgeSeededAuditLogs();
+  });
+}
+
+// ─── 더미 컨설턴트 (사용자 관리 목록) ──────────────────────────────────────────
+
+/**
+ * 시드 컨설턴트 이메일 접두. 실 사용자·다른 spec 의 더미와 구분된다
+ * (`dummy-user.helper.ts` 는 `e2e-dummy-consultant@e2e.local` 하나만 쓴다).
+ */
+const CONSULTANT_EMAIL_PREFIX = 'e2e-scroll-consultant-';
+
+/**
+ * 접두가 붙은 더미 컨설턴트를 전량 제거한다.
+ *
+ * `public.users` → `auth.users` 순서를 지켜야 한다(FK). `consultant_profiles` 는 CASCADE.
+ */
+export async function purgeSeededConsultants(): Promise<void> {
+  const { data: rows, error } = await supabase
+    .from('users')
+    .select('id')
+    .like('email', `${CONSULTANT_EMAIL_PREFIX}%`);
+  if (error) {
+    throw new Error(`[purgeSeededConsultants] 조회 실패: ${error.message}`);
+  }
+
+  for (const row of rows ?? []) {
+    const id = row.id as string;
+    await supabase.from('notifications').delete().eq('user_id', id);
+    await supabase.from('projects').delete().eq('assigned_consultant_id', id);
+    await supabase.from('users').delete().eq('id', id);
+    await supabase.auth.admin.deleteUser(id);
+  }
+}
+
+/**
+ * 승인된 더미 컨설턴트를 `count` 명 만든다.
+ *
+ * 사용자 관리 목록은 운영관리자에게 **컨설턴트 역할만** 보여주므로
+ * (`OPS_ADMIN_MANAGEABLE_ROLES = CONSULTANT_ROLES`) 역할을 `CONSULTANT_APPROVED` 로 둔다.
+ * `public.users` 는 `auth.users(id)` 를 참조하므로 양쪽을 함께 만들어야 한다
+ * (auto-sync 트리거는 없다 — `dummy-user.helper.ts:9` 와 같은 이유).
+ */
+export async function seedConsultants(count: number): Promise<string[]> {
+  await purgeSeededConsultants();
+
+  const ids: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const email = `${CONSULTANT_EMAIL_PREFIX}${String(i + 1).padStart(2, '0')}@e2e.local`;
+    const created = await supabase.auth.admin.createUser({
+      email,
+      password: 'dummy-e2e-pw-!1',
+      email_confirm: true,
+    });
+    if (created.error || !created.data.user) {
+      throw new Error(`[seedConsultants] auth 생성 실패(${email}): ${created.error?.message}`);
+    }
+    const id = created.data.user.id;
+
+    const { error } = await supabase.from('users').insert({
+      id,
+      email,
+      name: `${SEED_TAG}컨설턴트${String(i + 1).padStart(2, '0')}`,
+      role: 'CONSULTANT_APPROVED',
+      status: 'ACTIVE',
+    });
+    if (error) {
+      await supabase.auth.admin.deleteUser(id);
+      throw new Error(`[seedConsultants] public.users INSERT 실패(${email}): ${error.message}`);
+    }
+    ids.push(id);
+  }
+  return ids;
+}
+
+/** 더미 컨설턴트 시드의 생성·정리를 현재 파일에 등록한다. */
+export function registerConsultantSeed(count = 12): void {
+  test.beforeAll(async () => {
+    await seedConsultants(count);
+  });
+
+  test.afterAll(async () => {
+    await purgeSeededConsultants();
+  });
+}
+
 /** 이메일로 사용자 ID 조회 — 시드 소유자 지정에 사용. */
 export async function fetchUserIdByEmail(email: string | undefined): Promise<string> {
   if (!email) {
