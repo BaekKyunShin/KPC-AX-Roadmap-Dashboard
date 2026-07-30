@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { MessageSquare } from 'lucide-react';
+import { AlertTriangle, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
@@ -48,7 +48,10 @@ function createRetryHandler(resubscribe: () => void, state: RealtimeRetryState) 
     } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
       if (state.isMounted && state.retryCount < MAX_REALTIME_RETRIES) {
         state.retryCount++;
-        const delay = Math.min(REALTIME_RETRY_BASE_MS * 2 ** state.retryCount, REALTIME_RETRY_MAX_MS);
+        const delay = Math.min(
+          REALTIME_RETRY_BASE_MS * 2 ** state.retryCount,
+          REALTIME_RETRY_MAX_MS
+        );
         state.retryTimer = setTimeout(resubscribe, delay);
       }
     }
@@ -63,6 +66,11 @@ export default function MessagesClient() {
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  /**
+   * #010 — 목록 조회 자체가 실패했는지. 이걸 구분하지 않으면 네트워크 오류가
+   * "아직 메시지가 없습니다" 빈 상태와 똑같이 보여 사용자가 대화가 없는 줄 오해한다.
+   */
+  const [loadError, setLoadError] = useState(false);
   const [isMessagesLoading, setIsMessagesLoading] = useState(false);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const [showMobileThread, setShowMobileThread] = useState(false);
@@ -99,7 +107,7 @@ export default function MessagesClient() {
   /** 대화 목록에서 안읽음 플래그 해제 */
   const clearUnreadFlag = (convId: string) => {
     setConversations((prev) =>
-      prev.map((c) => (c.id === convId ? { ...c, has_unread: false } : c)),
+      prev.map((c) => (c.id === convId ? { ...c, has_unread: false } : c))
     );
   };
 
@@ -132,7 +140,9 @@ export default function MessagesClient() {
       await markConversationRead(convId);
       window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
     } finally {
-      setTimeout(() => { markingReadRef.current = false; }, MARK_READ_COOLDOWN_MS);
+      setTimeout(() => {
+        markingReadRef.current = false;
+      }, MARK_READ_COOLDOWN_MS);
     }
   };
 
@@ -151,6 +161,7 @@ export default function MessagesClient() {
 
     fetchConversations().then(async (result) => {
       if (!result.success) {
+        setLoadError(true);
         setIsLoading(false);
         return;
       }
@@ -166,6 +177,9 @@ export default function MessagesClient() {
         if (msgResult.success) {
           setMessages(msgResult.data.messages);
           setHasMore(msgResult.data.hasMore);
+        } else {
+          // 목록은 떴는데 이 대화만 못 읽은 경우 — 스레드가 빈 채로 열려 원인을 알 수 없었다.
+          showErrorToast('메시지 로드 실패', msgResult.error);
         }
 
         await markReadDirect(initialConvId);
@@ -175,6 +189,21 @@ export default function MessagesClient() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
   }, [initialConvId]);
+
+  /** #010 — 에러 화면의 "다시 시도". 목록만 재조회한다(자동 선택은 최초 1회 동작). */
+  const handleRetryLoad = async () => {
+    setLoadError(false);
+    setIsLoading(true);
+
+    const result = await fetchConversations();
+    if (result.success) {
+      setConversations(result.data);
+    } else {
+      setLoadError(true);
+    }
+
+    setIsLoading(false);
+  };
 
   // 목록 새로고침 (이벤트 핸들러에서 호출)
   const refreshConversations = async () => {
@@ -204,6 +233,9 @@ export default function MessagesClient() {
       if (result.success) {
         setMessages(result.data.messages);
         setHasMore(result.data.hasMore);
+      } else {
+        // throw 가 아닌 구조적 실패(권한·삭제 등)도 사용자에게 알린다.
+        showErrorToast('메시지 로드 실패', result.error);
       }
 
       await markReadDirect(convId);
@@ -289,7 +321,9 @@ export default function MessagesClient() {
       if (!retryState.isMounted) return;
 
       // 인증 세션 대기 — Realtime RLS 정책 통과에 필요
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!retryState.isMounted || !user) return;
       currentUserIdRef.current = user.id;
 
@@ -315,7 +349,7 @@ export default function MessagesClient() {
 
             appendMessageIfNew(newMsg);
             markReadIfNeeded(convId);
-          },
+          }
         )
         .subscribe((status) => {
           realtimeActiveRef.current = status === 'SUBSCRIBED';
@@ -343,7 +377,9 @@ export default function MessagesClient() {
       if (!retryState.isMounted) return;
 
       // 인증 세션 대기 — Realtime RLS 정책 통과에 필요
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!retryState.isMounted || !user) return;
       currentUserIdRef.current = user.id;
 
@@ -362,7 +398,7 @@ export default function MessagesClient() {
 
             // 목록 프리뷰 갱신 (모든 대화 공통)
             refreshConversations();
-          },
+          }
         )
         .subscribe(createRetryHandler(subscribeAll, retryState));
     }
@@ -424,6 +460,19 @@ export default function MessagesClient() {
 
   const selectedConv = conversations.find((c) => c.id === selectedConvId);
 
+  // 로드 실패 (#010) — 아래 빈 상태보다 **먼저** 검사한다.
+  // 실패하면 conversations 가 [] 로 남아 빈 상태 조건도 동시에 참이 되기 때문이다.
+  if (!isLoading && loadError) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-amber-500" />}
+        title="메시지를 불러오지 못했습니다"
+        description="잠시 후 다시 시도해주세요. 계속되면 운영팀에 문의해주세요."
+        action={<Button onClick={() => void handleRetryLoad()}>다시 시도</Button>}
+      />
+    );
+  }
+
   // 빈 상태
   if (!isLoading && conversations.length === 0 && !isNewDialogOpen) {
     return (
@@ -432,11 +481,7 @@ export default function MessagesClient() {
           icon={<MessageSquare className="mx-auto h-12 w-12 text-gray-400" />}
           title="아직 메시지가 없습니다"
           description="멤버에게 새 메시지를 보내보세요."
-          action={
-            <Button onClick={() => setIsNewDialogOpen(true)}>
-              새 메시지 보내기
-            </Button>
-          }
+          action={<Button onClick={() => setIsNewDialogOpen(true)}>새 메시지 보내기</Button>}
         />
         <NewConversationDialog
           open={isNewDialogOpen}
@@ -453,7 +498,7 @@ export default function MessagesClient() {
       <div
         className={cn(
           'w-full md:w-80 lg:w-96 border-r flex flex-col',
-          showMobileThread ? 'hidden md:flex' : 'flex',
+          showMobileThread ? 'hidden md:flex' : 'flex'
         )}
       >
         <ConversationList
@@ -467,12 +512,7 @@ export default function MessagesClient() {
       </div>
 
       {/* 우측: 메시지 영역 (모바일에서는 thread 표시 시 전체 화면) */}
-      <div
-        className={cn(
-          'flex-1 flex flex-col',
-          showMobileThread ? 'flex' : 'hidden md:flex',
-        )}
-      >
+      <div className={cn('flex-1 flex flex-col', showMobileThread ? 'flex' : 'hidden md:flex')}>
         {selectedConv ? (
           <MessageThread
             conversation={selectedConv}

@@ -1,13 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Search, Users } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { AlertTriangle, Loader2, Search, Users, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { fetchAvailableRecipients, createConversation } from '../actions';
@@ -39,6 +34,11 @@ export default function NewConversationDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  /**
+   * #009 — 생성 실패 사유. 토스트는 몇 초 뒤 사라져 사용자가 다른 수신자를
+   * 고르는 사이 원인이 화면에서 없어진다. 창 안에 남겨 둔다.
+   */
+  const [createError, setCreateError] = useState<string | null>(null);
 
   // 다이얼로그 열릴 때 수신자 목록 로드 (open prop 변경 감지)
   useEffect(() => {
@@ -56,7 +56,10 @@ export default function NewConversationDialog({
 
   // 닫힐 때 검색어 초기화 (이벤트 핸들러)
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) setSearchQuery('');
+    if (!newOpen) {
+      setSearchQuery('');
+      setCreateError(null);
+    }
     onOpenChange(newOpen);
   };
 
@@ -64,16 +67,20 @@ export default function NewConversationDialog({
     if (isCreating) return;
 
     setIsCreating(true);
+    // 다시 시도하는 것이므로 이전 실패 안내를 먼저 지운다.
+    setCreateError(null);
     try {
       const result = await createConversation(userId);
 
       if (result.success) {
         onCreated(result.data.conversationId);
       } else {
+        setCreateError(result.error);
         showErrorToast('메시지 생성 실패', result.error);
       }
     } catch (err) {
       console.error('[handleSelectUser]', err);
+      setCreateError(TOAST_ERROR.NETWORK);
       showErrorToast('메시지 전송 실패', TOAST_ERROR.NETWORK);
     } finally {
       setIsCreating(false);
@@ -84,9 +91,7 @@ export default function NewConversationDialog({
   const filteredGroups = groups
     .map((group) => ({
       ...group,
-      users: group.users.filter((u) =>
-        u.name.toLowerCase().includes(searchQuery.toLowerCase()),
-      ),
+      users: group.users.filter((u) => u.name.toLowerCase().includes(searchQuery.toLowerCase())),
     }))
     .filter((group) => group.users.length > 0);
 
@@ -96,6 +101,28 @@ export default function NewConversationDialog({
         <DialogHeader>
           <DialogTitle>새 메시지</DialogTitle>
         </DialogHeader>
+
+        {/* 생성 실패 안내 (#009) — 토스트와 달리 다음 시도 전까지 남는다 */}
+        {createError && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" aria-hidden="true" />
+            <div className="flex-1 space-y-0.5">
+              <p className="text-sm font-medium">{createError}</p>
+              <p className="text-xs text-red-600">다른 사용자를 선택해 다시 시도해주세요.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCreateError(null)}
+              aria-label="오류 안내 닫기"
+              className="shrink-0 rounded p-0.5 text-red-600 transition-colors hover:bg-red-100 hover:text-red-800"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        )}
 
         {/* 검색 */}
         <div className="relative">
@@ -149,7 +176,10 @@ export default function NewConversationDialog({
                     </span>
                     <Badge
                       variant="outline"
-                      className={cn('text-[10px] px-1.5 py-0 shrink-0', ROLE_BADGE_STYLES[group.role] || '')}
+                      className={cn(
+                        'text-[10px] px-1.5 py-0 shrink-0',
+                        ROLE_BADGE_STYLES[group.role] || ''
+                      )}
                     >
                       {group.role_label}
                     </Badge>

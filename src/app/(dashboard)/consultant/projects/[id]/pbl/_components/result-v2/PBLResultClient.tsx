@@ -24,6 +24,8 @@ import { DownloadButtonGroup, type DownloadType } from '@/components/result/Down
 import { ResultTabs, type ResultTabItem } from '@/components/result/ResultTabs';
 import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
 import RoadmapLoadingOverlay from '@/components/roadmap/RoadmapLoadingOverlay';
+import { ShareToggle } from '@/components/gallery/ShareToggle';
+import { ShareStatusBadge } from '@/components/gallery/ShareStatusBadge';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
 import { PBL_ELIGIBLE_STATUSES } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
@@ -43,24 +45,33 @@ import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
  *
  * 탭 구성(4): Ⅰ 개요 / Ⅱ 요구분석 / Ⅲ 훈련과제 도출 / Ⅳ 운영계획.
  * (성과분석 측정지표는 Ⅳ-2 로 이동 — 구 Ⅴ 성과분석 탭 삭제.)
- * OPS role: 편집·재생성 차단. ShareToggle 은 PBL 도메인에 노출 않음 (OpsPBLClient 기존 동작과 일치).
+ * OPS role: 편집·재생성 차단. 공유는 읽기 전용 배지만 노출한다(로드맵과 동일 규칙).
  */
 
 export type PBLResultClientRole = 'CONSULTANT' | 'OPS';
 
+/**
+ * 공유 컨트롤 노출 방식 — 로드맵(`RoadmapResultClient`)과 동일한 규칙.
+ * 작성 주체인 컨설턴트만 조작 가능하고, Ops 는 상태만 확인한다.
+ */
+type ShareControl = 'toggle' | 'badge';
+
 interface RoleCapabilities {
   canEdit: boolean;
   showRegenerate: boolean;
+  shareControl: ShareControl;
 }
 
 const ROLE_CAPABILITIES: Record<PBLResultClientRole, RoleCapabilities> = {
   CONSULTANT: {
     canEdit: true,
     showRegenerate: true,
+    shareControl: 'toggle',
   },
   OPS: {
     canEdit: false,
     showRegenerate: false,
+    shareControl: 'badge',
   },
 };
 
@@ -287,6 +298,18 @@ export function PBLResultClient({
                 {isFinalizing ? '확정 중...' : '최종 확정'}
               </Button>
             )}
+            {/* FINAL 버전: 작성 컨설턴트는 공유 토글, Ops 는 읽기 전용 상태 배지 */}
+            {isFinal &&
+              selectedVersion &&
+              (capabilities.shareControl === 'toggle' ? (
+                <ShareToggle
+                  roadmapVersionId={selectedVersion.id}
+                  initialShared={selectedVersion.is_shared ?? false}
+                  track="PBL"
+                />
+              ) : (
+                <ShareStatusBadge isShared={selectedVersion.is_shared ?? false} />
+              ))}
           </div>
           <DownloadButtonGroup
             onDownload={handleDownload}
