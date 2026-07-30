@@ -155,6 +155,87 @@ export function registerGallerySeed(count = 24): void {
   });
 }
 
+// ─── 컨설턴트 담당 프로젝트 ────────────────────────────────────────────────────
+
+/** 컨설턴트 담당 프로젝트 시드의 상태 — 배정 완료가 자연스러운 기본값. */
+export const CONSULTANT_PROJECT_STATUS = 'ASSIGNED';
+
+/**
+ * 컨설턴트에게 **배정된** 프로젝트를 `count` 개 만든다.
+ *
+ * `seedGalleryItems` 와 달리 `assigned_consultant_id` 를 **채운다** — 컨설턴트 프로젝트
+ * 목록에 나타나야 그 화면의 스크롤 감시가 살아나기 때문이다. 대신 `created_at` 을 2025년으로
+ * 고정해 `findFirstLinkHref` 가 집는 "첫 프로젝트"(시드기업B)를 밀어내지 않는다 —
+ * 이 전제에 기대는 spec 이 9개 있다.
+ *
+ * 목록은 `created_at DESC` 정렬이고 **페이지네이션이 없다**
+ * (`consultant/projects/actions.ts:82`) → 개수를 늘리면 그만큼 문서가 길어진다.
+ * 상태 필터는 워크플로 단계 키가 아니라 **실제 status 값**을 그대로 쓴다(같은 파일 L76).
+ *
+ * ⚠️ **`project_assignments` 행이 없으면 목록에 나타나지 않는다.** 조회가
+ * `project_assignments!inner(...)` + `.eq('project_assignments.is_current', true)` 로
+ * **inner join** 하기 때문이다(같은 파일 L64-68). `projects` 만 만들면 12개를 넣어도
+ * 화면에는 기존 3건만 보인다(2026-07-30 계측으로 확인).
+ */
+export async function seedConsultantProjects(
+  count: number,
+  consultantId: string,
+  createdById: string
+): Promise<string[]> {
+  await purgeSeededProjects();
+
+  const rows = Array.from({ length: count }, (_, i) => ({
+    company_name: `${SEED_TAG}담당기업${String(i + 1).padStart(2, '0')}`,
+    industry: INDUSTRIES[i % INDUSTRIES.length],
+    company_size: '50~299명',
+    contact_name: `${SEED_TAG}담당자${i + 1}`,
+    contact_email: `scroll-consultant-proj-${i + 1}@e2e.local`,
+    status: CONSULTANT_PROJECT_STATUS,
+    track: 'ROADMAP',
+    assigned_consultant_id: consultantId,
+    created_by: createdById,
+    created_at: seedCreatedAt(i),
+  }));
+
+  const { data, error } = await supabase.from('projects').insert(rows).select('id');
+  if (error || !data || data.length !== count) {
+    throw new Error(`[seedConsultantProjects] 생성 실패: ${error?.message ?? '개수 불일치'}`);
+  }
+
+  // 배정 이력 — 위 주석 참고. projects 삭제 시 CASCADE 로 함께 사라진다.
+  const assignmentRows = data.map((p, i) => ({
+    project_id: p.id as string,
+    consultant_id: consultantId,
+    assigned_by: createdById,
+    assignment_reason: `${SEED_TAG} 스크롤 감시용 시드 배정`,
+    is_current: true,
+    assigned_at: seedCreatedAt(i),
+  }));
+
+  const { error: aErr } = await supabase.from('project_assignments').insert(assignmentRows);
+  if (aErr) {
+    await purgeSeededProjects();
+    throw new Error(`[seedConsultantProjects] 배정 이력 생성 실패: ${aErr.message}`);
+  }
+
+  return data.map((r) => r.id as string);
+}
+
+/** 컨설턴트 담당 프로젝트 시드의 생성·정리를 현재 파일에 등록한다. */
+export function registerConsultantProjectSeed(count = 12): void {
+  test.beforeAll(async () => {
+    const [consultantId, createdById] = await Promise.all([
+      fetchUserIdByEmail(process.env.E2E_CONSULTANT_EMAIL),
+      fetchUserIdByEmail(process.env.E2E_OPS_ADMIN_EMAIL),
+    ]);
+    await seedConsultantProjects(count, consultantId, createdById);
+  });
+
+  test.afterAll(async () => {
+    await purgeSeededProjects();
+  });
+}
+
 // ─── 공지사항 ──────────────────────────────────────────────────────────────────
 
 /** 태그가 붙은 시드 공지를 제거한다. 첨부(`notice_attachments`)는 CASCADE. */
