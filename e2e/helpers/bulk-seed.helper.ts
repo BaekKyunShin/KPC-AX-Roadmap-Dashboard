@@ -75,8 +75,8 @@ export async function purgeSeededProjects(): Promise<void> {
  * **`ownerId` 에 컨설턴트를 넘겨야** 그 필터에서도 목록이 남는다.
  *
  * `assigned_consultant_id` 는 **일부러 비운다** — 갤러리 조회가 쓰지 않는 값인데,
- * 채우면 컨설턴트 프로젝트 목록에 14건이 끼어들어 `findFirstLinkHref` 기반 spec 9개의
- * 전제를 흔든다.
+ * 채우면 컨설턴트 프로젝트 목록에 시드 전량이 끼어들어 `findFirstLinkHref` 기반
+ * spec 9개의 전제를 흔든다.
  *
  * @param count  생성 개수. 갤러리는 limit=12 라 2페이지까지 채우려면 24개가 필요하다
  * @param ownerId  `roadmap_versions.created_by` — 컨설턴트 사용자 ID
