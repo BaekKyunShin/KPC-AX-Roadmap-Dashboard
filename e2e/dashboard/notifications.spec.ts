@@ -1,8 +1,23 @@
 // e2e/dashboard/notifications.spec.ts
 // 알림 벨(NotificationBell) Popover E2E — 드롭다운 열림, 목록 렌더, 모두 읽음, 알림 클릭
 // Navbar 내 드롭다운 구조이므로 별도 페이지 없음
+import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures/auth.fixture';
 import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
+
+/**
+ * 헤더 알림 벨 — **컨테이너(`desktop-user-area`)로 범위를 좁혀서** 잡는다.
+ *
+ * `page.getByRole('button', { name: /알림/ })` 만으로는 팝오버가 열린 뒤 **목록의 알림 항목까지**
+ * 매칭된다. 항목 버튼의 접근성 이름은 제목+메시지 전체이므로, 거기에 "알림"이라는 단어가 든 알림이
+ * 하나라도 있으면 strict mode 위반으로 실패한다.
+ *
+ * 실제 사례(2026-07-30): `e2e/ops/consultant-reassignment.spec.ts` 가 남긴
+ * "프로젝트 배정 해제 — E2E재배정해제**알림**테스트 …" 알림 2건 때문에 3개가 매칭돼 flaky 가 났다.
+ * 안읽은 알림이 없으면 이 spec 은 스스로 skip 하므로 그동안 드러나지 않았다.
+ */
+const notificationBell = (page: Page) =>
+  page.getByTestId('desktop-user-area').getByRole('button', { name: /알림/ });
 
 test.describe('알림 Popover (Navbar)', () => {
   test('벨 버튼 클릭 → 드롭다운 열림 + 헤더 "알림" + 목록 또는 빈 상태', async ({
@@ -14,7 +29,7 @@ test.describe('알림 Popover (Navbar)', () => {
     await page.waitForLoadState('networkidle');
 
     // 벨 버튼 (aria-label에 "알림" 포함)
-    const bell = page.getByRole('button', { name: /알림/ });
+    const bell = notificationBell(page);
     await expect(bell).toBeVisible();
     await bell.click();
 
@@ -42,7 +57,7 @@ test.describe('알림 Popover (Navbar)', () => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
 
-    const bell = page.getByRole('button', { name: /알림/ });
+    const bell = notificationBell(page);
 
     // aria-label이 "알림 N개 안읽음" 형태면 안읽은 알림 존재
     const bellLabel = (await bell.getAttribute('aria-label')) ?? '';
@@ -70,18 +85,18 @@ test.describe('알림 Popover (Navbar)', () => {
     // OPS: 탭 노출
     await opsPage.goto('/dashboard');
     await opsPage.waitForLoadState('networkidle');
-    await opsPage.getByRole('button', { name: /알림/ }).click();
+    await notificationBell(opsPage).click();
 
     // OPS_NOTIFICATION_TABS에 정의된 탭이 Popover에 노출되는지 확인
     // 첫 탭 이름 "전체"로 smoke 확인
     await expect(
-      opsPage.locator('[role="dialog"]').getByRole('button', { name: /^전체$/ }),
+      opsPage.locator('[role="dialog"]').getByRole('button', { name: /^전체$/ })
     ).toBeVisible({ timeout: 5_000 });
 
     // 컨설턴트: 탭 미노출 (Popover 안에 "전체" 버튼이 없어야 함)
     await consultantPage.goto('/dashboard');
     await consultantPage.waitForLoadState('networkidle');
-    await consultantPage.getByRole('button', { name: /알림/ }).click();
+    await notificationBell(consultantPage).click();
     await consultantPage.waitForTimeout(500);
 
     const consultantHasTab = await consultantPage

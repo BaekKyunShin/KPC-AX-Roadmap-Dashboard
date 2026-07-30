@@ -14,9 +14,16 @@ describe('createNotificationSchema', () => {
     expect(createNotificationSchema.safeParse(validInput).success).toBe(true);
   });
 
-  it('link가 없어도 통과한다', () => {
+  // #012 — 이동 대상이 없는 알림은 클릭해도 아무 화면도 열리지 않아 사용자가 클릭
+  // 실패로 오해한다. 그래서 link 를 필수로 바꿨다(예전에는 optional 이었다).
+  it('link가 없으면 실패한다', () => {
     const { link: _link, ...withoutLink } = validInput;
-    expect(createNotificationSchema.safeParse(withoutLink).success).toBe(true);
+    expect(createNotificationSchema.safeParse(withoutLink).success).toBe(false);
+  });
+
+  it('link가 빈 문자열이면 실패한다', () => {
+    const result = createNotificationSchema.safeParse({ ...validInput, link: '' });
+    expect(result.success).toBe(false);
   });
 
   it('모든 알림 타입을 통과시킨다', () => {

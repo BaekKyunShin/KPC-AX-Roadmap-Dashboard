@@ -25,7 +25,7 @@ export interface ErrorToastOptions {
 export function showErrorToast(
   title: string,
   description?: string,
-  options?: ErrorToastOptions | ToastAction,
+  options?: ErrorToastOptions | ToastAction
 ) {
   const opts: { description?: string; action?: ToastAction; duration?: number } = {};
   if (description) opts.description = description;
@@ -48,6 +48,20 @@ export function showErrorToast(
  */
 export function showSuccessToast(title: string, description?: string) {
   toast.success(title, description ? { description } : undefined);
+}
+
+/**
+ * 정보 Toast 표시 — 성공도 실패도 아닌 상태 안내용.
+ *
+ * 에러가 아닌 안내에 `showErrorToast` 를 쓰면 사용자가 문제가 생긴 줄 오해한다.
+ * Sonner 를 컴포넌트에서 직접 부르지 않고 이 래퍼를 거치는 이유는 토스트 정책
+ * (duration·아이콘 등)을 한 곳에서 바꿀 수 있게 하기 위함이다.
+ *
+ * @param title - Toast 제목
+ * @param description - 상세 설명 (선택)
+ */
+export function showInfoToast(title: string, description?: string) {
+  toast.info(title, description ? { description } : undefined);
 }
 
 export interface ProgressStage {
@@ -185,10 +199,7 @@ export function showProgressToast(opts: ProgressToastOptions): ProgressToastHand
         // 사용자가 "다시 시도" 를 누를 시간을 보장 — 다른 action 없는 일반 에러는 sonner 기본 4초.
         errorOpts.duration = Infinity;
       }
-      toast.error(
-        errorTitle,
-        Object.keys(errorOpts).length > 0 ? errorOpts : undefined,
-      );
+      toast.error(errorTitle, Object.keys(errorOpts).length > 0 ? errorOpts : undefined);
     },
     dismiss() {
       stopTimers();

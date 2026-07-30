@@ -8,7 +8,14 @@ interface CreateNotificationParams {
   type: NotificationType;
   title: string;
   message: string;
-  link?: string;
+  /**
+   * 클릭 시 이동할 경로 — **필수**(#012).
+   *
+   * 알림을 눌렀을 때 갈 곳이 없으면 목록만 닫히고 아무 일도 일어나지 않아 사용자가
+   * 클릭 실패로 오해한다. optional 이던 시절에도 실제 호출처 10곳은 모두 값을 넣었으므로
+   * 필수로 바꿔 **새 알림 유형에서 빠뜨리면 컴파일이 막게** 한다.
+   */
+  link: string;
 }
 
 /**
@@ -53,13 +60,18 @@ interface AdminNotificationParams {
   type: NotificationType;
   title: string;
   message: string;
-  link?: string;
+  /** 클릭 시 이동할 경로 — **필수**. 근거는 `CreateNotificationParams.link` 참조(#012). */
+  link: string;
 }
 
 /**
  * 모든 운영관리자 + 시스템관리자에게 알림 생성
  * 프로젝트 진행 상태 알림에 사용한다.
  * 실패해도 메인 로직에 영향을 주지 않도록 에러를 로깅만 한다.
+ *
+ * ⚠️ `createNotification` 과 달리 이 함수는 **Zod 검증을 거치지 않는다**(bulk insert 경로).
+ * 따라서 `link` 누락은 위 `AdminNotificationParams` 가 필수로 선언해 **컴파일 시점에** 막는다 —
+ * 런타임 방어를 기대하지 말 것(#012).
  */
 export async function createNotificationForAdmins(params: AdminNotificationParams): Promise<void> {
   try {

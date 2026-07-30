@@ -35,12 +35,60 @@ vi.mock('@/lib/utils/consultant-home', () => ({
   formatRelativeTime: (date: string) => `${date} 기준`,
 }));
 
+const mockShowInfoToast = vi.fn();
+vi.mock('@/lib/utils/toast', () => ({
+  showInfoToast: (...args: unknown[]) => mockShowInfoToast(...args),
+}));
+
+// ─── Realtime (#008) ────────────────────────────────────────────────────────
+// `MessageIcon.test.tsx` 와 같은 방식. 구독 콜백·postgres 콜백을 밖으로 꺼내 두고
+// 테스트가 원하는 시점에 상태(SUBSCRIBED/CHANNEL_ERROR)와 INSERT 이벤트를 흘려 넣는다.
+// **기본값은 "구독 상태 통보 없음"** — 그 상태에서 기존 30초 polling 특성화 테스트가
+// 그대로 통과해야 한다(Realtime 을 얹으면서 폴백을 잃지 않았다는 증거).
+const mockGetUser = vi.fn();
+const mockRemoveChannel = vi.fn();
+let subscribeCallback: ((status: string) => void) | null = null;
+let postgresCallback: (() => void) | null = null;
+let channelName: string | null = null;
+let channelFilter: unknown = null;
+
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({
+    auth: {
+      getUser: (...args: unknown[]) => mockGetUser(...args),
+    },
+    channel: vi.fn((name: string) => {
+      channelName = name;
+      // 실제 supabase-js 는 `.on()` 과 `.subscribe()` 모두 **채널 자신**을 반환한다.
+      // 그래야 컴포넌트가 `channelRef.current` 에 채널을 담고 unmount 때 정리할 수 있다.
+      const channel = {
+        on: vi.fn((_event: string, filter: unknown, cb: () => void) => {
+          channelFilter = filter;
+          postgresCallback = cb;
+          return {
+            subscribe: vi.fn((statusCb: (status: string) => void) => {
+              subscribeCallback = statusCb;
+              return channel;
+            }),
+          };
+        }),
+      };
+      return channel;
+    }),
+    removeChannel: mockRemoveChannel,
+  }),
+}));
+
 // Popover를 순수 상태 기반 mock으로 대체
 vi.mock('@/components/ui/popover', async () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require('react');
 
-  function Popover({ children, open, onOpenChange }: {
+  function Popover({
+    children,
+    open,
+    onOpenChange,
+  }: {
     children: React.ReactNode;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -68,11 +116,7 @@ vi.mock('@/components/ui/popover', async () => {
       },
     };
 
-    return React.createElement(
-      PopoverContext.Provider,
-      { value: contextValue },
-      children
-    );
+    return React.createElement(PopoverContext.Provider, { value: contextValue }, children);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,16 +127,14 @@ vi.mock('@/components/ui/popover', async () => {
     open: () => {},
   });
 
-  function PopoverTrigger({ children, asChild }: {
-    children: React.ReactNode;
-    asChild?: boolean;
-  }) {
+  function PopoverTrigger({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) {
     const ctx = React.useContext(PopoverContext);
     if (asChild && React.isValidElement(children)) {
       return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
         onClick: (...args: unknown[]) => {
           ctx.toggle();
-          const originalOnClick = (children as React.ReactElement<Record<string, unknown>>).props.onClick;
+          const originalOnClick = (children as React.ReactElement<Record<string, unknown>>).props
+            .onClick;
           if (typeof originalOnClick === 'function') {
             originalOnClick(...args);
           }
@@ -102,7 +144,10 @@ vi.mock('@/components/ui/popover', async () => {
     return React.createElement('button', { onClick: ctx.toggle }, children);
   }
 
-  function PopoverContent({ children, ...props }: {
+  function PopoverContent({
+    children,
+    ...props
+  }: {
     children: React.ReactNode;
     align?: string;
     sideOffset?: number;
@@ -179,9 +224,19 @@ describe('NotificationBell', () => {
     vi.stubGlobal(
       'requestAnimationFrame',
       (cb: FrameRequestCallback) =>
-        setTimeout(() => cb(typeof performance !== 'undefined' ? performance.now() : 0), 0) as unknown as number,
+        setTimeout(
+          () => cb(typeof performance !== 'undefined' ? performance.now() : 0),
+          0
+        ) as unknown as number
     );
     vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id));
+    // Realtime — 인증은 성공하지만 구독 **상태 통보는 아직 없는** 상태로 시작한다.
+    // (SUBSCRIBED 를 흘리면 폴백 polling 이 중단되므로 기존 특성화 테스트가 깨진다.)
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
+    subscribeCallback = null;
+    postgresCallback = null;
+    channelName = null;
+    channelFilter = null;
   });
 
   afterEach(() => {
@@ -289,7 +344,9 @@ describe('NotificationBell', () => {
       // fetchNotifications가 아직 resolve 안 된 상태를 유지
       let resolvePromise!: (value: unknown) => void;
       mockFetchNotifications.mockReturnValue(
-        new Promise((resolve) => { resolvePromise = resolve; })
+        new Promise((resolve) => {
+          resolvePromise = resolve;
+        })
       );
 
       const user = userEvent.setup();
@@ -392,6 +449,54 @@ describe('NotificationBell', () => {
       expect(mockPush).not.toHaveBeenCalled();
     });
 
+    // #012 — 목록만 닫히고 아무 일도 없으면 사용자가 클릭 실패로 오해한다.
+    // (`/notifications` 는 Server Action 만 있고 페이지가 없어 그리로 보낼 수 없다.)
+    it('알림 클릭 시 link가 없으면 안내 토스트가 표시된다', async () => {
+      const notification = createNotification({
+        id: 'n1',
+        title: '링크 없는 알림',
+        link: undefined,
+        is_read: true,
+      });
+      mockFetchNotifications.mockResolvedValue(createSuccessResult([notification]));
+
+      const user = userEvent.setup();
+      renderBell();
+      await user.click(screen.getByLabelText('알림'));
+
+      await waitFor(() => {
+        expect(screen.getByText('링크 없는 알림')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('링크 없는 알림'));
+      expect(mockShowInfoToast).toHaveBeenCalledWith(
+        '이동할 화면이 없는 알림입니다',
+        expect.any(String)
+      );
+    });
+
+    it('알림 클릭 시 link가 있으면 안내 토스트가 표시되지 않는다', async () => {
+      const notification = createNotification({
+        id: 'n1',
+        title: '배정 알림',
+        link: '/consultant/projects/p1',
+        is_read: true,
+      });
+      mockFetchNotifications.mockResolvedValue(createSuccessResult([notification]));
+
+      const user = userEvent.setup();
+      renderBell();
+      await user.click(screen.getByLabelText('알림'));
+
+      await waitFor(() => {
+        expect(screen.getByText('배정 알림')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('배정 알림'));
+      expect(mockPush).toHaveBeenCalledWith('/consultant/projects/p1');
+      expect(mockShowInfoToast).not.toHaveBeenCalled();
+    });
+
     it('안읽은 알림 클릭 시 unreadCount가 감소한다', async () => {
       const notification = createNotification({ id: 'n1', title: '배정 알림', is_read: false });
       mockFetchNotifications.mockResolvedValue(createSuccessResult([notification]));
@@ -460,9 +565,7 @@ describe('NotificationBell', () => {
     });
 
     it('"모두 읽음" 성공 시 unreadCount가 0이 된다', async () => {
-      const notifications = [
-        createNotification({ id: 'n1', is_read: false, title: '알림1' }),
-      ];
+      const notifications = [createNotification({ id: 'n1', is_read: false, title: '알림1' })];
       mockFetchNotifications.mockResolvedValue(createSuccessResult(notifications));
 
       const user = userEvent.setup();
@@ -694,9 +797,7 @@ describe('NotificationBell', () => {
       );
       expect(screen.getByText('1')).toBeInTheDocument();
 
-      rerender(
-        <NotificationBell initialUnreadCount={5} userRole="CONSULTANT_APPROVED" />
-      );
+      rerender(<NotificationBell initialUnreadCount={5} userRole="CONSULTANT_APPROVED" />);
       expect(screen.getByText('5')).toBeInTheDocument();
     });
   });
@@ -844,7 +945,7 @@ describe('NotificationBell', () => {
       // 탭 전환 시도
       const tabs = await screen.findAllByRole('button');
       // 탭 버튼 찾기
-      const tabButton = tabs.find(b => b.textContent?.includes('PROJECT'));
+      const tabButton = tabs.find((b) => b.textContent?.includes('PROJECT'));
       if (tabButton) {
         await user.click(tabButton);
       }
@@ -856,7 +957,11 @@ describe('NotificationBell', () => {
   describe('markAllNotificationsRead 실패 분기', () => {
     it('모두 읽음 실패 시 알림 상태가 변경되지 않는다', async () => {
       // Line 176: if (result.success) false 분기 커버 (handleMarkAllRead)
-      const notification = createNotification({ id: 'n1', title: '읽지 않은 알림', is_read: false });
+      const notification = createNotification({
+        id: 'n1',
+        title: '읽지 않은 알림',
+        is_read: false,
+      });
       mockFetchNotifications.mockResolvedValue(createSuccessResult([notification]));
       mockMarkAllNotificationsRead.mockResolvedValue({ success: false, error: '실패' });
 
@@ -1022,12 +1127,138 @@ describe('NotificationBell', () => {
         // visibilitychange 리스너가 정리됐는지 확인
         expect(removeEventListenerSpy).toHaveBeenCalledWith(
           'visibilitychange',
-          expect.any(Function),
+          expect.any(Function)
         );
       } finally {
         vi.useRealTimers();
         removeEventListenerSpy.mockRestore();
       }
+    });
+  });
+
+  // ─── #008 새 알림 즉시 갱신 ────────────────────────────────────────────────
+  // 이전에는 30초 polling 만이라 배정·인터뷰 완료 알림이 최대 30초 뒤에야 보였다.
+  // ⚠️ 이 구독이 동작하려면 `078_enable_realtime_notifications.sql` 로 notifications 가
+  // publication 에 등록돼 있어야 한다 — 컴포넌트 코드만으로는 이벤트가 오지 않는다.
+  describe('Realtime 즉시 갱신 (#008)', () => {
+    it('인증된 사용자로 전용 채널을 구독한다 (MessageIcon 채널과 분리)', async () => {
+      renderBell({ initialUnreadCount: 0 });
+
+      await waitFor(() => {
+        expect(channelName).toBe('notification-bell:badge');
+      });
+    });
+
+    it('구독 필터가 본인 알림(user_id)으로 제한된다', async () => {
+      renderBell({ initialUnreadCount: 0 });
+
+      await waitFor(() => {
+        expect(channelFilter).toEqual(
+          expect.objectContaining({
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: 'user_id=eq.user-1',
+          })
+        );
+      });
+    });
+
+    it('로그인 세션이 없으면 구독하지 않는다', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: null } });
+      renderBell({ initialUnreadCount: 0 });
+
+      await waitFor(() => expect(mockGetUser).toHaveBeenCalled());
+      expect(channelName).toBeNull();
+    });
+
+    it('새 알림 INSERT 이벤트가 오면 뱃지가 즉시 갱신된다', async () => {
+      renderBell({ initialUnreadCount: 0 });
+      await waitFor(() => expect(postgresCallback).not.toBeNull());
+      mockFetchUnreadCount.mockClear();
+      mockFetchUnreadCount.mockResolvedValue(3);
+
+      await act(async () => {
+        postgresCallback?.();
+        await Promise.resolve();
+      });
+
+      expect(mockFetchUnreadCount).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(screen.getByText('3')).toBeInTheDocument();
+      });
+    });
+
+    it('구독이 성립하면(SUBSCRIBED) 폴백 polling 이 중단된다', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'] });
+      try {
+        renderBell({ initialUnreadCount: 0 });
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(0);
+        });
+        // fake timers 하에서는 `waitFor` 가 진행되지 않는다(내부적으로 타이머를 쓴다).
+        // 위 advanceTimersByTimeAsync(0) 이 microtask 까지 flush 하므로 구독은 이미 성립했다.
+        expect(subscribeCallback).not.toBeNull();
+
+        await act(async () => {
+          subscribeCallback?.('SUBSCRIBED');
+          await Promise.resolve();
+        });
+        mockFetchUnreadCount.mockClear();
+
+        // 구독이 붙었으므로 polling 이 더 이상 돌지 않는다
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(60_000);
+        });
+        expect(mockFetchUnreadCount).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('재시도를 모두 소진하면 폴백 polling 으로 되돌아간다', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'] });
+      try {
+        renderBell({ initialUnreadCount: 0 });
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(0);
+        });
+        // fake timers 하에서는 `waitFor` 가 진행되지 않는다(내부적으로 타이머를 쓴다).
+        // 위 advanceTimersByTimeAsync(0) 이 microtask 까지 flush 하므로 구독은 이미 성립했다.
+        expect(subscribeCallback).not.toBeNull();
+
+        // 일단 구독이 붙어 polling 이 멈춘 상태를 만든다
+        await act(async () => {
+          subscribeCallback?.('SUBSCRIBED');
+          await Promise.resolve();
+        });
+
+        // MAX_REALTIME_RETRIES(3) + 1 회 실패 → 재시도 소진 → polling 재개
+        for (let i = 0; i < 4; i++) {
+          await act(async () => {
+            subscribeCallback?.('CHANNEL_ERROR');
+            // 지수 백오프(최대 10초)만큼 진행해 재구독 시도를 흘려보낸다
+            await vi.advanceTimersByTimeAsync(10_000);
+          });
+        }
+        mockFetchUnreadCount.mockClear();
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(30_000);
+        });
+        expect(mockFetchUnreadCount).toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('unmount 시 채널이 정리된다', async () => {
+      const { unmount } = renderBell({ initialUnreadCount: 0 });
+      await waitFor(() => expect(channelName).not.toBeNull());
+
+      unmount();
+
+      expect(mockRemoveChannel).toHaveBeenCalled();
     });
   });
 });
