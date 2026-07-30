@@ -236,6 +236,107 @@ export function registerConsultantProjectSeed(count = 12): void {
   });
 }
 
+// ─── 메시지(DM) ────────────────────────────────────────────────────────────────
+
+/**
+ * 두 사용자 사이의 대화방을 확보하고 메시지를 `messageCount` 개 채운다.
+ *
+ * 메시지 스레드 감시는 **스레드 내부**가 스크롤 가능해야 실행된다
+ * (`scrollHeight - clientHeight > 250`). 기존 `ensureTestConversation`
+ * (`cleanup.helper.ts:32`)은 대화방과 초기 메시지 1건만 만들어 그 조건에 못 미친다.
+ *
+ * 대화방은 재사용하고 **시드 메시지만 지웠다 다시 채운다** — 대화방을 지우면
+ * `conversation_participants` 의 읽음 시점 등 다른 spec 이 기대는 상태까지 사라진다.
+ */
+export async function seedConversationMessages(
+  opsEmail: string | undefined,
+  consultantEmail: string | undefined,
+  messageCount = 40
+): Promise<string> {
+  const [opsId, consultantId] = await Promise.all([
+    fetchUserIdByEmail(opsEmail),
+    fetchUserIdByEmail(consultantEmail),
+  ]);
+
+  // 두 사람이 모두 참여하는 대화방 찾기
+  const { data: opsRooms } = await supabase
+    .from('conversation_participants')
+    .select('conversation_id')
+    .eq('user_id', opsId);
+
+  let conversationId: string | null = null;
+  for (const row of opsRooms ?? []) {
+    const { data: partner } = await supabase
+      .from('conversation_participants')
+      .select('user_id')
+      .eq('conversation_id', row.conversation_id)
+      .eq('user_id', consultantId)
+      .maybeSingle();
+    if (partner) {
+      conversationId = row.conversation_id as string;
+      break;
+    }
+  }
+
+  if (!conversationId) {
+    const { data: conv, error } = await supabase
+      .from('conversations')
+      .insert({ last_message_at: new Date().toISOString() })
+      .select('id')
+      .single();
+    if (error || !conv) {
+      throw new Error(`[seedConversationMessages] 대화방 생성 실패: ${error?.message}`);
+    }
+    conversationId = conv.id as string;
+
+    const { error: pErr } = await supabase.from('conversation_participants').insert([
+      { conversation_id: conversationId, user_id: opsId },
+      { conversation_id: conversationId, user_id: consultantId },
+    ]);
+    if (pErr) {
+      throw new Error(`[seedConversationMessages] 참여자 등록 실패: ${pErr.message}`);
+    }
+  }
+
+  await purgeSeededMessages();
+
+  const rows = Array.from({ length: messageCount }, (_, i) => ({
+    conversation_id: conversationId as string,
+    // 양쪽이 번갈아 말해야 실제 대화처럼 렌더된다(정렬·말풍선 방향)
+    sender_id: i % 2 === 0 ? opsId : consultantId,
+    content: `${SEED_TAG} 시드 메시지 ${String(i + 1).padStart(2, '0')}`,
+  }));
+
+  const { error: mErr } = await supabase.from('messages').insert(rows);
+  if (mErr) {
+    throw new Error(`[seedConversationMessages] 메시지 생성 실패: ${mErr.message}`);
+  }
+  return conversationId as string;
+}
+
+/** 태그가 붙은 시드 메시지만 제거한다(대화방·참여자는 보존). */
+export async function purgeSeededMessages(): Promise<void> {
+  const { error } = await supabase.from('messages').delete().like('content', `${SEED_TAG}%`);
+  if (error) {
+    throw new Error(`[purgeSeededMessages] 정리 실패: ${error.message}`);
+  }
+}
+
+/** 메시지 시드의 생성·정리를 현재 파일에 등록한다. */
+export function registerMessageSeed(messageCount = 40): void {
+  test.beforeAll(async () => {
+    await seedConversationMessages(
+      process.env.E2E_OPS_ADMIN_EMAIL,
+      process.env.E2E_CONSULTANT_EMAIL,
+      messageCount
+    );
+  });
+
+  test.afterAll(async () => {
+    await purgeSeededMessages();
+  });
+}
+
 // ─── 공지사항 ──────────────────────────────────────────────────────────────────
 
 /** 태그가 붙은 시드 공지를 제거한다. 첨부(`notice_attachments`)는 CASCADE. */
