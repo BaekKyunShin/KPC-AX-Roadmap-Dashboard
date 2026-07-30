@@ -10,7 +10,17 @@ import {
   NOTIFICATION_BADGE_MAX,
   OPS_NOTIFICATION_TABS,
 } from '@/lib/constants/notification';
+// Realtime 재시도 정책 — 이름에 도메인이 없는 범용 상수이지만 현재 위치가
+// `constants/message.ts` 다. 헤더의 두 아이콘(메시지·알림)이 **같은 정책**을 써야 하므로
+// 값을 복제하지 않고 그대로 참조한다. 공용 위치로 옮기는 것은 별도 정리 항목(P7) 범위.
+import {
+  MAX_REALTIME_RETRIES,
+  REALTIME_RETRY_BASE_MS,
+  REALTIME_RETRY_MAX_MS,
+} from '@/lib/constants/message';
+import { createClient } from '@/lib/supabase/client';
 import { formatRelativeTime } from '@/lib/utils/consultant-home';
+import { showInfoToast } from '@/lib/utils/toast';
 import {
   fetchNotifications,
   fetchUnreadCount,
@@ -23,8 +33,18 @@ import type { Notification, NotificationType, UserRole } from '@/types/database'
 // Constants
 // =============================================================================
 
-/** 안읽음 카운트 백그라운드 polling 간격 (MessageIcon 과 동일 톤) */
+/**
+ * 안읽음 카운트 polling 간격 (MessageIcon 과 동일 톤).
+ *
+ * Realtime 구독이 붙기 전·붙지 못했을 때의 **폴백**이다. 구독이 `SUBSCRIBED` 되면
+ * 중단하고, 실패하면 계속 돈다. 처음부터 켜 두는 이유는 구독이 성공도 실패도
+ * 통보하지 않는 상태(네트워크 단절 등)에서 갱신이 아예 멈추는 것을 막기 위함이다 —
+ * 그 경우 30초 지연은 남지만 **현재 동작과 같은 수준**은 보장된다.
+ */
 const POLL_INTERVAL_MS = 30_000;
+
+/** Realtime 채널명 — MessageIcon 의 `message-icon:badge` 와 겹치지 않게 분리. */
+const REALTIME_CHANNEL = 'notification-bell:badge';
 
 // =============================================================================
 // Types
@@ -73,9 +93,31 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
     setUnreadCount(initialUnreadCount);
   }, [initialUnreadCount]);
 
+  const isMountedRef = useRef(true);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);
+
+  const refreshUnreadCount = async () => {
+    if (!isMountedRef.current || document.visibilityState !== 'visible') return;
+    const count = await fetchUnreadCount();
+    if (isMountedRef.current) setUnreadCount(count);
+  };
+
+  const startFallbackPolling = () => {
+    if (pollIntervalRef.current) return; // 이미 실행 중
+    pollIntervalRef.current = setInterval(refreshUnreadCount, POLL_INTERVAL_MS);
+  };
+
+  const stopFallbackPolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  };
+
   // 클라이언트 자체 안읽음 카운트 갱신
   // - 첫 paint 후 1회 fetch (page redirect/transition 과 race 회피)
-  // - 30s polling (visible 일 때만)
+  // - 폴백 30s polling (visible 일 때만) — 아래 Realtime 구독이 붙으면 중단된다
   // - visibilitychange visible 시 즉시 fetch
   // layout 에서 await 를 제거해 첫 paint 를 가속하는 대신, 카운트는 client 에서 갱신한다.
   // 첫 fetch 를 requestAnimationFrame 으로 지연하는 이유: `/dashboard` 같은 redirect
@@ -83,32 +125,101 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
   // page.evaluate 가 destroy 되거나 axe 가 redirect placeholder 를 위반으로 잡는다
   // (E2E /dashboard a11y · CLS 테스트 실패 사례). 첫 paint 후 = transition 완료 시점.
   useEffect(() => {
-    let cancelled = false;
-    let rafId: number | null = null;
-
-    const refresh = async () => {
-      if (cancelled || document.visibilityState !== 'visible') return;
-      const count = await fetchUnreadCount();
-      if (!cancelled) setUnreadCount(count);
-    };
-
-    rafId = requestAnimationFrame(() => {
+    isMountedRef.current = true;
+    let rafId: number | null = requestAnimationFrame(() => {
       rafId = null;
-      void refresh();
+      void refreshUnreadCount();
     });
-    const intervalId = setInterval(refresh, POLL_INTERVAL_MS);
+
+    startFallbackPolling();
 
     const handleVisibility = () => {
-      void refresh();
+      void refreshUnreadCount();
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
-      cancelled = true;
+      isMountedRef.current = false;
       if (rafId !== null) cancelAnimationFrame(rafId);
-      clearInterval(intervalId);
+      stopFallbackPolling();
       document.removeEventListener('visibilitychange', handleVisibility);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+  }, []);
+
+  // #008 — 새 알림 도착 시 뱃지를 즉시 갱신한다.
+  //
+  // 이전에는 30초 polling 만이라 배정·인터뷰 완료 알림이 최대 30초 뒤에야 보였다.
+  // 같은 헤더의 `MessageIcon` 이 쓰는 패턴(인증 대기 → 구독 → 지수 백오프 재시도 →
+  // 소진 시 polling)을 그대로 따른다. `notifications` 테이블의 publication 등록은
+  // `078_enable_realtime_notifications.sql` — **그것 없이는 이벤트가 오지 않는다.**
+  useEffect(() => {
+    const supabase = createClient();
+    let disposed = false;
+    let retryCount = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    async function subscribe() {
+      if (disposed) return;
+
+      // 인증 세션이 로드된 뒤에 구독해야 RLS(`auth.uid() = user_id`)를 통과한다.
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (disposed || !user) return;
+
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+
+      channelRef.current = supabase
+        .channel(REALTIME_CHANNEL)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            // 서버에서 걸러 남의 알림 이벤트는 아예 받지 않는다(RLS 와 이중 방어).
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            // payload 의 카운트를 직접 더하지 않고 서버 재조회로 맞춘다 —
+            // 다른 탭에서 읽음 처리한 경우까지 한 번에 반영된다.
+            void refreshUnreadCount();
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            retryCount = 0;
+            stopFallbackPolling();
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            if (retryCount < MAX_REALTIME_RETRIES) {
+              retryCount++;
+              const delay = Math.min(
+                REALTIME_RETRY_BASE_MS * 2 ** retryCount,
+                REALTIME_RETRY_MAX_MS
+              );
+              retryTimer = setTimeout(() => void subscribe(), delay);
+            } else {
+              // 재시도 소진 → polling 으로 버틴다(30초 지연은 남지만 갱신은 계속된다)
+              startFallbackPolling();
+            }
+          }
+        });
+    }
+
+    void subscribe();
+
+    return () => {
+      disposed = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
   }, []);
 
   // Popover 열릴 때마다 알림 목록을 fresh fetch
@@ -191,12 +302,12 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
           loadMore();
         }
       },
-      { root: scrollRef.current, threshold: 0.1 },
+      { root: scrollRef.current, threshold: 0.1 }
     );
 
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
   }, [isOpen]);
 
   // 단일 알림 클릭: 읽음 처리 + 페이지 이동
@@ -204,15 +315,25 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
     if (!notification.is_read) {
       await markNotificationRead(notification.id);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n)),
+        prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
 
     setIsOpen(false);
 
+    // #012 — 이동 대상이 없으면 아무 일도 일어나지 않아 사용자가 "클릭이 안 먹었나?"
+    // 하고 다시 누른다. 갈 곳을 안내한다.
+    //
+    // 전체 알림 목록으로 보내는 방법은 쓸 수 없다 — `/notifications` 에는 Server Action
+    // 만 있고 **페이지가 없어서** 이동하면 404 다(2026-07-30 확인).
+    //
+    // 앱이 만드는 알림은 생성 스키마·타입에서 link 를 필수로 요구하므로(#012 근본 수정)
+    // 이 분기는 과거 데이터·외부 삽입분에 대한 방어다.
     if (notification.link) {
       router.push(notification.link);
+    } else {
+      showInfoToast('이동할 화면이 없는 알림입니다', '알림 내용은 위 목록에서 확인할 수 있습니다.');
     }
   };
 
@@ -248,9 +369,7 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
 
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        {bellButton}
-      </PopoverTrigger>
+      <PopoverTrigger asChild>{bellButton}</PopoverTrigger>
 
       <PopoverContent
         align="end"
@@ -372,9 +491,7 @@ function NotificationItem({
           {notification.title}
         </p>
         <p className="text-xs text-gray-400 mt-0.5 truncate">{notification.message}</p>
-        <p className="text-xs text-gray-400 mt-1">
-          {formatRelativeTime(notification.created_at)}
-        </p>
+        <p className="text-xs text-gray-400 mt-1">{formatRelativeTime(notification.created_at)}</p>
       </div>
     </button>
   );
