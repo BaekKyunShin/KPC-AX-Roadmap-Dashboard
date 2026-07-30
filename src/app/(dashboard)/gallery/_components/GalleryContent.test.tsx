@@ -73,13 +73,11 @@ vi.mock('@/components/ui/select', () => ({
       {children}
     </div>
   ),
-  SelectTrigger: ({
-    children,
-    className,
-  }: {
-    children: React.ReactNode;
-    className?: string;
-  }) => <button data-testid="select-trigger" className={className}>{children}</button>,
+  SelectTrigger: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <button data-testid="select-trigger" className={className}>
+      {children}
+    </button>
+  ),
   SelectValue: ({ placeholder }: { placeholder?: string }) => (
     <span data-testid="select-value">{placeholder}</span>
   ),
@@ -190,9 +188,7 @@ describe('GalleryContent', () => {
     it('검색 입력 필드가 표시된다', async () => {
       render(<GalleryContent isAdmin={false} searchParams={{}} />);
       await waitFor(() => {
-        expect(
-          screen.getByPlaceholderText('검색 (기업명, 업종, 키워드...)')
-        ).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('검색 (기업명, 업종, 키워드...)')).toBeInTheDocument();
       });
     });
 
@@ -236,6 +232,48 @@ describe('GalleryContent', () => {
       await waitFor(() => {
         expect(screen.getByTestId('empty-state')).toBeInTheDocument();
         expect(screen.getByText('아직 공유된 산출물이 없습니다')).toBeInTheDocument();
+      });
+    });
+
+    // 로딩 자리표시자를 항상 4개만 그리면, 12장을 보고 있다가 페이지를 넘길 때
+    // 문서가 반토막 나고 브라우저가 스크롤을 최상단으로 끌어내린다(목록이 다시
+    // 채워져도 위치는 돌아오지 않는다). 자리표시자가 직전 목록 높이를 지켜야 한다.
+    it('로딩 중 자리표시자 개수가 직전 목록 개수와 같다', async () => {
+      const twelveItems = Array.from({ length: 12 }, (_, i) => ({
+        ...mockItems[0],
+        id: `rv-seed-${i}`,
+      }));
+      // 응답을 붙잡아 로딩 상태를 유지시킨다
+      mockFetchGalleryRoadmaps.mockReturnValue(new Promise(() => {}));
+
+      const initialData = {
+        items: twelveItems,
+        total: 12,
+        totalPages: 2,
+        page: 1,
+      };
+
+      const { rerender } = render(
+        <GalleryContent isAdmin={false} searchParams={{}} initialData={initialData} />
+      );
+
+      // 첫 마운트는 프리페치 데이터를 쓰므로 fetch 를 건너뛴다 → 파라미터를 바꿔 로딩 유발
+      mockSearchParams.set('page', '2');
+      rerender(
+        <GalleryContent isAdmin={false} searchParams={{ page: '2' }} initialData={initialData} />
+      );
+
+      await waitFor(() => {
+        expect(screen.getAllByTestId('gallery-card-skeleton')).toHaveLength(12);
+      });
+    });
+
+    it('직전 목록이 비어 있으면 자리표시자를 기본 개수만큼 그린다', async () => {
+      mockFetchGalleryRoadmaps.mockReturnValue(new Promise(() => {}));
+      render(<GalleryContent isAdmin={false} searchParams={{}} />);
+
+      await waitFor(() => {
+        expect(screen.getAllByTestId('gallery-card-skeleton')).toHaveLength(4);
       });
     });
   });
@@ -318,6 +356,33 @@ describe('GalleryContent', () => {
       });
     });
 
+    // 로딩 중 페이지네이션이 사라지면 그만큼 문서가 짧아져, 목록 하단에서 페이지를
+    // 넘길 때 브라우저가 스크롤을 최상단으로 끌어내린다. 전환 중에도 자리를 지켜야 한다.
+    it('로딩 중에도 Pagination이 사라지지 않는다', async () => {
+      const initialData = {
+        items: mockItems,
+        total: 25,
+        totalPages: 3,
+        page: 1,
+      };
+      mockFetchGalleryRoadmaps.mockReturnValue(new Promise(() => {}));
+
+      const { rerender } = render(
+        <GalleryContent isAdmin={false} searchParams={{}} initialData={initialData} />
+      );
+      expect(screen.getByTestId('pagination')).toBeInTheDocument();
+
+      mockSearchParams.set('page', '2');
+      rerender(
+        <GalleryContent isAdmin={false} searchParams={{ page: '2' }} initialData={initialData} />
+      );
+
+      await waitFor(() => {
+        expect(screen.getAllByTestId('gallery-card-skeleton').length).toBeGreaterThan(0);
+      });
+      expect(screen.getByTestId('pagination')).toBeInTheDocument();
+    });
+
     it('totalPages <= 1일 때 Pagination이 렌더링되지 않는다', async () => {
       mockFetchGalleryRoadmaps.mockResolvedValue({
         success: true,
@@ -342,10 +407,7 @@ describe('GalleryContent', () => {
       });
       await user.click(screen.getByTestId('pagination-next'));
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(
-          expect.stringContaining('page=2'),
-          { scroll: false },
-        );
+        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('page=2'), { scroll: false });
       });
     });
   });

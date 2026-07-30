@@ -27,6 +27,15 @@ import type { GalleryRoadmapItem, GalleryPaginatedResult } from '../actions';
 
 const DEFAULT_FILTER_VALUE = 'all';
 
+/**
+ * 보여줄 목록이 아직 없을 때(첫 진입) 쓰는 로딩 자리표시자 개수.
+ *
+ * 목록이 이미 있으면 그 개수만큼 그린다 — 자리표시자가 더 적으면 로딩 순간 문서가
+ * 짧아지고, 브라우저가 스크롤을 최상단으로 끌어내린 뒤 목록이 다시 채워져도 위치가
+ * 돌아오지 않는다(하단에서 페이지를 넘길 때 화면이 맨 위로 튀던 원인).
+ */
+const SKELETON_FALLBACK_COUNT = 4;
+
 const SORT_OPTIONS = [
   { value: 'latest', label: '최신순' },
   { value: 'popular', label: '좋아요순' },
@@ -70,13 +79,12 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
   const [totalPages, setTotalPages] = useState(initialData?.totalPages ?? 0);
   const [currentPage, setCurrentPage] = useState(initialData?.page ?? 1);
   const [isLoading, setIsLoading] = useState(!initialData);
+  // 로딩 중 그리드가 줄어들지 않도록 직전 높이를 붙잡아 둔다 (아래 렌더 주석 참고)
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridMinHeight, setGridMinHeight] = useState<number | undefined>(undefined);
   const [searchInput, setSearchInput] = useState(searchParams.search || '');
-  const [industry, setIndustry] = useState(
-    urlSearchParams.get('industry') || DEFAULT_FILTER_VALUE
-  );
-  const [sort, setSort] = useState(
-    urlSearchParams.get('sort') || 'latest'
-  );
+  const [industry, setIndustry] = useState(urlSearchParams.get('industry') || DEFAULT_FILTER_VALUE);
+  const [sort, setSort] = useState(urlSearchParams.get('sort') || 'latest');
   const rawTrack = urlSearchParams.get('track');
   const [track, setTrack] = useState<TrackFilterValue>(
     rawTrack === 'ROADMAP' || rawTrack === 'PBL' ? rawTrack : 'ALL'
@@ -95,6 +103,8 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
     }
 
     let cancelled = false;
+    // 자리표시자로 바뀌기 **전**의 실제 높이를 재둔다 — 바뀐 뒤에 재면 이미 늦다
+    setGridMinHeight(gridRef.current?.offsetHeight || undefined);
     setIsLoading(true);
 
     const params: Record<string, string | undefined> = {};
@@ -111,9 +121,13 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
         setCurrentPage(result.data.page);
       }
       setIsLoading(false);
+      // 새 목록이 그려진 뒤에는 고정을 풀어야 목록이 짧아졌을 때 빈 공간이 남지 않는다
+      setGridMinHeight(undefined);
     });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParamsKey]);
 
@@ -164,14 +178,13 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
     setSort('latest');
     setTrack('ALL');
     router.push(pathname, { scroll: false });
-    setTimeout(() => { isResettingRef.current = false; }, 500);
+    setTimeout(() => {
+      isResettingRef.current = false;
+    }, 500);
   };
 
   const hasFilters =
-    debouncedSearch ||
-    industry !== DEFAULT_FILTER_VALUE ||
-    sort !== 'latest' ||
-    track !== 'ALL';
+    debouncedSearch || industry !== DEFAULT_FILTER_VALUE || sort !== 'latest' || track !== 'ALL';
 
   return (
     <div className="space-y-4">
@@ -226,7 +239,12 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
               </Select>
 
               {hasFilters && (
-                <Button variant="ghost" size="icon" onClick={handleResetFilters} aria-label="필터 초기화">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleResetFilters}
+                  aria-label="필터 초기화"
+                >
                   <X className="h-4 w-4" />
                 </Button>
               )}
@@ -237,13 +255,25 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
           {hasFilters && (
             <div className="mt-3 flex flex-wrap gap-2">
               {debouncedSearch && (
-                <FilterBadge label="검색" value={debouncedSearch} onClear={() => setSearchInput('')} />
+                <FilterBadge
+                  label="검색"
+                  value={debouncedSearch}
+                  onClear={() => setSearchInput('')}
+                />
               )}
               {industry !== DEFAULT_FILTER_VALUE && (
-                <FilterBadge label="업종" value={industry} onClear={() => handleIndustryChange(DEFAULT_FILTER_VALUE)} />
+                <FilterBadge
+                  label="업종"
+                  value={industry}
+                  onClear={() => handleIndustryChange(DEFAULT_FILTER_VALUE)}
+                />
               )}
               {sort !== 'latest' && (
-                <FilterBadge label="정렬" value={SORT_OPTIONS.find((o) => o.value === sort)?.label ?? ''} onClear={() => handleSortChange('latest')} />
+                <FilterBadge
+                  label="정렬"
+                  value={SORT_OPTIONS.find((o) => o.value === sort)?.label ?? ''}
+                  onClear={() => handleSortChange('latest')}
+                />
               )}
               {track !== 'ALL' && (
                 <FilterBadge
@@ -261,16 +291,7 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
       {isAdmin && <AdminFilters />}
 
       {/* 카드 그리드 */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="h-64 animate-shimmer rounded-lg border"
-            />
-          ))}
-        </div>
-      ) : items.length === 0 ? (
+      {!isLoading && items.length === 0 ? (
         urlSearchParams.toString() !== '' ? (
           <EmptyState
             title="검색 결과가 없습니다"
@@ -283,9 +304,7 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
           />
         ) : (
           <EmptyState
-            icon={
-              <Library className="mx-auto h-12 w-12 text-gray-400" />
-            }
+            icon={<Library className="mx-auto h-12 w-12 text-gray-400" />}
             title={
               track === 'PBL'
                 ? '아직 공유된 PBL 보고서가 없습니다'
@@ -298,11 +317,29 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
         )
       ) : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {items.map((item) => (
-              <GalleryCard key={item.id} item={item} />
-            ))}
+          {/*
+            카드와 로딩 자리표시자는 **같은 그리드**를 공유하고, 로딩 중에는 직전 높이를
+            minHeight 로 붙잡는다. 둘을 다른 컨테이너로 나누면 교체되는 찰나 문서가
+            짧아지고, 브라우저가 스크롤을 최상단으로 끌어내린다(JS 가 부른 게 아니라
+            브라우저 기본 동작이라 코드로는 잡히지 않는다). 목록 하단에서 페이지를 넘길 때
+            화면이 맨 위로 튀던 원인.
+          */}
+          <div
+            ref={gridRef}
+            className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+            style={gridMinHeight ? { minHeight: gridMinHeight } : undefined}
+          >
+            {isLoading
+              ? Array.from({ length: items.length || SKELETON_FALLBACK_COUNT }, (_, i) => (
+                  <div
+                    key={i}
+                    data-testid="gallery-card-skeleton"
+                    className="h-64 animate-shimmer rounded-lg border"
+                  />
+                ))
+              : items.map((item) => <GalleryCard key={item.id} item={item} />)}
           </div>
+          {/* 로딩 중에도 자리를 지킨다 — 사라지면 그만큼 문서가 짧아진다 */}
           {totalPages > 1 && (
             <Pagination
               currentPage={currentPage}
