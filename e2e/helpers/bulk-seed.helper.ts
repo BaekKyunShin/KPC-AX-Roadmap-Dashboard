@@ -525,6 +525,89 @@ export function registerConsultantSeed(count = 12): void {
   });
 }
 
+// ─── PBL 재생성 감시 대상 ──────────────────────────────────────────────────────
+
+/**
+ * PBL 결과 페이지의 「새 버전 생성」 아코디언 감시용 프로젝트를 1개 만든다.
+ *
+ * 그 아코디언은 `hasVersions && !projectClosed` 일 때만 렌더된다
+ * (`PBLResultClient.tsx:301`). 즉 **`pbl_reports` 행이 없으면 DOM 에 아예 없고**,
+ * `accordionRef.current` 가 null 이라 `scrollIntoView` 를 호출하는 useEffect 가 조기
+ * return 한다 → 스크롤이 0 이 되어 감시가 잠든다. 로드맵 쪽은 시드기업D 가 FINAL
+ * 로드맵을 이미 갖고 있어 시드가 필요 없지만, `supabase/seed.sql` 에는
+ * **`pbl_reports` 가 한 건도 없다**(2026-07-30 확인).
+ *
+ * **기존 시드기업C(PBL 트랙)에 붙이지 않고 새 프로젝트를 만드는 이유**:
+ * `e2e/ops/projects-deeplink.spec.ts` 와 `e2e/scroll-ux/ops-projects-filter.spec.ts`
+ * 가 시드기업C 를 참조한다. 산출물 유무는 화면 분기를 바꾸므로(EmptyState ↔ 결과 탭)
+ * 기존 프로젝트의 상태를 건드리면 그 spec 들이 조용히 다른 화면을 보게 된다.
+ *
+ * `pbl_content` 는 `{}` 로 둔다 — 감시가 필요한 것은 아코디언의 위치이고, 탭 본문은
+ * 아코디언 **아래**에 있어 위치 계산에 영향을 주지 않는다. 상태도 `DRAFT` 로 둬서
+ * 갤러리 노출 조건(`is_shared=true AND status='FINAL'`)에 걸리지 않게 한다.
+ *
+ * @returns 생성된 프로젝트 ID — spec 이 `findFirstLinkHref` 대신 이 값을 직접 쓴다
+ */
+export async function seedPblRegenerateTarget(
+  consultantId: string,
+  createdById: string
+): Promise<string> {
+  await purgeSeededProjects();
+
+  const { data: project, error } = await supabase
+    .from('projects')
+    .insert({
+      company_name: `${SEED_TAG}PBL재생성`,
+      industry: 'IT/SW',
+      company_size: '50~299명',
+      contact_name: `${SEED_TAG}PBL담당자`,
+      contact_email: 'scroll-pbl-regenerate@e2e.local',
+      status: 'ASSIGNED',
+      track: 'PBL',
+      assigned_consultant_id: consultantId,
+      created_by: createdById,
+      // 충분히 과거로 — 컨설턴트·운영 목록의 "첫 프로젝트" 전제를 흔들지 않는다
+      created_at: seedCreatedAt(60),
+    })
+    .select('id')
+    .single();
+
+  if (error || !project) {
+    throw new Error(`[seedPblRegenerateTarget] 프로젝트 생성 실패: ${error?.message ?? '없음'}`);
+  }
+
+  const projectId = project.id as string;
+
+  // 배정 이력 — 컨설턴트 목록 조회가 `project_assignments!inner` 로 묶기 때문에 필수.
+  const { error: aErr } = await supabase.from('project_assignments').insert({
+    project_id: projectId,
+    consultant_id: consultantId,
+    assigned_by: createdById,
+    assignment_reason: `${SEED_TAG} PBL 재생성 감시용 시드 배정`,
+    is_current: true,
+    assigned_at: seedCreatedAt(60),
+  });
+  if (aErr) {
+    await purgeSeededProjects();
+    throw new Error(`[seedPblRegenerateTarget] 배정 이력 생성 실패: ${aErr.message}`);
+  }
+
+  const { error: rErr } = await supabase.from('pbl_reports').insert({
+    project_id: projectId,
+    version_number: 1,
+    status: 'DRAFT',
+    diagnosis_summary: `${SEED_TAG} PBL 재생성 감시용 진단 요약`,
+    pbl_content: {},
+    created_by: consultantId,
+  });
+  if (rErr) {
+    await purgeSeededProjects();
+    throw new Error(`[seedPblRegenerateTarget] PBL 보고서 생성 실패: ${rErr.message}`);
+  }
+
+  return projectId;
+}
+
 /** 이메일로 사용자 ID 조회 — 시드 소유자 지정에 사용. */
 export async function fetchUserIdByEmail(email: string | undefined): Promise<string> {
   if (!email) {
