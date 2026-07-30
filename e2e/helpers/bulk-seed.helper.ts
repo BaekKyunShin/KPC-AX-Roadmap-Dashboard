@@ -1,0 +1,168 @@
+// e2e/helpers/bulk-seed.helper.ts
+//
+// scroll-ux 회귀 감시는 화면에 스크롤이 생겨야 실행된다(`isScrollable`: 문서높이 −
+// 뷰포트 ≥ 200px). 시드가 적어 스크롤이 안 생기면 테스트가 스스로 skip 하고, CI 는
+// dot reporter 라 그 사실이 로그에 드러나지 않는다 — 감시가 잠들어도 초록불로 보인다.
+//
+// **공용 `supabase/seed.sql` 을 늘리지 않는 이유**: `findFirstLinkHref` 로 "목록의 첫
+// 프로젝트"를 집는 spec 이 9개 있어, 새 시드가 맨 앞에 끼면 그 9개가 통째로 다른
+// 프로젝트를 보게 된다. 그래서 필요한 spec 이 beforeAll 에서 직접 만들고 afterAll 에서
+// 지운다. CI 는 `fullyParallel:false` + `workers:1` 순차 실행이라 파일 단위로 격리된다.
+//
+// 설계 원칙 (`dummy-user.helper.ts` 와 동일):
+// - **선청소 → 생성**: 이전 실행이 afterAll 도달 전 중단돼 잔여가 남아도 재실행 가능
+// - 모든 생성물 이름에 `SEED_TAG` 접두 → 잔여를 태그 하나로 회수
+// - 실패하면 **throw**. 조용히 넘어가면 시드 실패가 skip 으로 위장돼, 고치려던 문제가
+//   그대로 재현된다
+//
+// ⚠️ **로컬에서 검증할 때는 `--workers=1` 을 붙여야 한다.**
+// 이 헬퍼를 쓰는 파일들은 같은 태그를 공유하므로, 한 파일의 beforeAll 선청소가 동시에
+// 돌던 다른 파일의 시드를 지운다. CI 는 `workers:1`(playwright.config.ts) 이라 순차
+// 실행되어 안전하지만, 로컬 기본값은 2 라 파일이 겹쳐 엉뚱한 실패가 난다
+// (`e2e/ops/projects-deeplink.spec.ts` 등 목록 개수에 민감한 spec 이 먼저 깨진다).
+// 태그를 파일별로 쪼개는 대안은 여러 파일의 시드가 동시에 살아남아 프로젝트 목록이
+// 수백 건으로 불어나므로 택하지 않았다.
+import { createClient } from '@supabase/supabase-js';
+import { test } from '../fixtures/auth.fixture';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+/** 모든 대량 시드 생성물의 식별 접두. 정리·검색 격리의 단일 기준. */
+export const SEED_TAG = 'E2E스크롤';
+
+/**
+ * 시드 프로젝트의 생성 시각 기준점 — **2025년으로 고정한다**.
+ *
+ * `/ops/projects` 는 `created_at DESC` 로 10개씩 끊어 보여준다
+ * (`ops/projects/page.tsx:60`). 시드가 최신이면 기존 시드기업A~D 를 2페이지로
+ * 밀어내, 그들의 노출을 단언하는 `e2e/ops/projects-deeplink.spec.ts` 가 깨진다.
+ * 컨설턴트 목록(`created_at DESC`)의 "첫 프로젝트" 전제도 같은 이유로 과거 고정이
+ * 필요하다 — `supabase/seed.sql:187-192` 가 시드기업C·D 를 2026-01-01/02 로 박아 둔
+ * 것과 같은 장치다.
+ */
+const SEED_BASE_DATE = new Date('2025-06-01T00:00:00Z');
+
+/** 업종을 번갈아 배치 — 업종 필터가 걸린 화면에서도 목록이 비지 않도록. */
+const INDUSTRIES = ['IT/SW', '제조업'] as const;
+
+function seedCreatedAt(index: number): string {
+  // index 가 클수록 더 과거 → 목록 뒤쪽에 쌓인다
+  return new Date(SEED_BASE_DATE.getTime() - index * 86_400_000).toISOString();
+}
+
+/**
+ * 태그가 붙은 시드 프로젝트를 일괄 제거한다.
+ * `roadmap_versions` 는 `projects` 삭제 시 CASCADE 로 함께 사라진다.
+ *
+ * beforeAll 선청소와 afterAll 정리 양쪽에서 호출하므로 **멱등**이어야 한다.
+ */
+export async function purgeSeededProjects(): Promise<void> {
+  const { error } = await supabase.from('projects').delete().like('company_name', `${SEED_TAG}%`);
+  if (error) {
+    throw new Error(`[purgeSeededProjects] 정리 실패: ${error.message}`);
+  }
+}
+
+/**
+ * 갤러리에 노출되는 FINAL·공유 로드맵을 `count` 개 만든다.
+ *
+ * 갤러리 목록은 `roadmap_versions` 를 기준으로 조회하고
+ * (`gallery/actions/queries.ts:163`), 컨설턴트에게는 `is_shared=true AND
+ * status='FINAL'` 만 보인다. 「내 산출물」(`scope=mine`)은 `created_by` 를 보므로
+ * **`ownerId` 에 컨설턴트를 넘겨야** 그 필터에서도 목록이 남는다.
+ *
+ * `assigned_consultant_id` 는 **일부러 비운다** — 갤러리 조회가 쓰지 않는 값인데,
+ * 채우면 컨설턴트 프로젝트 목록에 14건이 끼어들어 `findFirstLinkHref` 기반 spec 9개의
+ * 전제를 흔든다.
+ *
+ * @param count  생성 개수. 갤러리는 limit=12 라 2페이지까지 채우려면 24개가 필요하다
+ * @param ownerId  `roadmap_versions.created_by` — 컨설턴트 사용자 ID
+ * @param createdById  `projects.created_by` — 보통 운영관리자 ID
+ */
+export async function seedGalleryItems(
+  count: number,
+  ownerId: string,
+  createdById: string
+): Promise<string[]> {
+  await purgeSeededProjects();
+
+  const projectRows = Array.from({ length: count }, (_, i) => ({
+    company_name: `${SEED_TAG}기업${String(i + 1).padStart(2, '0')}`,
+    industry: INDUSTRIES[i % INDUSTRIES.length],
+    company_size: '50~299명',
+    contact_name: `${SEED_TAG}담당${i + 1}`,
+    contact_email: `scroll-seed-${i + 1}@e2e.local`,
+    status: 'FINALIZED',
+    track: 'ROADMAP',
+    created_by: createdById,
+    created_at: seedCreatedAt(i),
+  }));
+
+  const { data: projects, error: pErr } = await supabase
+    .from('projects')
+    .insert(projectRows)
+    .select('id');
+  if (pErr || !projects || projects.length !== count) {
+    throw new Error(`[seedGalleryItems] 프로젝트 생성 실패: ${pErr?.message ?? '개수 불일치'}`);
+  }
+
+  const roadmapRows = projects.map((p, i) => ({
+    project_id: p.id as string,
+    version_number: 1,
+    status: 'FINAL',
+    is_shared: true,
+    // 카드에 요약이 렌더되고 검색 대상(diagnosis_summary)이기도 하다
+    diagnosis_summary: `${SEED_TAG} 진단 요약 ${i + 1} — 스크롤 회귀 감시를 위한 시드 데이터입니다.`,
+    created_by: ownerId,
+    finalized_by: createdById,
+    finalized_at: seedCreatedAt(i),
+    created_at: seedCreatedAt(i),
+  }));
+
+  const { error: rErr } = await supabase.from('roadmap_versions').insert(roadmapRows);
+  if (rErr) {
+    await purgeSeededProjects();
+    throw new Error(`[seedGalleryItems] 로드맵 생성 실패: ${rErr.message}`);
+  }
+
+  return projects.map((p) => p.id as string);
+}
+
+/**
+ * 갤러리 시드의 생성·정리를 현재 파일에 등록한다. spec 최상단에서 한 번 호출.
+ *
+ * 갤러리 스크롤 감시 8건이 모두 같은 조건(공유된 FINAL 로드맵 다수)을 요구하므로
+ * beforeAll/afterAll 을 8곳에 복붙하는 대신 여기로 모은다.
+ *
+ * 기본 **24개**인 이유: 13개면 2페이지가 생기긴 하지만 2페이지에 카드가 1장뿐이라
+ * 문서가 뷰포트보다 짧아져 스크롤이 사라진다(페이지네이션 감시가 다시 무력화된다).
+ * 24개면 2페이지도 12장이 차서 양쪽 페이지 모두 스크롤이 남는다.
+ */
+export function registerGallerySeed(count = 24): void {
+  test.beforeAll(async () => {
+    const [ownerId, createdById] = await Promise.all([
+      fetchUserIdByEmail(process.env.E2E_CONSULTANT_EMAIL),
+      fetchUserIdByEmail(process.env.E2E_OPS_ADMIN_EMAIL),
+    ]);
+    await seedGalleryItems(count, ownerId, createdById);
+  });
+
+  test.afterAll(async () => {
+    await purgeSeededProjects();
+  });
+}
+
+/** 이메일로 사용자 ID 조회 — 시드 소유자 지정에 사용. */
+export async function fetchUserIdByEmail(email: string | undefined): Promise<string> {
+  if (!email) {
+    throw new Error('[fetchUserIdByEmail] 이메일이 비어 있습니다 — E2E_* 환경변수를 확인하세요.');
+  }
+  const { data, error } = await supabase.from('users').select('id').eq('email', email).single();
+  if (error || !data) {
+    throw new Error(`[fetchUserIdByEmail] ${email} 조회 실패: ${error?.message ?? '없음'}`);
+  }
+  return data.id as string;
+}
