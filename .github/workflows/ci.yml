@@ -65,6 +65,34 @@ jobs:
 
       - run: npm run test:coverage
 
+  hwpx-verify:
+    name: HWPX Verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # verify-mapping-completeness.mjs 는 node 내장 모듈만 사용 — npm ci 불필요
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: api/hwpx/requirements.txt
+
+      - run: pip install -r api/hwpx/requirements.txt pytest
+
+      - name: 템플릿↔SSOT 마커 정합 (roadmap + pbl)
+        run: python3 scripts/verify_hwpx_placeholders.py --all
+
+      - name: payload↔마커 매핑 완전성
+        run: node scripts/verify-mapping-completeness.mjs
+
+      - name: HWPX 치환·서식 회귀 (pytest)
+        run: python3 -m pytest api/hwpx/ -q
+
   build:
     name: Build
     runs-on: ubuntu-latest

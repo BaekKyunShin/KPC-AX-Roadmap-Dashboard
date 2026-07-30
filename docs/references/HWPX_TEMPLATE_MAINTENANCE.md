@@ -38,7 +38,8 @@
 - **좌표는 빌드 타임에만 산다.** 런타임(`generate.py`)은 표 순번·셀 좌표를 전혀
   모른 채 `{{마커}}`만 값으로 치환한다. 양식에 표가 추가·삭제돼도 런타임은 안 깨진다.
 - **좌표의 정본은 SSOT JSON 하나다.** 빌드 스크립트가 SSOT를 읽어 정본 양식에
-  마커를 심어 템플릿을 만들고, 두 verify 스크립트가 템플릿↔SSOT 정합을 CI에서 보증한다.
+  마커를 심어 템플릿을 만들고, CI(`ci.yml`의 **HWPX Verify** job)가 두 verify
+  스크립트 + pytest 전건을 PR마다 실행해 템플릿↔SSOT 정합을 보증한다.
 
 따라서 새 양식 적용은 "코드 여기저기 좌표 고치기"가 아니라 **SSOT 갱신 → 재생성 →
 검증 → 서식 로직 보강**의 정형 절차다. 본 문서는 그 절차와, 실물(한컴 육안)로만
@@ -72,7 +73,7 @@ docs/references/           scripts/insert_placeholders.py         api/hwpx/gener
 .venv-hwpx/bin/python3 scripts/insert_placeholders.py --check roadmap  # 저장 없이 검증만
 ```
 
-**검증 스크립트 2종** (새 양식 적용 시 반드시 통과):
+**검증 스크립트 2종** (새 양식 적용 시 반드시 통과 — CI `HWPX Verify` job이 pytest와 함께 PR마다 자동 실행):
 
 ```bash
 .venv-hwpx/bin/python3 scripts/verify_hwpx_placeholders.py     # 템플릿↔SSOT 마커 정합
@@ -323,6 +324,27 @@ charPr `height` 는 1/100pt 단위. **2폰트 셀**(예: AI역량수준 체크�
 1. **양식 배치·구조 분석** — 정본 `.hwpx` 를 `docs/references/` 에 배치(파일명은
    `TRACKS` 딕셔너리 경로와 일치시킬 것). 구조를 재분석해
    `docs/references/hwpx-structure-{roadmap,pbl}.md` 의 표 인벤토리·셀 좌표를 갱신.
+   1-1. **⚠️ 표 배치 속성 신구 대조 (필수 — 텍스트·좌표 diff 에 안 잡힌다)**
+   개정이 표 내용·좌표는 그대로 두고 **배치 속성만** 바꾸는 경우가 있다(§11-14:
+   로드맵 ver3 — 표 12개의 `treatAsChar` 1→0, `pageBreak` CELL→TABLE). 마커 좌표·
+   병합 구조·charPr id 대조를 전부 통과해도 속성 변경은 보이지 않으므로, 신·구
+   정본의 `<hp:tbl>`·`<hp:pos>` 속성을 표 순서대로 전수 대조한다. **무엇이 바뀌었는지
+   알아야** 표적 육안 검증(예: `pageBreak=TABLE` 전환 시 장문 셀 페이지 경계)이 가능하다.
+
+   ```bash
+   # 신·구 정본에 각각 실행해 출력을 diff (pageBreak/repeatHeader/treatAsChar/flowWithText)
+   .venv-hwpx/bin/python3 - "docs/references/<정본>.hwpx" <<'EOF'
+   import sys, zipfile
+   from lxml import etree
+   HP = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
+   root = etree.fromstring(zipfile.ZipFile(sys.argv[1]).read("Contents/section0.xml"))
+   for i, t in enumerate(root.iter(f"{HP}tbl")):
+       pos = t.find(f"{HP}pos")
+       print(i, t.get("pageBreak"), t.get("repeatHeader"),
+             pos.get("treatAsChar"), pos.get("flowWithText"))
+   EOF
+   ```
+
 2. **SSOT 갱신** — `hwpx-placeholders.json` 의 마커명·좌표(**shallow** `table_index`
    — §2 주의)·`strategy` 를 새 구조에 맞춰 수정. 신규 셀은 `cell_fill`/`repeat_rows`
    등 taxonomy에 따라 추가, 마커 없는 셀은 `static`.
@@ -358,6 +380,21 @@ charPr `height` 는 1/100pt 단위. **2폰트 셀**(예: AI역량수준 체크�
 6. **샘플 생성·육안** — fixture(`api/hwpx/__fixtures__/*.json`) 갱신 → 브리지 서버
    (`npm run dev:hwpx` + `npm run dev:with-hwpx`)로 로드맵·PBL 샘플 생성 → §10 한컴
    육안. **마커 잔존 0** 확인(`unzip -p *.hwpx | grep '{{'` 결과 없음).
+   서버 없이 쓰는 간편 대안 — `_generate_roadmap`/`_generate_pbl` 을 fixture 로 직접 호출:
+
+   ```bash
+   .venv-hwpx/bin/python3 - <<'EOF'
+   import json, os, sys
+   sys.path.insert(0, "api/hwpx"); os.chdir("api/hwpx")
+   from generate import _generate_roadmap  # PBL 은 _generate_pbl + pbl fixture
+   data = json.load(open("__fixtures__/roadmap-full.json", encoding="utf-8"))
+   out = os.path.expanduser("~/Desktop/roadmap-sample.hwpx")
+   open(out, "wb").write(_generate_roadmap(data))
+   print(out)
+   EOF
+   ```
+
+   장문 셀 페이지 경계·overflow 검증에는 `roadmap-max-length.json` fixture 를 쓴다.
 
 ---
 

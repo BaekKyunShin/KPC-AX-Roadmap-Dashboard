@@ -1,4 +1,4 @@
-# HWPX 구조 분석: `roadmap.hwpx`
+# HWPX 구조 분석: `1.AI훈련로드맵 보고서(양식).hwpx` (roadmap 정본)
 
 - 총 단락: **94**
 - 총 표 (전체, nested 포함): **31**
