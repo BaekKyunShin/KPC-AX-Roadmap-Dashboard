@@ -21,7 +21,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 const mockSubmitPublicAssessment = vi.fn();
-vi.mock('@/app/assessment/actions', () => ({
+vi.mock('../../actions', () => ({
   submitPublicAssessment: (...args: unknown[]) => mockSubmitPublicAssessment(...args),
 }));
 
@@ -440,9 +440,7 @@ describe('PublicSelfAssessmentForm', () => {
 
       // 스텝 인디케이터 클릭으로 질문 스텝으로 직접 이동
       const stepButtons = screen.getAllByRole('button');
-      const dim1Buttons = stepButtons.filter((btn) =>
-        btn.textContent?.includes('차원1')
-      );
+      const dim1Buttons = stepButtons.filter((btn) => btn.textContent?.includes('차원1'));
       if (dim1Buttons.length > 0) {
         fireEvent.click(dim1Buttons[0]);
       }
@@ -521,9 +519,7 @@ describe('PublicSelfAssessmentForm', () => {
       renderForm({ template });
 
       const stepButtons = screen.getAllByRole('button');
-      const targetButton = stepButtons.find((btn) =>
-        btn.textContent?.includes('차원A')
-      );
+      const targetButton = stepButtons.find((btn) => btn.textContent?.includes('차원A'));
       if (targetButton) {
         await user.click(targetButton);
         expect(screen.getByText('차원A 질문 1')).toBeInTheDocument();

@@ -78,7 +78,7 @@ export function ScopeFilter({ value, onChange }: ScopeFilterProps) {
       data-pending={isPending ? 'true' : 'false'}
       className={cn(
         'inline-flex items-center gap-1 rounded-lg bg-gray-100 p-1 transition-opacity',
-        isPending && 'opacity-70 cursor-wait',
+        isPending && 'opacity-70 cursor-wait'
       )}
       data-testid="scope-filter"
     >
@@ -94,9 +94,7 @@ export function ScopeFilter({ value, onChange }: ScopeFilterProps) {
             onClick={() => handleSelect(opt.value)}
             className={cn(
               'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-              active
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+              active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
             )}
           >
             {opt.label}

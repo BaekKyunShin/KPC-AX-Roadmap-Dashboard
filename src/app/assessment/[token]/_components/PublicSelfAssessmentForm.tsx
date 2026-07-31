@@ -19,7 +19,7 @@ import {
   toCircledNumber,
 } from '@/components/ops/self-assessment';
 import { cn, showErrorToast, showSuccessToast } from '@/lib/utils';
-import { submitPublicAssessment } from '@/app/assessment/actions';
+import { submitPublicAssessment } from '../../actions';
 
 // ============================================================================
 // 타입 정의
@@ -68,9 +68,7 @@ export default function PublicSelfAssessmentForm({
   // 현재 스텝의 질문들 (차원 스텝일 때만)
   const currentDimensionIndex = currentStep - 1;
   const currentDimension = dimensions[currentDimensionIndex];
-  const currentQuestions = isWriterInfoStep
-    ? []
-    : questionsByDimension[currentDimension] || [];
+  const currentQuestions = isWriterInfoStep ? [] : questionsByDimension[currentDimension] || [];
 
   // 질문 응답 여부 확인
   const isQuestionAnswered = (question: Question): boolean => {
@@ -90,9 +88,7 @@ export default function PublicSelfAssessmentForm({
 
   // 작성자 정보 완료 여부
   const isWriterInfoComplete =
-    writerName.trim().length >= 2 &&
-    writerTitle.trim().length > 0 &&
-    EMAIL_REGEX.test(writerEmail);
+    writerName.trim().length >= 2 && writerTitle.trim().length > 0 && EMAIL_REGEX.test(writerEmail);
 
   // 완료된 스텝 계산
   const completedSteps = new Set<number>();
@@ -109,9 +105,7 @@ export default function PublicSelfAssessmentForm({
     : currentQuestions.every((q) => isQuestionAnswered(q));
 
   // 전체 응답 수
-  const answeredCount = template.questions.filter((q) =>
-    isQuestionAnswered(q)
-  ).length;
+  const answeredCount = template.questions.filter((q) => isQuestionAnswered(q)).length;
   const allQuestionsAnswered = answeredCount === template.questions.length;
 
   // 답변 변경 핸들러
@@ -148,10 +142,7 @@ export default function PublicSelfAssessmentForm({
     if (step >= 0 && step < totalSteps) {
       setCurrentStep(step);
       setError(null);
-      scrollAfterPaint(
-        () => formRef.current,
-        { behavior: 'smooth', block: 'start' }
-      );
+      scrollAfterPaint(() => formRef.current, { behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -193,13 +184,10 @@ export default function PublicSelfAssessmentForm({
     }
 
     // 모든 질문 응답 확인
-    const unansweredQuestions = template.questions.filter(
-      (q) => !isQuestionAnswered(q)
-    );
+    const unansweredQuestions = template.questions.filter((q) => !isQuestionAnswered(q));
     if (unansweredQuestions.length > 0) {
       const firstUnanswered = unansweredQuestions[0];
-      const stepIndex =
-        dimensions.indexOf(firstUnanswered.dimension) + 1;
+      const stepIndex = dimensions.indexOf(firstUnanswered.dimension) + 1;
       if (stepIndex > 0) setCurrentStep(stepIndex);
       const errorMessage = `${unansweredQuestions.length}개의 미응답 질문이 있습니다.`;
       setError(errorMessage);
@@ -254,11 +242,7 @@ export default function PublicSelfAssessmentForm({
       {/* 에러 메시지 */}
       {error && (
         <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-center">
-          <svg
-            className="w-5 h-5 mr-2 flex-shrink-0"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
+          <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path
               fillRule="evenodd"
               d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
@@ -282,9 +266,7 @@ export default function PublicSelfAssessmentForm({
         <div className="space-y-6">
           <div className="flex items-center gap-2 mb-4">
             <User className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold text-gray-900">
-              작성자 정보
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900">작성자 정보</h2>
           </div>
           <p className="text-sm text-gray-500 mb-6">
             진단 결과 안내를 위해 작성자 정보를 입력해 주세요.
@@ -342,17 +324,12 @@ export default function PublicSelfAssessmentForm({
       ) : (
         <>
           {/* 전체 진행률 */}
-          <ProgressBar
-            answeredCount={answeredCount}
-            totalCount={template.questions.length}
-          />
+          <ProgressBar answeredCount={answeredCount} totalCount={template.questions.length} />
 
           {/* 현재 스텝 헤더 */}
           <DimensionHeader
             dimension={currentDimension}
-            answeredCount={
-              currentQuestions.filter((q) => isQuestionAnswered(q)).length
-            }
+            answeredCount={currentQuestions.filter((q) => isQuestionAnswered(q)).length}
             totalCount={currentQuestions.length}
           />
 

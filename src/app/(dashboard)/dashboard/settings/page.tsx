@@ -3,7 +3,7 @@ import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { EMAIL_NOTIFY_ROLES } from '@/lib/constants/message';
 import { isPendingApproval } from '@/lib/constants/status';
 import { PageHeader } from '@/components/ui/page-header';
-import DeleteAccountSection from '@/components/auth/DeleteAccountSection';
+import DeleteAccountSection from './_components/DeleteAccountSection';
 import EmailNotifyToggle from '@/app/(dashboard)/dashboard/profile/_components/EmailNotifyToggle';
 import PasswordChangeSection from './_components/PasswordChangeSection';
 import { PAGE_TITLE, PAGE_DESCRIPTION, BACK_LINK } from './_meta';

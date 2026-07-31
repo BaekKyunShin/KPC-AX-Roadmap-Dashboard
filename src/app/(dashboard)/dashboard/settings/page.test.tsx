@@ -22,7 +22,7 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
-vi.mock('@/components/auth/DeleteAccountSection', () => ({ default: () => null }));
+vi.mock('./_components/DeleteAccountSection', () => ({ default: () => null }));
 vi.mock('@/app/(dashboard)/dashboard/profile/_components/EmailNotifyToggle', () => ({
   default: () => null,
 }));

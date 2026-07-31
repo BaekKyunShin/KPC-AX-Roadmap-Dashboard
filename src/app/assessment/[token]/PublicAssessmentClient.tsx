@@ -6,7 +6,7 @@ import { Building2, CheckCircle2, Clock, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Template } from '@/components/ops/self-assessment';
 
-import PublicSelfAssessmentForm from '@/components/assessment/PublicSelfAssessmentForm';
+import PublicSelfAssessmentForm from './_components/PublicSelfAssessmentForm';
 import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 type Phase = 'intro' | 'form' | 'complete';
@@ -32,12 +32,8 @@ export default function PublicAssessmentClient({
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 className="w-8 h-8 text-green-600" />
         </div>
-        <h1 className="text-xl font-semibold text-gray-900 mb-2">
-          소중한 응답 감사합니다
-        </h1>
-        <p className="text-gray-600">
-          담당 컨설턴트가 결과를 분석하여 연락드리겠습니다.
-        </p>
+        <h1 className="text-xl font-semibold text-gray-900 mb-2">소중한 응답 감사합니다</h1>
+        <p className="text-gray-600">담당 컨설턴트가 결과를 분석하여 연락드리겠습니다.</p>
       </div>
     );
   }
@@ -74,11 +70,7 @@ export default function PublicAssessmentClient({
           </div>
         </div>
 
-        <Button
-          onClick={() => setPhase('form')}
-          className="w-full"
-          size="lg"
-        >
+        <Button onClick={() => setPhase('form')} className="w-full" size="lg">
           진단 시작
         </Button>
       </div>
