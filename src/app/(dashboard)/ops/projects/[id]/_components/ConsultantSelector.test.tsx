@@ -20,9 +20,6 @@ vi.mock('./assignment', async (importOriginal) => {
     CheckIcon: ({ className }: { className?: string }) => (
       <svg data-testid="check-icon" className={className} />
     ),
-    SpinnerIcon: ({ className }: { className?: string }) => (
-      <svg data-testid="spinner-icon" className={className} />
-    ),
   };
 });
 
