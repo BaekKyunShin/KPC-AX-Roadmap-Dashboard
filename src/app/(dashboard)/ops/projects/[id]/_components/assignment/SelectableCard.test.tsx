@@ -43,10 +43,12 @@ describe('SelectableCard', () => {
     it('컨설턴트 이름이 렌더링된다', () => {
       render(
         <SelectableCard
-          recommendation={makeRecommendation({ candidate: { id: 'c1', name: '홍길동', email: 'hong@test.com' } })}
+          recommendation={makeRecommendation({
+            candidate: { id: 'c1', name: '홍길동', email: 'hong@test.com' },
+          })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('홍길동')).toBeInTheDocument();
     });
@@ -54,10 +56,12 @@ describe('SelectableCard', () => {
     it('컨설턴트 이메일이 렌더링된다', () => {
       render(
         <SelectableCard
-          recommendation={makeRecommendation({ candidate: { id: 'c1', name: '홍길동', email: 'hong@test.com' } })}
+          recommendation={makeRecommendation({
+            candidate: { id: 'c1', name: '홍길동', email: 'hong@test.com' },
+          })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('hong@test.com')).toBeInTheDocument();
     });
@@ -68,7 +72,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ rank: 2 })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('2')).toBeInTheDocument();
     });
@@ -79,7 +83,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation()}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('이 컨설턴트 선택하기')).toBeInTheDocument();
     });
@@ -92,7 +96,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation()}
           isSelected={true}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('✓ 선택됨')).toBeInTheDocument();
     });
@@ -103,7 +107,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation()}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.queryByText('✓ 선택됨')).not.toBeInTheDocument();
     });
@@ -114,7 +118,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation()}
           isSelected={true}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       const button = screen.getByRole('button');
       expect(button.className).toContain('border-blue-500');
@@ -126,7 +130,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ rank: 1 })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       const button = screen.getByRole('button');
       expect(button.className).toContain('border-emerald-300');
@@ -138,7 +142,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ rank: 2 })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       const button = screen.getByRole('button');
       expect(button.className).toContain('border-gray-200');
@@ -152,7 +156,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ total_score: 85 })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('85')).toBeInTheDocument();
     });
@@ -163,7 +167,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ total_score: 80 })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       // 80점 → 80*3.6 = 288deg
       const gaugeEl = screen.getByText('80').closest('.rounded-full')?.parentElement;
@@ -176,7 +180,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ total_score: 150 })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('100')).toBeInTheDocument();
     });
@@ -187,7 +191,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ total_score: -10 })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('0')).toBeInTheDocument();
     });
@@ -200,7 +204,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ rank: 1 })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('AI 추천')).toBeInTheDocument();
     });
@@ -211,7 +215,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ rank: 2 })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.queryByText('AI 추천')).not.toBeInTheDocument();
     });
@@ -222,7 +226,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ rank: 1 })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       const rankBadge = screen.getByText('1');
       expect(rankBadge.className).toContain('bg-emerald-500');
@@ -234,7 +238,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ rank: 1 })}
           isSelected={true}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       const rankBadge = screen.getByText('1');
       expect(rankBadge.className).toContain('bg-blue-500');
@@ -253,7 +257,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ rationale })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('AI 분석: 제조업 전문성이 높습니다.')).toBeInTheDocument();
     });
@@ -269,7 +273,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ rationale })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('제조업 경험')).toBeInTheDocument();
       expect(screen.getByText('AI 도입 역량')).toBeInTheDocument();
@@ -286,7 +290,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ rationale })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('일정 확인 필요')).toBeInTheDocument();
     });
@@ -297,7 +301,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation({ rationale: null })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       // 분석 텍스트가 없으면 특정 분석 내용이 DOM에 없어야 함
       expect(screen.queryByText('AI 분석:')).not.toBeInTheDocument();
@@ -322,7 +326,7 @@ describe('SelectableCard', () => {
           recommendation={withProfile({ available_industries: ['제조', '금융', 'IT'] })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('제조')).toBeInTheDocument();
       expect(screen.getByText('금융')).toBeInTheDocument();
@@ -335,7 +339,7 @@ describe('SelectableCard', () => {
           recommendation={withProfile({ available_industries: ['제조', '금융', 'IT', '의료'] })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('제조')).toBeInTheDocument();
       expect(screen.getByText('금융')).toBeInTheDocument();
@@ -346,10 +350,13 @@ describe('SelectableCard', () => {
     it('available_industries 가 비어있고 expertise_domains 가 있으면 expertise_domains 칩이 렌더된다', () => {
       render(
         <SelectableCard
-          recommendation={withProfile({ available_industries: [], expertise_domains: ['AI 컨설팅', '데이터 분석'] })}
+          recommendation={withProfile({
+            available_industries: [],
+            expertise_domains: ['AI 컨설팅', '데이터 분석'],
+          })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('AI 컨설팅')).toBeInTheDocument();
       expect(screen.getByText('데이터 분석')).toBeInTheDocument();
@@ -361,7 +368,7 @@ describe('SelectableCard', () => {
           recommendation={withProfile({ available_industries: [], expertise_domains: [] })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.queryByTestId('consultant-industries')).not.toBeInTheDocument();
     });
@@ -372,7 +379,7 @@ describe('SelectableCard', () => {
           recommendation={withProfile({ years_of_experience: 20 })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('경력 20년')).toBeInTheDocument();
     });
@@ -383,7 +390,7 @@ describe('SelectableCard', () => {
           recommendation={withProfile({ years_of_experience: 0 })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.queryByText(/경력/)).not.toBeInTheDocument();
     });
@@ -394,7 +401,7 @@ describe('SelectableCard', () => {
           recommendation={withProfile({})}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.queryByText(/경력/)).not.toBeInTheDocument();
     });
@@ -412,7 +419,7 @@ describe('SelectableCard', () => {
           })}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.getByText('공공')).toBeInTheDocument();
       expect(screen.getByText('경력 15년')).toBeInTheDocument();
@@ -424,7 +431,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation()}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       expect(screen.queryByTestId('consultant-industries')).not.toBeInTheDocument();
       expect(screen.queryByText(/경력/)).not.toBeInTheDocument();
@@ -438,7 +445,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation()}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       fireEvent.click(screen.getByRole('button'));
       expect(mockOnSelect).toHaveBeenCalledOnce();
@@ -450,7 +457,7 @@ describe('SelectableCard', () => {
           recommendation={makeRecommendation()}
           isSelected={false}
           onSelect={mockOnSelect}
-        />,
+        />
       );
       fireEvent.click(screen.getByRole('button'));
       fireEvent.click(screen.getByRole('button'));

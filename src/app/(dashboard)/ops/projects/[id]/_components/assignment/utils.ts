@@ -19,7 +19,17 @@ export const SCORE_THRESHOLDS = {
 } as const;
 
 /** 추천 근거 파싱용 키워드 */
-const NOTE_KEYWORDS = ['부족', '없', '미흡', '제한', '주의', '다만', '그러나', '하지만', '진행 중'] as const;
+const NOTE_KEYWORDS = [
+  '부족',
+  '없',
+  '미흡',
+  '제한',
+  '주의',
+  '다만',
+  '그러나',
+  '하지만',
+  '진행 중',
+] as const;
 
 /** 에러 메시지 */
 export const ERROR_MESSAGES = {
@@ -83,9 +93,9 @@ export type ValidRecommendation = Recommendation & {
 
 /** 파싱된 추천 근거 (LLM 형식 지원) */
 export interface ParsedRationale {
-  analysis?: string;         // LLM 분석 텍스트
+  analysis?: string; // LLM 분석 텍스트
   strengths: string[];
-  notes: string[];           // considerations 또는 improvements
+  notes: string[]; // considerations 또는 improvements
 }
 
 // ============================================================================
@@ -105,7 +115,7 @@ export interface ParsedRationale {
  * - 객체 → 그대로 (빈 객체도 그대로 — 비어있는지 판단은 호출자 책임)
  */
 export function getConsultantProfile(
-  candidate: ValidRecommendation['candidate'],
+  candidate: ValidRecommendation['candidate']
 ): ConsultantProfile | null {
   const raw = candidate.consultant_profile;
   if (raw === undefined || raw === null) return null;
@@ -130,7 +140,9 @@ export function getScoreGaugeColor(score: number): string {
 }
 
 /** 추천 근거를 구조화된 데이터로 파싱 (LLM 형식 및 레거시 지원) */
-export function parseRationale(rationale: string | RationaleData | LLMRationaleData | null | undefined): ParsedRationale {
+export function parseRationale(
+  rationale: string | RationaleData | LLMRationaleData | null | undefined
+): ParsedRationale {
   if (!rationale) {
     return { strengths: [], notes: [] };
   }

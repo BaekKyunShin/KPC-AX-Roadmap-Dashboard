@@ -56,7 +56,9 @@ export default function useAssignmentMatching({
   }, [hasRecommendations, currentFirstId]);
 
   // API 호출 (타임아웃 없음, AbortController로 취소 가능)
-  const callMatchingAPI = async (preserveStatus: boolean): Promise<{ success: boolean; error?: string; cancelled?: boolean }> => {
+  const callMatchingAPI = async (
+    preserveStatus: boolean
+  ): Promise<{ success: boolean; error?: string; cancelled?: boolean }> => {
     // 새 AbortController 생성
     abortControllerRef.current = new AbortController();
 

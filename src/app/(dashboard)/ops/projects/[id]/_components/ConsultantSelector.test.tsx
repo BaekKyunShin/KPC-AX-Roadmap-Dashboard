@@ -1,13 +1,13 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ConsultantSelector from './ConsultantSelector';
-import type { ConsultantCandidate } from '@/app/(dashboard)/ops/projects/actions';
+import type { ConsultantCandidate } from '../../actions';
 
 // ============================================================================
 // 모킹
 // ============================================================================
 
-vi.mock('@/app/(dashboard)/ops/projects/actions', () => ({
+vi.mock('../../actions', () => ({
   fetchConsultantCandidates: vi.fn(),
   fetchConsultantFilterOptions: vi.fn(),
 }));
@@ -31,7 +31,7 @@ vi.mock('./assignment', async (importOriginal) => {
 // ============================================================================
 
 function makeConsultantCandidate(
-  overrides: Partial<ConsultantCandidate> = {},
+  overrides: Partial<ConsultantCandidate> = {}
 ): ConsultantCandidate {
   return {
     id: 'consultant-1',
@@ -50,7 +50,7 @@ function makeConsultantCandidate(
 
 function makeCandidateListResult(
   consultants: ConsultantCandidate[],
-  overrides: { total?: number; totalPages?: number; page?: number } = {},
+  overrides: { total?: number; totalPages?: number; page?: number } = {}
 ) {
   return {
     consultants,
@@ -64,10 +64,7 @@ function makeCandidateListResult(
 // 공통 모킹 임포트
 // ============================================================================
 
-import {
-  fetchConsultantCandidates,
-  fetchConsultantFilterOptions,
-} from '@/app/(dashboard)/ops/projects/actions';
+import { fetchConsultantCandidates, fetchConsultantFilterOptions } from '../../actions';
 
 const mockFetchCandidates = vi.mocked(fetchConsultantCandidates);
 const mockFetchFilterOptions = vi.mocked(fetchConsultantFilterOptions);
@@ -76,9 +73,7 @@ const mockFetchFilterOptions = vi.mocked(fetchConsultantFilterOptions);
 // 헬퍼
 // ============================================================================
 
-function renderSelector(
-  props: Partial<React.ComponentProps<typeof ConsultantSelector>> = {},
-) {
+function renderSelector(props: Partial<React.ComponentProps<typeof ConsultantSelector>> = {}) {
   const defaultProps: React.ComponentProps<typeof ConsultantSelector> = {
     selectedConsultantId: null,
     onSelect: vi.fn(),
@@ -89,9 +84,7 @@ function renderSelector(
 
 /** 로딩 완료까지 기다리는 헬퍼 */
 async function waitForLoaded() {
-  await waitFor(() =>
-    expect(screen.queryByText('로딩 중...')).not.toBeInTheDocument(),
-  );
+  await waitFor(() => expect(screen.queryByText('로딩 중...')).not.toBeInTheDocument());
 }
 
 // ============================================================================
@@ -101,9 +94,7 @@ async function waitForLoaded() {
 describe('ConsultantSelector', () => {
   beforeEach(() => {
     mockFetchFilterOptions.mockResolvedValue({ industries: [], skills: [] });
-    mockFetchCandidates.mockResolvedValue(
-      makeCandidateListResult([makeConsultantCandidate()]),
-    );
+    mockFetchCandidates.mockResolvedValue(makeCandidateListResult([makeConsultantCandidate()]));
   });
 
   afterEach(() => {
@@ -117,9 +108,7 @@ describe('ConsultantSelector', () => {
   describe('초기 로딩 상태', () => {
     it('컴포넌트 마운트 직후 행 형태 스켈레톤 4개 이상이 표시된다', () => {
       const { container } = renderSelector();
-      const skeletonRows = container.querySelectorAll(
-        '[data-testid="consultant-loading-row"]',
-      );
+      const skeletonRows = container.querySelectorAll('[data-testid="consultant-loading-row"]');
       expect(skeletonRows.length).toBeGreaterThanOrEqual(4);
       // sr-only "로딩 중..." 은 스크린리더용으로 유지 (시각적으로는 안 보임)
       expect(screen.getByText('로딩 중...')).toBeInTheDocument();
@@ -128,9 +117,7 @@ describe('ConsultantSelector', () => {
     it('로딩 완료 후 스켈레톤 행이 사라진다', async () => {
       const { container } = renderSelector();
       await waitForLoaded();
-      const skeletonRows = container.querySelectorAll(
-        '[data-testid="consultant-loading-row"]',
-      );
+      const skeletonRows = container.querySelectorAll('[data-testid="consultant-loading-row"]');
       expect(skeletonRows.length).toBe(0);
     });
   });
@@ -165,8 +152,8 @@ describe('ConsultantSelector', () => {
             makeConsultantCandidate({ id: 'c1', name: '김컨설턴트' }),
             makeConsultantCandidate({ id: 'c2', name: '이컨설턴트', email: 'lee@test.com' }),
           ],
-          { total: 2 },
-        ),
+          { total: 2 }
+        )
       );
       renderSelector();
       await waitForLoaded();
@@ -249,9 +236,8 @@ describe('ConsultantSelector', () => {
 
       // 디바운스 300ms 경과 후 재호출 확인
       await waitFor(
-        () =>
-          expect(mockFetchCandidates.mock.calls.length).toBeGreaterThan(initialCallCount),
-        { timeout: 1000 },
+        () => expect(mockFetchCandidates.mock.calls.length).toBeGreaterThan(initialCallCount),
+        { timeout: 1000 }
       );
     }, 10000);
 
@@ -267,7 +253,7 @@ describe('ConsultantSelector', () => {
           const lastCall = mockFetchCandidates.mock.calls.at(-1)?.[0];
           expect(lastCall?.search).toBe('홍길동');
         },
-        { timeout: 1000 },
+        { timeout: 1000 }
       );
     }, 10000);
   });
@@ -286,11 +272,8 @@ describe('ConsultantSelector', () => {
       fireEvent.change(input, { target: { value: '존재하지않는이름' } });
 
       await waitFor(
-        () =>
-          expect(
-            screen.getByText('검색 조건에 맞는 컨설턴트가 없습니다.'),
-          ).toBeInTheDocument(),
-        { timeout: 1000 },
+        () => expect(screen.getByText('검색 조건에 맞는 컨설턴트가 없습니다.')).toBeInTheDocument(),
+        { timeout: 1000 }
       );
     }, 10000);
 
@@ -333,7 +316,7 @@ describe('ConsultantSelector', () => {
 
     it('totalPages가 2 이상이면 이전/다음 버튼이 표시된다', async () => {
       mockFetchCandidates.mockResolvedValue(
-        makeCandidateListResult([makeConsultantCandidate()], { total: 15, totalPages: 2 }),
+        makeCandidateListResult([makeConsultantCandidate()], { total: 15, totalPages: 2 })
       );
       renderSelector();
       await waitForLoaded();
@@ -343,7 +326,7 @@ describe('ConsultantSelector', () => {
 
     it('첫 페이지에서 "이전" 버튼은 비활성화된다', async () => {
       mockFetchCandidates.mockResolvedValue(
-        makeCandidateListResult([makeConsultantCandidate()], { total: 15, totalPages: 2 }),
+        makeCandidateListResult([makeConsultantCandidate()], { total: 15, totalPages: 2 })
       );
       renderSelector();
       await waitForLoaded();
@@ -352,7 +335,7 @@ describe('ConsultantSelector', () => {
 
     it('"다음" 버튼 클릭 시 page가 2로 증가하여 재호출된다', async () => {
       mockFetchCandidates.mockResolvedValue(
-        makeCandidateListResult([makeConsultantCandidate()], { total: 15, totalPages: 2 }),
+        makeCandidateListResult([makeConsultantCandidate()], { total: 15, totalPages: 2 })
       );
       renderSelector();
       await waitForLoaded();
@@ -368,7 +351,7 @@ describe('ConsultantSelector', () => {
 
     it('현재 페이지와 전체 페이지 수를 표시한다', async () => {
       mockFetchCandidates.mockResolvedValue(
-        makeCandidateListResult([makeConsultantCandidate()], { total: 15, totalPages: 3 }),
+        makeCandidateListResult([makeConsultantCandidate()], { total: 15, totalPages: 3 })
       );
       renderSelector();
       await waitForLoaded();

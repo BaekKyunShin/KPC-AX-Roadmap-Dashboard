@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
-import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
+import { assignConsultant } from '../../../actions';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showErrorToast } from '@/lib/utils/toast';
@@ -88,7 +88,8 @@ export default function RecommendationResults({
       {selectedId && (
         <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4 mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            배정 사유 <span className="text-gray-400 font-normal">({REASON_LENGTH.MIN}자 이상)</span>
+            배정 사유{' '}
+            <span className="text-gray-400 font-normal">({REASON_LENGTH.MIN}자 이상)</span>
           </label>
           <div className="relative">
             <textarea
@@ -100,9 +101,15 @@ export default function RecommendationResults({
               rows={2}
             />
             <div className="absolute right-2 bottom-2">
-              <span className={cn('text-xs', reason.length >= REASON_LENGTH.MIN ? 'text-gray-400' : 'text-orange-500')}>
+              <span
+                className={cn(
+                  'text-xs',
+                  reason.length >= REASON_LENGTH.MIN ? 'text-gray-400' : 'text-orange-500'
+                )}
+              >
                 {reason.length}/{REASON_LENGTH.MAX}
-                {reason.length < REASON_LENGTH.MIN && ` (${REASON_LENGTH.MIN - reason.length}자 더)`}
+                {reason.length < REASON_LENGTH.MIN &&
+                  ` (${REASON_LENGTH.MIN - reason.length}자 더)`}
               </span>
             </div>
           </div>

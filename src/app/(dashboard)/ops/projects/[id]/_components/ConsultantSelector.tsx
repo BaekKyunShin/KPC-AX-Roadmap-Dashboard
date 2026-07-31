@@ -5,7 +5,7 @@ import {
   fetchConsultantCandidates,
   fetchConsultantFilterOptions,
   type ConsultantCandidate,
-} from '@/app/(dashboard)/ops/projects/actions';
+} from '../../actions';
 import { getLevelLabel, CheckIcon } from './assignment';
 
 // ============================================================================
@@ -94,7 +94,7 @@ export default function ConsultantSelector({
 
   useEffect(() => {
     loadConsultants();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
   }, [page, debouncedSearch, selectedIndustries, selectedSkills]);
 
   // 필터 변경 시 페이지 리셋
@@ -180,13 +180,7 @@ export default function ConsultantSelector({
       </div>
 
       {/* 페이지네이션 */}
-      {totalPages > 1 && (
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-        />
-      )}
+      {totalPages > 1 && <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />}
     </div>
   );
 }
@@ -334,13 +328,11 @@ function LoadingState() {
   // 스크린리더용 "로딩 중..." 은 sr-only 로 유지 (a11y).
   return (
     <>
-      <span className="sr-only" aria-live="polite">로딩 중...</span>
+      <span className="sr-only" aria-live="polite">
+        로딩 중...
+      </span>
       {Array.from({ length: 4 }).map((_, i) => (
-        <div
-          key={i}
-          data-testid="consultant-loading-row"
-          className="p-4"
-        >
+        <div key={i} data-testid="consultant-loading-row" className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 space-y-2">
               <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
@@ -416,12 +408,17 @@ function ConsultantProfileInfo({
       {profile.available_industries.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {profile.available_industries.slice(0, 3).map((industry) => (
-            <span key={industry} className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+            <span
+              key={industry}
+              className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded"
+            >
               {industry}
             </span>
           ))}
           {profile.available_industries.length > 3 && (
-            <span className="text-xs text-gray-400">+{profile.available_industries.length - 3}</span>
+            <span className="text-xs text-gray-400">
+              +{profile.available_industries.length - 3}
+            </span>
           )}
         </div>
       )}

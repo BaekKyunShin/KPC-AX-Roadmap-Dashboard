@@ -23,7 +23,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Server Action 모킹
-vi.mock('@/app/(dashboard)/ops/projects/actions', () => ({
+vi.mock('../../../actions', () => ({
   assignConsultant: vi.fn(),
 }));
 
@@ -60,7 +60,13 @@ vi.mock('./SelectableCard', () => ({
     isSelected,
     onSelect,
   }: {
-    recommendation: { candidate_user_id: string; total_score: number; rank: number; rationale?: string | null; candidate: { name: string; email: string } };
+    recommendation: {
+      candidate_user_id: string;
+      total_score: number;
+      rank: number;
+      rationale?: string | null;
+      candidate: { name: string; email: string };
+    };
     isSelected: boolean;
     onSelect: () => void;
   }) => (
@@ -87,14 +93,16 @@ vi.mock('@/lib/utils', () => ({
 // ============================================================================
 
 import RecommendationResults from './RecommendationResults';
-import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
+import { assignConsultant } from '../../../actions';
 import type { ValidRecommendation } from './utils';
 
 // ============================================================================
 // 테스트 데이터 팩토리
 // ============================================================================
 
-function makeValidRecommendation(overrides: Partial<ValidRecommendation> = {}): ValidRecommendation {
+function makeValidRecommendation(
+  overrides: Partial<ValidRecommendation> = {}
+): ValidRecommendation {
   return {
     id: 'rec-1',
     candidate_user_id: 'consultant-1',
@@ -224,7 +232,9 @@ describe('RecommendationResults', () => {
   describe('카드 선택 시 배정 사유 UI', () => {
     it('카드 클릭 전에는 배정 사유 입력란이 없다', () => {
       render(<RecommendationResults {...defaultProps} />);
-      expect(screen.queryByPlaceholderText(/해당 컨설턴트를 배정하는 사유/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText(/해당 컨설턴트를 배정하는 사유/)
+      ).not.toBeInTheDocument();
     });
 
     it('카드 클릭 시 배정 사유 입력란이 나타난다', () => {
@@ -424,7 +434,7 @@ describe('RecommendationResults', () => {
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(
           '배정 실패',
-          expect.stringContaining('네트워크'),
+          expect.stringContaining('네트워크')
         );
       });
     });

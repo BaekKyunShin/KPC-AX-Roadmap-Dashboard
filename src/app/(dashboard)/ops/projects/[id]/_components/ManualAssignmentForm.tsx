@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
+import { assignConsultant } from '../../actions';
 import { cn } from '@/lib/utils';
 import { showSuccessToast } from '@/lib/utils/toast';
-import type { ConsultantCandidate } from '@/app/(dashboard)/ops/projects/actions';
+import type { ConsultantCandidate } from '../../actions';
 import ConsultantSelector from './ConsultantSelector';
 import { AlertMessage, REASON_LENGTH, ASSIGN_BUTTON_STYLE } from './assignment';
 import {
@@ -85,7 +85,7 @@ export default function ManualAssignmentForm({
         if (isReassignment && currentAssignment) {
           showSuccessToast(
             '재배정 완료',
-            `${selectedConsultant.name}으로 재배정되었습니다 (이전: ${currentAssignment.name})`,
+            `${selectedConsultant.name}으로 재배정되었습니다 (이전: ${currentAssignment.name})`
           );
         } else {
           showSuccessToast('배정 완료', `${selectedConsultant.name}컨설턴트가 배정되었습니다`);
@@ -119,14 +119,17 @@ export default function ManualAssignmentForm({
       {currentAssignment && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/70 px-4 py-3">
           <p className="text-sm text-amber-800">
-            현재 배정: <span className="font-semibold">{currentAssignment.name}</span> — 다른 컨설턴트를 선택하면 재배정됩니다.
+            현재 배정: <span className="font-semibold">{currentAssignment.name}</span> — 다른
+            컨설턴트를 선택하면 재배정됩니다.
           </p>
         </div>
       )}
 
       {/* 컨설턴트 선택 */}
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">배정할 컨설턴트 선택 *</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          배정할 컨설턴트 선택 *
+        </label>
         <ConsultantSelector
           selectedConsultantId={selectedConsultant?.id || null}
           onSelect={handleSelectConsultant}
@@ -137,7 +140,8 @@ export default function ManualAssignmentForm({
       {selectedConsultant && (
         <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4 mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            배정 사유 <span className="text-gray-400 font-normal">({REASON_LENGTH.MIN}자 이상)</span>
+            배정 사유{' '}
+            <span className="text-gray-400 font-normal">({REASON_LENGTH.MIN}자 이상)</span>
           </label>
           <div className="relative">
             <textarea
@@ -156,7 +160,8 @@ export default function ManualAssignmentForm({
                 )}
               >
                 {reason.length}/{REASON_LENGTH.MAX}
-                {reason.length < REASON_LENGTH.MIN && ` (${REASON_LENGTH.MIN - reason.length}자 더)`}
+                {reason.length < REASON_LENGTH.MIN &&
+                  ` (${REASON_LENGTH.MIN - reason.length}자 더)`}
               </span>
             </div>
           </div>

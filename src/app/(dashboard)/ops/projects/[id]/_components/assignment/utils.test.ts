@@ -8,7 +8,8 @@ describe('getConsultantProfile', () => {
       id: 'consultant-1',
       name: '김컨설턴트',
       email: 'kim@test.com',
-      consultant_profile: consultant_profile as ValidRecommendation['candidate']['consultant_profile'],
+      consultant_profile:
+        consultant_profile as ValidRecommendation['candidate']['consultant_profile'],
     };
   }
 

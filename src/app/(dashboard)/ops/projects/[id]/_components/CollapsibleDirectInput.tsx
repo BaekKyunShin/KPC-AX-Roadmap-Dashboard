@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import SelfAssessmentForm from './SelfAssessmentForm';
 
-import type { Template } from './self-assessment';
+import type { Template } from '@/components/ops/self-assessment';
 
 // ======================================================================
 // CollapsibleDirectInput — 운영자 직접 입력 토글 영역
@@ -48,14 +48,15 @@ export default function CollapsibleDirectInput({
         />
         <div>
           <span className="text-sm text-gray-600">운영자가 직접 입력하기</span>
-          <p className="text-xs text-gray-400">
-            전화·대면 등 오프라인으로 답변받은 경우
-          </p>
+          <p className="text-xs text-gray-400">전화·대면 등 오프라인으로 답변받은 경우</p>
         </div>
       </button>
 
       {isOpen && (
-        <div id="direct-input-panel" className="animate-in fade-in slide-in-from-top-1 duration-200">
+        <div
+          id="direct-input-panel"
+          className="animate-in fade-in slide-in-from-top-1 duration-200"
+        >
           <SelfAssessmentForm projectId={projectId} template={template} />
         </div>
       )}
