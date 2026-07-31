@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { AlertTriangle } from 'lucide-react';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createAdminClient } from '@/lib/supabase/admin';
-import UserManagementTable from '@/components/ops/UserManagementTable';
+import UserManagementTable from './_components/UserManagementTable';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/EmptyState';
 import {

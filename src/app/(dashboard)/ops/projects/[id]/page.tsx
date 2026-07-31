@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin'; // admin: 산출물 count (RLS 무관 방어 조회)
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import CollapsibleDirectInput from '@/components/ops/CollapsibleDirectInput';
-import AssessmentTokenSection from '@/components/ops/AssessmentTokenSection';
+import AssessmentTokenSection from './_components/AssessmentTokenSection';
 import AssignmentTabSection from '@/components/ops/AssignmentTabSection';
 import type { Recommendation } from '@/components/ops/assignment/utils';
 import { PageHeader } from '@/components/ui/page-header';

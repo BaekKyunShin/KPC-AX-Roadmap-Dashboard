@@ -14,10 +14,7 @@ import {
 } from '@/components/ui/select';
 import { showErrorToast, showSuccessToast } from '@/lib/utils';
 import { TOAST_ERROR } from '@/lib/constants/toast-messages';
-import {
-  createAssessmentToken,
-  type LatestTokenInfo,
-} from '@/app/(dashboard)/ops/projects/actions';
+import { createAssessmentToken, type LatestTokenInfo } from '../../actions';
 
 // ============================================================================
 // 타입 정의
@@ -48,17 +45,14 @@ export default function AssessmentTokenSection({
   const [copied, setCopied] = useState(false);
   const [expiryDays, setExpiryDays] = useState('14');
 
-  const appUrl = typeof window !== 'undefined'
-    ? window.location.origin
-    : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl =
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-  const tokenUrl = latestToken
-    ? `${appUrl}/assessment/${latestToken.token}`
-    : null;
+  const tokenUrl = latestToken ? `${appUrl}/assessment/${latestToken.token}` : null;
 
-  const isExpired = latestToken
-    ? new Date(latestToken.expiresAt) < new Date()
-    : false;
+  const isExpired = latestToken ? new Date(latestToken.expiresAt) < new Date() : false;
 
   async function handleCreateToken() {
     setIsLoading(true);
@@ -107,14 +101,11 @@ export default function AssessmentTokenSection({
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-green-600">
           <Check className="w-4 h-4" />
-          <span className="text-sm font-medium">
-            고객사가 직접 진단을 완료했습니다
-          </span>
+          <span className="text-sm font-medium">고객사가 직접 진단을 완료했습니다</span>
         </div>
         {latestToken.usedAt && (
           <p className="text-xs text-gray-500">
-            완료 시간:{' '}
-            {new Date(latestToken.usedAt).toLocaleString('ko-KR')}
+            완료 시간: {new Date(latestToken.usedAt).toLocaleString('ko-KR')}
           </p>
         )}
       </div>
@@ -138,11 +129,7 @@ export default function AssessmentTokenSection({
               onClick={handleCopy}
               className="flex-shrink-0"
             >
-              {copied ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             </Button>
             <Button
               type="button"
@@ -156,8 +143,7 @@ export default function AssessmentTokenSection({
           </div>
         </div>
         <p className="text-xs text-gray-500">
-          만료일:{' '}
-          {new Date(latestToken.expiresAt).toLocaleDateString('ko-KR')}
+          만료일: {new Date(latestToken.expiresAt).toLocaleDateString('ko-KR')}
         </p>
         <Button
           type="button"
@@ -202,12 +188,7 @@ export default function AssessmentTokenSection({
             </SelectContent>
           </Select>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          onClick={handleCreateToken}
-          disabled={isLoading}
-        >
+        <Button type="button" size="sm" onClick={handleCreateToken} disabled={isLoading}>
           {isLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
           진단 링크 생성
         </Button>
