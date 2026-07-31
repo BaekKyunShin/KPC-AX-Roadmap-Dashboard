@@ -472,11 +472,11 @@ describe('saveRoadmapInterviewV2', () => {
     expect(overview.selected_tasks_summary).toBe('기존 과업');
   });
 
-  // ── P8 특성화 — Roadmap V2 는 update 에도 row(project_id·interviewer_id·
-  // interview_date)를 통째로 재사용해 매 저장마다 세 컬럼을 덮어쓴다.
-  // PBL V2(update 는 pbl_data 단독)와 비대칭이며, 공통 골격 추출 시 이
-  // 비대칭이 통일되면 동작 변경이다. 아래 케이스들이 현행을 고정한다.
-  it('특성화: update 페이로드에 interview_date(오늘)·interviewer_id·project_id 를 포함해 덮어쓴다', async () => {
+  // ── 특성화 — 인터뷰 날짜 통일 (2026-07-31 사용자 결정): update 는 두 트랙
+  // 모두 변환된 dbPayload 만 보낸다. interview_date(최초 입력일)·interviewer_id
+  // 는 insert 시에만 기록되고 이후 수정에서 보존된다. (이전에는 Roadmap 만
+  // 매 저장마다 오늘로 덮어써 인터뷰 날짜가 "최종 수정일"처럼 동작했다.)
+  it('특성화: update 페이로드에 interview_date·interviewer_id·project_id 가 없다 (최초 입력일 보존)', async () => {
     await mockCachedAuth();
     mockProjectAssignmentCheck(serverMock);
     mockProjectMeta(adminMock, { track: 'ROADMAP' });
@@ -504,21 +504,21 @@ describe('saveRoadmapInterviewV2', () => {
     });
     adminMock.addResult({ data: null, error: null }); // update
 
-    const before = new Date().toISOString().slice(0, 10);
     const r = await saveRoadmapInterviewV2(
       PROJECT_ID,
       { companyRequirements: { problem: '새 문제' } },
       { autoSave: true }
     );
-    const after = new Date().toISOString().slice(0, 10);
     expect(r.success).toBe(true);
 
     const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
     expect(updateCalls.length).toBeGreaterThan(0);
     const updated = updateCalls[0][0];
-    expect(updated.project_id).toBe(PROJECT_ID);
-    expect(updated.interviewer_id).toBe(USER_A);
-    expect([before, after]).toContain(updated.interview_date);
+    expect(updated).not.toHaveProperty('interview_date');
+    expect(updated).not.toHaveProperty('interviewer_id');
+    expect(updated).not.toHaveProperty('project_id');
+    // 변환된 인터뷰 본문 컬럼은 여전히 전송된다
+    expect(updated).toHaveProperty('company_details');
   });
 
   it('특성화: insert 페이로드에 interview_date(오늘)가 포함된다', async () => {
@@ -980,10 +980,9 @@ describe('savePBLInterviewV2', () => {
     expect(pblData.businessIssues).toBe('기존 비즈니스 이슈');
   });
 
-  // ── P8 특성화 — PBL V2 의 update 는 pbl_data 단독이라 interview_date(최초
-  // 입력일)·interviewer_id 를 보존한다. Roadmap V2(update 에도 세 컬럼 덮어쓰기)
-  // 와 비대칭이며, 공통 골격 추출이 이를 통일하면 "PBL 인터뷰를 수정할 때마다
-  // 등록일이 오늘로 밀리는" 조용한 동작 변경이 된다. 아래가 현행을 고정한다.
+  // ── 특성화 — update 는 pbl_data 단독: interview_date(최초 입력일)·
+  // interviewer_id 를 보존한다. 2026-07-31 사용자 결정으로 Roadmap 도 동일하게
+  // 통일됐다 (위 saveRoadmapInterviewV2 의 대응 특성화 참조).
   it('특성화: update 페이로드는 pbl_data 단독이다 (interview_date·interviewer_id·project_id 미포함)', async () => {
     await mockCachedAuth();
     mockProjectAssignmentCheck(serverMock);

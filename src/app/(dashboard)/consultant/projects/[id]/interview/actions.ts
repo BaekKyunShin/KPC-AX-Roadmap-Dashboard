@@ -585,19 +585,11 @@ async function fetchProjectMetaForInterview(projectId: string): Promise<
   };
 }
 
-/** persistInterview 의 페이로드 빌더에 넘어가는 실행 컨텍스트 */
-interface PersistPayloadContext {
-  projectId: string;
-  userId: string;
-  /** 오늘 날짜 (YYYY-MM-DD) — interview_date 주입용 */
-  today: string;
-}
-
 /**
  * 인터뷰 저장 공통 골격(persistInterview)의 트랙별 설정 (P8).
- * 문구·페이로드 구성은 추출 전 두 함수의 코드와 문자 단위로 동일해야 한다.
+ * 문구는 추출 전 두 함수의 코드와 문자 단위로 동일해야 한다.
  */
-interface PersistInterviewConfig<T extends object, D extends object> {
+interface PersistInterviewConfig<T extends object> {
   /** 프로젝트 track 가드 + 감사로그 meta.track */
   track: ProjectTrack;
   /** track 불일치 시 사용자에게 반환할 문구 */
@@ -608,22 +600,8 @@ interface PersistInterviewConfig<T extends object, D extends object> {
   selectCols: string;
   /** DB row → camelCase (deepMerge 의 base) */
   mapFromDb: (row: unknown) => Partial<T>;
-  /** camelCase → DB 컬럼 payload */
-  mapToDb: (merged: Partial<T>) => D;
-  /**
-   * UPDATE 페이로드 — ⚠️ 두 트랙이 의도적으로 비대칭이다 (특성화 테스트로 고정):
-   *   ROADMAP: 메타 3컬럼(project_id·interviewer_id·interview_date=오늘)을 매번
-   *            재기록해 인터뷰 날짜가 "최종 수정일" 시맨틱으로 동작한다.
-   *   PBL:     dbPayload(pbl_data) 단독 — 최초 입력일·작성자가 보존된다.
-   * 이 차이를 통일하면 조용한 동작 변경이 된다 (P8 계획서 부록).
-   */
-  buildUpdatePayload: (dbPayload: D, ctx: PersistPayloadContext) => object;
-  /**
-   * INSERT 페이로드 — 두 트랙 모두 메타 3컬럼 포함.
-   * (interview_date 는 마이그 069 이후 DB DEFAULT CURRENT_DATE 가 있어 명시
-   *  주입이 필수는 아니지만, 저장 페이로드 구성을 바꾸지 않기 위해 유지한다.)
-   */
-  buildInsertPayload: (dbPayload: D, ctx: PersistPayloadContext) => object;
+  /** camelCase → DB 컬럼 payload (update/insert 공통 본문) */
+  mapToDb: (merged: Partial<T>) => object;
   /** 감사로그 action — ROADMAP 은 CREATE/UPDATE 분기, PBL 은 고정값 */
   resolveAuditAction: (isUpdate: boolean) => AuditAction;
   /** status 전이 성공 시 운영관리자 알림 문구 */
@@ -642,14 +620,17 @@ interface PersistInterviewConfig<T extends object, D extends object> {
  * 기존 row fetch + deepMerge(#4 lost update 차단) → update/insert →
  * 상태 전이(P6 에러 검사) → after(알림·감사로그·활동로그).
  *
- * 트랙별 차이(페이로드 구성·audit action·문구)는 전부 cfg 로 주입받는다.
+ * interview_date(최초 입력일)·interviewer_id 는 INSERT 시에만 기록하고 이후
+ * 수정에서 보존한다 — 2026-07-31 사용자 결정으로 두 트랙 통일 (이전에는
+ * Roadmap 만 매 update 마다 오늘로 덮어써 "최종 수정일"처럼 동작했다).
+ * 트랙별 차이(스키마·매퍼·audit action·문구)는 전부 cfg 로 주입받는다.
  * try/catch 는 두 wrapper 가 자기 문구로 감싸므로 여기서 잡지 않는다.
  */
-async function persistInterview<T extends object, D extends object>(
+async function persistInterview<T extends object>(
   projectId: string,
   data: unknown,
   options: { autoSave?: boolean } | undefined,
-  cfg: PersistInterviewConfig<T, D>
+  cfg: PersistInterviewConfig<T>
 ): Promise<SimpleActionResult> {
   // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용
   const access = await verifyProjectAccess(projectId);
@@ -694,26 +675,28 @@ async function persistInterview<T extends object, D extends object>(
   // 신규 row 면 validated 만 사용 (기존과 동일).
   const merged: Partial<T> = existing ? deepMerge(cfg.mapFromDb(existing), validated) : validated;
   const dbPayload = cfg.mapToDb(merged);
-  const ctx: PersistPayloadContext = {
-    projectId,
-    userId: user.id,
-    today: new Date().toISOString().slice(0, 10),
-  };
 
   const isUpdate = Boolean(existing);
   if (existing) {
+    // update 는 변환된 본문만 — interview_date(최초 입력일)·interviewer_id 보존.
     const { error: updateError } = await adminSupabase
       .from('interviews')
-      .update(cfg.buildUpdatePayload(dbPayload, ctx))
+      .update(dbPayload)
       .eq('id', existing.id);
     if (updateError) {
       console.error(`${cfg.logPrefix} Update:`, updateError.message);
       return { success: false, error: cfg.errorMessages.update };
     }
   } else {
-    const { error: insertError } = await adminSupabase
-      .from('interviews')
-      .insert(cfg.buildInsertPayload(dbPayload, ctx));
+    // interview_date(최초 입력일)·interviewer_id 는 insert 시에만 기록한다.
+    // (interview_date 는 마이그 069 이후 DB DEFAULT CURRENT_DATE 가 있어 명시
+    //  주입이 필수는 아니지만, 기존 insert 페이로드 구성을 유지한다.)
+    const { error: insertError } = await adminSupabase.from('interviews').insert({
+      project_id: projectId,
+      interviewer_id: user.id,
+      interview_date: new Date().toISOString().slice(0, 10),
+      ...dbPayload,
+    });
     if (insertError) {
       console.error(`${cfg.logPrefix} Insert:`, insertError.message);
       return { success: false, error: cfg.errorMessages.insert };
@@ -795,20 +778,6 @@ export async function saveRoadmapInterviewV2(
       mapFromDb: (row) =>
         mapDbToRoadmapInterview(row as Parameters<typeof mapDbToRoadmapInterview>[0]),
       mapToDb: mapRoadmapInterviewToDb,
-      // 기존 로드맵 저장 Action 과 동일하게 interviewer_id 는 항상 기록하고,
-      // update 에도 interview_date(오늘)를 재기록한다 — 특성화 테스트로 고정.
-      buildUpdatePayload: (dbPayload, ctx) => ({
-        project_id: ctx.projectId,
-        interviewer_id: ctx.userId,
-        interview_date: ctx.today,
-        ...dbPayload,
-      }),
-      buildInsertPayload: (dbPayload, ctx) => ({
-        project_id: ctx.projectId,
-        interviewer_id: ctx.userId,
-        interview_date: ctx.today,
-        ...dbPayload,
-      }),
       resolveAuditAction: (isUpdate) => (isUpdate ? 'INTERVIEW_UPDATE' : 'INTERVIEW_CREATE'),
       notification: {
         title: '인터뷰 완료',
@@ -896,17 +865,6 @@ export async function savePBLInterviewV2(
       selectCols: 'id, pbl_data',
       mapFromDb: (row) => mapDbToPBLInterview(row as Parameters<typeof mapDbToPBLInterview>[0]),
       mapToDb: mapPBLInterviewToDb,
-      // PBL update 는 pbl_data 단독 — interview_date(최초 입력일)·interviewer_id
-      // 를 보존한다. ROADMAP 과 의도적 비대칭 (특성화 테스트로 고정).
-      buildUpdatePayload: (dbPayload) => dbPayload,
-      // interview_date NOT NULL 제약 호환 — camelCase V2 스키마엔 필드가 없으므로
-      // 오늘 날짜(YYYY-MM-DD) 기본값 주입. Roadmap V2 Action 과 동일 패턴.
-      buildInsertPayload: (dbPayload, ctx) => ({
-        project_id: ctx.projectId,
-        interviewer_id: ctx.userId,
-        interview_date: ctx.today,
-        ...dbPayload,
-      }),
       resolveAuditAction: () => 'PBL_INTERVIEW_SAVED',
       notification: {
         title: 'PBL 인터뷰 완료',
