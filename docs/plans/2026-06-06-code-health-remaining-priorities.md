@@ -1,8 +1,8 @@
 # 코드 헬스 감사 — 잔여 우선순위 실행 계획
 
 > **작성:** 2026-06-06 · **출처:** 2026-06-05 코드 헬스 감사(11관점·21에이전트, 전체 B/76) → 잔여 우선순위 정밀 재조사(6에이전트, 현재 main 코드 기준 file:line 재확인)
-> **상태(2026-07-29):** 6건 중 **2건 완료** — `P5`(PR #135) · `P6`(PR #138). 잔여 4건(`P9`·`P4`·`P8`·`P7`) 미착수.
-> 완료 항목의 본문은 **기록용으로 그대로 둔다**(당시 판단 근거 보존). 실제 결과는 아래 요약표 밑 "완료 항목" 블록을 볼 것 — **두 건 모두 본문이 지목한 것보다 범위가 넓었다.**
+> **상태(2026-07-31):** 6건 중 **3건 완료** — `P5`(PR #135) · `P6`(PR #138) · `P8`(PR #154). 잔여 3건(`P9`·`P4`·`P7`) 미착수.
+> 완료 항목의 본문은 **기록용으로 그대로 둔다**(당시 판단 근거 보존). 실제 결과는 아래 요약표 밑 "완료 항목" 블록을 볼 것 — **세 건 모두 본문이 적은 것과 실제(범위·전제)가 달랐다.**
 
 ## Context
 
@@ -17,21 +17,22 @@ AI(Claude Code)로 대량 생성된 B2B 대시보드의 코드 헬스 감사 결
 
 ## 요약
 
-| ID | 항목 | 분류 | 심각도 | 노력 |
-|---|---|---|---|---|
-| `P9-skill-update` | check-server-action 스킬의 역할 체크 예시를 신규 헬퍼(OP | 🧹 순수정리 | 보통 | 낮음 |
-| `P4-editPBLV2` | editPBLV2 인터뷰 슬라이스 병합부 추출 + deepMerge 채택 | 🧹 순수정리 | 보통 | 보통 |
-| `P8-interview-dup-legacy` | 인터뷰 V2 저장 액션 공통 골격 중복 + 죽은 legacy 함수/stale | 🧹 순수정리 | 보통 | 보통 |
-| `P7-layer-inversion` | 계층 역전 제거: 기반 계층(lib·components)이 app 라우트를  | 🧹 순수정리 | 보통 | 높음 |
-| ✅ `P5-matching-quota` | 매칭 LLM 경로가 쿼터(checkAndRecordLLMUsage) 미적용 | 🐛 버그수정 | 보통 | 낮음 |
-| ✅ `P6-status-desync` | 생성 성공 후 projects.status 전이 update 에러를 조용히  | 🐛 버그수정 | 높음 | 보통 |
+| ID                           | 항목                                                        | 분류        | 심각도 | 노력 |
+| ---------------------------- | ----------------------------------------------------------- | ----------- | ------ | ---- |
+| `P9-skill-update`            | check-server-action 스킬의 역할 체크 예시를 신규 헬퍼(OP    | 🧹 순수정리 | 보통   | 낮음 |
+| `P4-editPBLV2`               | editPBLV2 인터뷰 슬라이스 병합부 추출 + deepMerge 채택      | 🧹 순수정리 | 보통   | 보통 |
+| ✅ `P8-interview-dup-legacy` | 인터뷰 V2 저장 액션 공통 골격 중복 + 죽은 legacy 함수/stale | 🧹 순수정리 | 보통   | 보통 |
+| `P7-layer-inversion`         | 계층 역전 제거: 기반 계층(lib·components)이 app 라우트를    | 🧹 순수정리 | 보통   | 높음 |
+| ✅ `P5-matching-quota`       | 매칭 LLM 경로가 쿼터(checkAndRecordLLMUsage) 미적용         | 🐛 버그수정 | 보통   | 낮음 |
+| ✅ `P6-status-desync`        | 생성 성공 후 projects.status 전이 update 에러를 조용히      | 🐛 버그수정 | 높음   | 보통 |
 
-**권장 순서:** ① `P9`(스킬 문서, 즉시) → ~~② `P5`~~ → ~~③ `P6`~~ → ④ `P4`(editPBLV2 분해) → ⑤ `P8`(인터뷰 저장 중복+legacy) → ⑥ `P7`(계층 역전, 노력 높음·범위 큼·마지막). 단 B묶음(P5·P6)은 동작이 바뀌므로 각각 사용자 승인 후 착수.
+**권장 순서:** ① `P9`(스킬 문서, 즉시) → ~~② `P5`~~ → ~~③ `P6`~~ → ④ `P4`(editPBLV2 분해) → ~~⑤ `P8`~~ → ⑥ `P7`(계층 역전, 노력 높음·범위 큼·마지막). 단 B묶음(P5·P6)은 동작이 바뀌므로 각각 사용자 승인 후 착수.
 
 > ✅ **완료 항목 (본문은 기록용으로 보존)**
 >
 > - **`P5` 완료 (PR #135, 2026-07-29)** — 실제 누락은 매칭만이 아니라 **PBL 생성·STT 녹취록 분석·`/test-pbl` 포함 4곳**이었다. 계층은 매칭만 서비스(throw — route 가 메시지로 429 판정), 나머지는 액션(서비스에서 throw 하면 `getLLMUserFriendlyError` 가 쿼터 메시지를 뭉갠다). STT 는 **입력 검증 뒤** 배치(쿼터는 확인과 동시에 차감).
 > - **`P6` 완료 (PR #138, 2026-07-29)** — 본문이 지목한 3곳이 아니라 **8곳**이었다. 누락분은 인터뷰 저장 3곳(`interview/actions.ts`)과 진단 완료 2곳(`assessment/actions.ts`·`ops/.../crud.ts`). 인터뷰 3곳은 로깅뿐 아니라 **알림 오발송까지** 고쳤다 — `statusTransitioned` 를 전이 성공 시에만 세워, 전이 실패 시 "인터뷰 완료" 알림이 나가지 않는다. 진단 2곳은 `.eq('status','NEW')` 멱등 가드가 있어 0행 매치가 정상이므로 error 만 검사한다. 부록이 예고한 2차(반환 타입 변경·RPC 원자화)는 **미착수**.
+> - **`P8` 완료 (PR #154, 2026-07-31)** — 부록의 정정(내부 순서 재배열·update 페이로드 track별 분리·특성화 선작성)대로 실행했고, 실측에서 본문·부록의 추가 오류도 드러났다: ① 본문 위치표는 **전 항목 stale**(+33~48행) ② 부록 415행의 "roadmap 단일 row+**upsert**"도 부정확 — 둘 다 update/insert **명시 분기**이며 진짜 차이는 **row 객체를 두 분기가 공유하느냐**다 ③ "기존 V2 테스트가 안전망" 전제는 거짓(`interview_date` 단언 0건) → **특성화 11개 선작성 + 결함 주입 2회**(추출 전 함수 레벨·추출 후 헬퍼 레벨)로 회귀 그물을 먼저 짰다 ④ 본문·부록 모두 놓친 `save*V2` 호출처 1곳 추가 발견(`roadmap/actions.ts` 결과 인라인 편집 → 인터뷰 write-back — 시그니처 불변으로 무영향) ⑤ zod join 치환은 부록대로 V2 2곳만(V1 은 함수째 삭제, "단일 필드 1줄"·"빈 errors fallback" 엣지는 `zod-error-format.test.ts` 의 유틸 케이스로 이관). knip 은 `fetchPBLInterview` 플래그가 사라진 대신 V1 전용 스키마 타입 2개(`RoadmapInterviewInput`·`RoadmapInterviewAutoSaveInput`)가 새 unused 로 드러났다(스키마 파일은 P8 범위 밖 — 후속 정리 후보). → **후속(같은 PR, 의도된 동작 변경 1건): 인터뷰 날짜를 최초 입력일로 통일** — 위 ②의 비대칭(Roadmap 이 update 마다 `interview_date`·`interviewer_id` 를 오늘/현재 사용자로 덮어써 화면·산출물의 "인터뷰 일자"가 사실상 최종 수정일로 동작)은 특성화로 보존했다가, 머지 전 사용자가 "둘 다 최초 입력일" 정책을 확정해 제거했다(특성화도 새 동작 기준으로 뒤집어 RED→GREEN + 결함 주입 재검증, 페이로드 빌더 콜백도 공통 로직으로 단순화). `interviewer_id` 는 프로덕션 read 0건 write-only 실측. ⚠️ 기존 row 의 이미 밀린 날짜는 소급 복원 불가(최초 입력일 기록이 없음) — 앞으로의 저장부터 보존된다.
 
 > 📌 **착수 전 [부록: 2차 적대 검증 정정·보강](#부록-2차-적대-검증-정정보강-착수-전-필독)을 먼저 읽을 것.** 본문과 충돌 시 부록이 우선. (특히 P4 동작-등가 단서는 누락 시 "순수정리"가 버그가 됨.)
 
@@ -55,12 +56,12 @@ AI(Claude Code)로 대량 생성된 B2B 대시보드의 코드 헬스 감사 결
 
 **위치 (현재 main 기준 확인)**
 
-| 파일 | 라인 | 메모 |
-|---|---|---|
-| `.claude/skills/check-server-action/SKILL.md` | 25-44 | '역할 체크 패턴 3종' 코드블록. 패턴 A(L28-30)·패턴 C(L38-43)가 ['OPS_ADMIN','SYSTEM_ADMIN'].includes() 리터럴 사용. 현재 코드에서 이 리터럴 .includes 가드는 전무 (소스 grep 0건; message.ts:76 잔존은 데이터 맵이라 가드 아님). 패턴 B(L33-35) role !== 'CONSULTANT_APPROVED' 는 현재도 유효. |
-| `.claude/skills/check-server-action/SKILL.md` | 46-63 | '컨설턴트 전용: 프로젝트 배정 검증' 섹션. 인라인 assigned_consultant_id 비교(L52-60)와 L63 '반복되는 경우 verifyProjectAccess() 같은 헬퍼 함수로 추출 가능' 문구. verifyProjectAccess는 interview/actions.ts 에만 로컬 존재하는 프라이빗 함수이며 공용 표준 헬퍼가 아님 — 현재 표준은 requireConsultantProjectAccess/requireConsultantRoadmapAccess/canAccessProjectArtifact. |
-| `src/lib/constants/status.ts` | 27-34 | 신규 표준 헬퍼 정의 — OPS_MANAGER_ROLES: readonly UserRole[] = ['OPS_ADMIN','SYSTEM_ADMIN'], isOpsManager(role: UserRole): boolean. 스킬 예시가 import 경로 @/lib/constants/status 로 참조해야 함. |
-| `src/lib/actions/auth-helpers.ts` | 62-152 | requireAuthWithRole(allowedRoles, options)(L62), requireConsultantRoadmapAccess(supabase,userId,roadmapId)→{projectId}\|{error}(L86), requireConsultantProjectAccess(supabase,userId,projectId,errorMessage)→true\|{error}(L112), canAccessProjectArtifact(role, assignedConsultantId, userId): boolean 순수함수(L143). import 경로 @/lib/actions/auth-helpers. |
+| 파일                                          | 라인   | 메모                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.claude/skills/check-server-action/SKILL.md` | 25-44  | '역할 체크 패턴 3종' 코드블록. 패턴 A(L28-30)·패턴 C(L38-43)가 ['OPS_ADMIN','SYSTEM_ADMIN'].includes() 리터럴 사용. 현재 코드에서 이 리터럴 .includes 가드는 전무 (소스 grep 0건; message.ts:76 잔존은 데이터 맵이라 가드 아님). 패턴 B(L33-35) role !== 'CONSULTANT_APPROVED' 는 현재도 유효.                                                                                |
+| `.claude/skills/check-server-action/SKILL.md` | 46-63  | '컨설턴트 전용: 프로젝트 배정 검증' 섹션. 인라인 assigned_consultant_id 비교(L52-60)와 L63 '반복되는 경우 verifyProjectAccess() 같은 헬퍼 함수로 추출 가능' 문구. verifyProjectAccess는 interview/actions.ts 에만 로컬 존재하는 프라이빗 함수이며 공용 표준 헬퍼가 아님 — 현재 표준은 requireConsultantProjectAccess/requireConsultantRoadmapAccess/canAccessProjectArtifact. |
+| `src/lib/constants/status.ts`                 | 27-34  | 신규 표준 헬퍼 정의 — OPS_MANAGER_ROLES: readonly UserRole[] = ['OPS_ADMIN','SYSTEM_ADMIN'], isOpsManager(role: UserRole): boolean. 스킬 예시가 import 경로 @/lib/constants/status 로 참조해야 함.                                                                                                                                                                            |
+| `src/lib/actions/auth-helpers.ts`             | 62-152 | requireAuthWithRole(allowedRoles, options)(L62), requireConsultantRoadmapAccess(supabase,userId,roadmapId)→{projectId}\|{error}(L86), requireConsultantProjectAccess(supabase,userId,projectId,errorMessage)→true\|{error}(L112), canAccessProjectArtifact(role, assignedConsultantId, userId): boolean 순수함수(L143). import 경로 @/lib/actions/auth-helpers.               |
 
 **왜 문제인가**
 
@@ -107,22 +108,22 @@ AI(Claude Code)로 대량 생성된 B2B 대시보드의 코드 헬스 감사 결
 
 **위치 (현재 main 기준 확인)**
 
-| 파일 | 라인 | 메모 |
-|---|---|---|
-| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts` | 861-1168 | editPBLV2 함수 전체(약 308줄). 인터뷰 슬라이스 vs operations 슬라이스 분기는 904-996, 인터뷰 슬라이스 병합 본문은 998-1163. |
-| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts` | 1014-1107 | merged 객체 구성 — camelCase flat 병합. 이 블록이 추출 대상의 핵심. |
-| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts` | 1022-1074 | trainingEnv 16필드 'patch ?? current ?? 하드코딩기본값' 병합 (53줄). mergeTrainingEnv 순수함수로 추출 후보. |
-| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts` | 1078-1094 | problemDefinitionSheet 4필드 'patch ?? current ?? ""' 병합. mergeProblemDefinitionSheet 로 추출 후보. |
-| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts` | 910-996 | operations 슬라이스(pbl_reports.pbl_content) 분기 — applyOperationsPatch 헬퍼 추출 후보(별도). |
-| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts` | 1-46 | import 블록. deepMerge import 부재 확인. mapDbToPBLInterview/mapPBLInterviewToDb 는 40번 줄에서 이미 import 중. |
-| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 1071-1201 | 형제 함수 savePBLInterviewV2. 1128번 줄에서 deepMerge(mapDbToPBLInterview(existing), validated) 한 줄로 병합 — 동일 의미를 1/50 코드로 처리. ⚠️ savePBLInterviewV2 는 pbl/actions.ts 가 아니라 interview/actions.ts 에 위치(힌트의 '형제 함수' 파일 위치 정정). |
-| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 34 | import { deepMerge } from '@/lib/utils/deep-merge' — 채택 시 pbl/actions.ts 에 동일 import 추가. |
-| `src/lib/utils/deep-merge.ts` | 1-45 | deepMerge 정의. plain object 끼리만 재귀 머지, 배열은 source 로 교체, source undefined 는 skip(target 유지), source null 은 명시 보존. |
-| `src/lib/schemas/interview-pbl.ts` | 606-647 | PBLTrainingEnvSchema — 16필드 .default() 정의. editPBLV2 의 하드코딩 fallback 과 1:1 중복(이중정의/silent divergence 원천). |
-| `src/lib/schemas/interview-pbl.ts` | 762-767 | PBLProblemDefinitionSheetSchema — 4필드 .default('') 정의. editPBLV2 1078-1094 와 중복. |
-| `src/lib/services/interview/converters.ts` | 608-626 | mapPBLInterviewToDb(611: pass-through), mapDbToPBLInterview(619: pass-through). 둘 다 schema parse 없이 그대로 전달 → 병합 시점에 default 가 자동 채워지지 않음(현재 editPBLV2 가 하드코딩 fallback 으로 메우는 이유). mergeTrainingEnv 순수함수의 콜로케이트 후보 위치. |
-| `src/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/types.ts` | 38-66 | PBLResultEditPayload — trainingEnv?: Partial<PBLTrainingEnv>(49), problemDefinitionSheet?: Partial<...>(55), operations(65). patch 가 Partial 임을 확인. |
-| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions-v2.test.ts` | 248-610 | editPBLV2 describe 블록(안전망). trainingEnv 병합 310-345, problemDefinitionSheet 병합 348-381, overview 383, operations 슬라이스 445-610, 슬라이스 동시 patch 차단 574, 빈 patch no-op 273. 13건 통과 확인. |
+| 파일                                                                              | 라인      | 메모                                                                                                                                                                                                                                                                     |
+| --------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts`                     | 861-1168  | editPBLV2 함수 전체(약 308줄). 인터뷰 슬라이스 vs operations 슬라이스 분기는 904-996, 인터뷰 슬라이스 병합 본문은 998-1163.                                                                                                                                              |
+| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts`                     | 1014-1107 | merged 객체 구성 — camelCase flat 병합. 이 블록이 추출 대상의 핵심.                                                                                                                                                                                                      |
+| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts`                     | 1022-1074 | trainingEnv 16필드 'patch ?? current ?? 하드코딩기본값' 병합 (53줄). mergeTrainingEnv 순수함수로 추출 후보.                                                                                                                                                              |
+| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts`                     | 1078-1094 | problemDefinitionSheet 4필드 'patch ?? current ?? ""' 병합. mergeProblemDefinitionSheet 로 추출 후보.                                                                                                                                                                    |
+| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts`                     | 910-996   | operations 슬라이스(pbl_reports.pbl_content) 분기 — applyOperationsPatch 헬퍼 추출 후보(별도).                                                                                                                                                                           |
+| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts`                     | 1-46      | import 블록. deepMerge import 부재 확인. mapDbToPBLInterview/mapPBLInterviewToDb 는 40번 줄에서 이미 import 중.                                                                                                                                                          |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts`               | 1071-1201 | 형제 함수 savePBLInterviewV2. 1128번 줄에서 deepMerge(mapDbToPBLInterview(existing), validated) 한 줄로 병합 — 동일 의미를 1/50 코드로 처리. ⚠️ savePBLInterviewV2 는 pbl/actions.ts 가 아니라 interview/actions.ts 에 위치(힌트의 '형제 함수' 파일 위치 정정).          |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts`               | 34        | import { deepMerge } from '@/lib/utils/deep-merge' — 채택 시 pbl/actions.ts 에 동일 import 추가.                                                                                                                                                                         |
+| `src/lib/utils/deep-merge.ts`                                                     | 1-45      | deepMerge 정의. plain object 끼리만 재귀 머지, 배열은 source 로 교체, source undefined 는 skip(target 유지), source null 은 명시 보존.                                                                                                                                   |
+| `src/lib/schemas/interview-pbl.ts`                                                | 606-647   | PBLTrainingEnvSchema — 16필드 .default() 정의. editPBLV2 의 하드코딩 fallback 과 1:1 중복(이중정의/silent divergence 원천).                                                                                                                                              |
+| `src/lib/schemas/interview-pbl.ts`                                                | 762-767   | PBLProblemDefinitionSheetSchema — 4필드 .default('') 정의. editPBLV2 1078-1094 와 중복.                                                                                                                                                                                  |
+| `src/lib/services/interview/converters.ts`                                        | 608-626   | mapPBLInterviewToDb(611: pass-through), mapDbToPBLInterview(619: pass-through). 둘 다 schema parse 없이 그대로 전달 → 병합 시점에 default 가 자동 채워지지 않음(현재 editPBLV2 가 하드코딩 fallback 으로 메우는 이유). mergeTrainingEnv 순수함수의 콜로케이트 후보 위치. |
+| `src/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/types.ts` | 38-66     | PBLResultEditPayload — trainingEnv?: Partial<PBLTrainingEnv>(49), problemDefinitionSheet?: Partial<...>(55), operations(65). patch 가 Partial 임을 확인.                                                                                                                 |
+| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions-v2.test.ts`             | 248-610   | editPBLV2 describe 블록(안전망). trainingEnv 병합 310-345, problemDefinitionSheet 병합 348-381, overview 383, operations 슬라이스 445-610, 슬라이스 동시 patch 차단 574, 빈 patch no-op 273. 13건 통과 확인.                                                             |
 
 **왜 문제인가**
 
@@ -142,7 +143,7 @@ editPBLV2 의 인터뷰 슬라이스 병합부(1014-1107)는 trainingEnv 16필�
 - deepMerge — src/lib/utils/deep-merge.ts (형제 savePBLInterviewV2 가 사용하는 부분병합 유틸)
 - PBLTrainingEnvSchema / PBLProblemDefinitionSheetSchema — src/lib/schemas/interview-pbl.ts:606,762 (.parse() 로 default 자동 적용 → 하드코딩 fallback 대체)
 - mapDbToPBLInterview / mapPBLInterviewToDb — src/lib/services/interview/converters.ts:608,619 (이미 pbl/actions.ts 40번 줄에서 import 중, 추출 헬퍼 콜로케이트 위치)
-- PBLResultEditPayload / PBLTrainingEnv 타입 — _components/result-v2/types.ts:38, interview-pbl.ts:648
+- PBLResultEditPayload / PBLTrainingEnv 타입 — \_components/result-v2/types.ts:38, interview-pbl.ts:648
 
 **동작 변화** — 없음(단, 아래 단서를 **모두** 지킨 구현에 한해). 경계 3가지: (a) **키 부재 vs explicit undefined/null** ⭐ — `{...current,...patch}`는 patch가 키를 **생략**한 경우에만 현행 `??`와 등가다. patch가 키를 explicit `undefined`/`null`로 담으면 spread가 current를 덮은 뒤 `.default()`가 하드코딩값으로 리셋(또는 null 보존)되어 **현행 `??`(current 보존)와 발산**한다 → `mergeTrainingEnv`는 patch의 undefined/null 키를 **먼저 제거한 뒤** parse 해 `??` 시맨틱을 보존할 것. (b) nested 객체(aiInfraDetail 등)는 현행 `??`가 '통째 교체'이므로, `deepMerge`를 적용하면 부분 deep-merge로 **동작이 변함** → deepMerge 직접 채택 금지, schema parse(통째 교체) 유지. (c) 배열 필드는 parse·`??` 모두 통째 교체라 불변. **`.safeParse` 사용** + 실패 시 기존 에러 메시지 경로 유지. (상세: 부록 P4)
 
@@ -167,19 +168,19 @@ editPBLV2 의 인터뷰 슬라이스 병합부(1014-1107)는 trainingEnv 16필�
 
 **위치 (현재 main 기준 확인)**
 
-| 파일 | 라인 | 메모 |
-|---|---|---|
-| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 878-1018 | saveRoadmapInterviewV2 — V2 공통 골격의 한쪽. 검증(885-916)·fetch+deepMerge+upsert(919-971)·상태전이(973-980)·after블록(982-1011) |
-| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 1071-1201 | savePBLInterviewV2 — 다른 한쪽. 검증(1077-1109)·fetch+deepMerge+upsert(1112-1154)·상태전이(1156-1163)·after블록(1165-1194). 차이점은 track값/에러문구·audit action(PBL_INTERVIEW_SAVED 고정)·알림 title/message·DB 컬럼(pbl_data vs company_details/job_tasks/improvement_goals)·매퍼(mapPBL* vs mapRoadmap*)뿐 |
-| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 187-198, 905-916, 1098-1109 | 동일한 inline zod-error join 블록 3중 복제(주석까지 동일 '#001 — 모든 zod 에러를 join'). V1(187)·V2 roadmap(905)·V2 pbl(1098) |
-| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 73-152 | mapRoadmapToLegacyColumns — saveRoadmapInterview(V1) 전용. V1 제거 시 함께 제거 대상. 프로덕션 호출처 0 |
-| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 159-286 | saveRoadmapInterview(legacy V1). 프로덕션 호출처 0건 — actions-roadmap.test.ts/actions-zod-fallback.test.ts/actions-zod-multimessage.test.ts만 import. knip은 test import 때문에 미탐지 |
-| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 618-648 | fetchPBLInterview(legacy snake_case 조회). knip이 유일하게 unused로 플래그(618:23). 프로덕션·테스트 모두 호출 0 |
-| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 650-677 | fetchInterview(legacy snake_case 조회). 프로덕션 호출처 0 — actions.test.ts만 import |
-| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 815-833 | stale 주석 블록. 822줄이 이미 삭제된 savePBLInterview를 '병존'으로 명시하고 'Task 2.11 cleanup 에서 제거 예정'이라 기술 — 실제로는 일부만 제거된 상태 |
-| `src/lib/utils/zod-error-format.ts` | 20-51 | formatZodIssuesForToast 존재. 단 labelMap 기반 토스트 포맷터(클라 RoadmapInterviewClient.tsx:368 사용). 서버 inline join은 labelMap 없이 raw .message만 사용 → 그대로 재사용 불가, 신규 경량 헬퍼 필요 |
-| `src/lib/utils/deep-merge.ts` | 전체 | deepMerge — V2 부분 머지에 사용 중(actions.ts 938·1128). 추출 헬퍼에서 그대로 재사용 |
-| `src/lib/services/interview/converters.ts` | 298,480,608,619 | mapRoadmapInterviewToDb/mapDbToRoadmapInterview/mapPBLInterviewToDb/mapDbToPBLInterview — persistInterview 헬퍼에 mapToDb/mapFromDb로 주입할 콜백 출처 |
+| 파일                                                                | 라인                        | 메모                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 878-1018                    | saveRoadmapInterviewV2 — V2 공통 골격의 한쪽. 검증(885-916)·fetch+deepMerge+upsert(919-971)·상태전이(973-980)·after블록(982-1011)                                                                                                                                                                               |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 1071-1201                   | savePBLInterviewV2 — 다른 한쪽. 검증(1077-1109)·fetch+deepMerge+upsert(1112-1154)·상태전이(1156-1163)·after블록(1165-1194). 차이점은 track값/에러문구·audit action(PBL_INTERVIEW_SAVED 고정)·알림 title/message·DB 컬럼(pbl_data vs company_details/job_tasks/improvement_goals)·매퍼(mapPBL* vs mapRoadmap*)뿐 |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 187-198, 905-916, 1098-1109 | 동일한 inline zod-error join 블록 3중 복제(주석까지 동일 '#001 — 모든 zod 에러를 join'). V1(187)·V2 roadmap(905)·V2 pbl(1098)                                                                                                                                                                                   |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 73-152                      | mapRoadmapToLegacyColumns — saveRoadmapInterview(V1) 전용. V1 제거 시 함께 제거 대상. 프로덕션 호출처 0                                                                                                                                                                                                         |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 159-286                     | saveRoadmapInterview(legacy V1). 프로덕션 호출처 0건 — actions-roadmap.test.ts/actions-zod-fallback.test.ts/actions-zod-multimessage.test.ts만 import. knip은 test import 때문에 미탐지                                                                                                                         |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 618-648                     | fetchPBLInterview(legacy snake_case 조회). knip이 유일하게 unused로 플래그(618:23). 프로덕션·테스트 모두 호출 0                                                                                                                                                                                                 |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 650-677                     | fetchInterview(legacy snake_case 조회). 프로덕션 호출처 0 — actions.test.ts만 import                                                                                                                                                                                                                            |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` | 815-833                     | stale 주석 블록. 822줄이 이미 삭제된 savePBLInterview를 '병존'으로 명시하고 'Task 2.11 cleanup 에서 제거 예정'이라 기술 — 실제로는 일부만 제거된 상태                                                                                                                                                           |
+| `src/lib/utils/zod-error-format.ts`                                 | 20-51                       | formatZodIssuesForToast 존재. 단 labelMap 기반 토스트 포맷터(클라 RoadmapInterviewClient.tsx:368 사용). 서버 inline join은 labelMap 없이 raw .message만 사용 → 그대로 재사용 불가, 신규 경량 헬퍼 필요                                                                                                          |
+| `src/lib/utils/deep-merge.ts`                                       | 전체                        | deepMerge — V2 부분 머지에 사용 중(actions.ts 938·1128). 추출 헬퍼에서 그대로 재사용                                                                                                                                                                                                                            |
+| `src/lib/services/interview/converters.ts`                          | 298,480,608,619             | mapRoadmapInterviewToDb/mapDbToRoadmapInterview/mapPBLInterviewToDb/mapDbToPBLInterview — persistInterview 헬퍼에 mapToDb/mapFromDb로 주입할 콜백 출처                                                                                                                                                          |
 
 **왜 문제인가**
 
@@ -187,12 +188,12 @@ editPBLV2 의 인터뷰 슬라이스 병합부(1014-1107)는 trainingEnv 16필�
 
 **접근법**
 
-1) zod-error join 일원화: src/lib/utils/zod-error-format.ts에 신규 함수 joinZodMessagesForToast(error, {maxItems=5, fallback}) 추가(기존 formatZodIssuesForToast는 labelMap 시그니처라 재사용 불가 — 같은 파일에 병치). actions.ts 3곳(187-198·905-916·1098-1109)을 이 호출로 치환. 동작 동일(메시지 .map→filter(trim)→slice(5)→join '\n', 빈배열 fallback).
-2) 공통 골격 추출: 같은 파일 상단 또는 별도 헬퍼 모듈에 persistInterview({projectId, user, validated, mapToDb, mapFromDb, selectCols, track, autoSave, audit, notify}) 추가. 내부에서 fetchProjectMetaForInterview 이미 호출된 projectData를 인자로 받아 (a) fetch existing(selectCols) (b) existing? deepMerge(mapFromDb(existing), validated): validated (c) mapToDb(merged) + interview_date 기본값 주입 (d) upsert (e) validateStatusTransition→INTERVIEWED (f) after()에서 notify(알림 title/message는 인자) + createAuditLog(action·meta 인자) + insertSystemActivityLog(autoSave=false 시) 수행. roadmap/pbl 차이(track문자열·에러문구·audit action·알림 워딩·selectCols·매퍼)는 전부 파라미터로 주입.
-3) saveRoadmapInterviewV2/savePBLInterviewV2를 verifyProjectAccess→fetchProjectMetaForInterview→track가드→schema선택+zod검증→persistInterview(...) 호출로 슬림화. submit*/fetch* wrapper는 그대로.
-4) 죽은 legacy 제거: saveRoadmapInterview(159-286)+mapRoadmapToLegacyColumns(73-152)+fetchInterview(650-677)+fetchPBLInterview(618-648) 삭제. 동반해 import(roadmapInterviewSchema·roadmapInterviewAutoSaveSchema·RoadmapInterviewInput·RoadmapInterviewAutoSaveInput 등 V1 전용)와 사용 안 되게 된 심볼 정리.
-5) 죽은 함수만 테스트하던 파일 정리: actions-roadmap.test.ts(saveRoadmapInterview)·actions-zod-fallback.test.ts(saveRoadmapInterview)는 대상 함수 삭제와 함께 제거하거나 V2 케이스로 이관. actions.test.ts는 fetchInterview 블록만 제거(processSttFile·deleteSttInsights 블록은 유지). actions-zod-multimessage.test.ts의 saveRoadmapInterview(v1) 케이스는 제거하고 V2 케이스 유지.
-6) stale 주석 정리: 815-833 블록을 현실(legacy 제거 완료, V2가 정본)에 맞게 갱신 또는 삭제.
+1. zod-error join 일원화: src/lib/utils/zod-error-format.ts에 신규 함수 joinZodMessagesForToast(error, {maxItems=5, fallback}) 추가(기존 formatZodIssuesForToast는 labelMap 시그니처라 재사용 불가 — 같은 파일에 병치). actions.ts 3곳(187-198·905-916·1098-1109)을 이 호출로 치환. 동작 동일(메시지 .map→filter(trim)→slice(5)→join '\n', 빈배열 fallback).
+2. 공통 골격 추출: 같은 파일 상단 또는 별도 헬퍼 모듈에 persistInterview({projectId, user, validated, mapToDb, mapFromDb, selectCols, track, autoSave, audit, notify}) 추가. 내부에서 fetchProjectMetaForInterview 이미 호출된 projectData를 인자로 받아 (a) fetch existing(selectCols) (b) existing? deepMerge(mapFromDb(existing), validated): validated (c) mapToDb(merged) + interview_date 기본값 주입 (d) upsert (e) validateStatusTransition→INTERVIEWED (f) after()에서 notify(알림 title/message는 인자) + createAuditLog(action·meta 인자) + insertSystemActivityLog(autoSave=false 시) 수행. roadmap/pbl 차이(track문자열·에러문구·audit action·알림 워딩·selectCols·매퍼)는 전부 파라미터로 주입.
+3. saveRoadmapInterviewV2/savePBLInterviewV2를 verifyProjectAccess→fetchProjectMetaForInterview→track가드→schema선택+zod검증→persistInterview(...) 호출로 슬림화. submit*/fetch* wrapper는 그대로.
+4. 죽은 legacy 제거: saveRoadmapInterview(159-286)+mapRoadmapToLegacyColumns(73-152)+fetchInterview(650-677)+fetchPBLInterview(618-648) 삭제. 동반해 import(roadmapInterviewSchema·roadmapInterviewAutoSaveSchema·RoadmapInterviewInput·RoadmapInterviewAutoSaveInput 등 V1 전용)와 사용 안 되게 된 심볼 정리.
+5. 죽은 함수만 테스트하던 파일 정리: actions-roadmap.test.ts(saveRoadmapInterview)·actions-zod-fallback.test.ts(saveRoadmapInterview)는 대상 함수 삭제와 함께 제거하거나 V2 케이스로 이관. actions.test.ts는 fetchInterview 블록만 제거(processSttFile·deleteSttInsights 블록은 유지). actions-zod-multimessage.test.ts의 saveRoadmapInterview(v1) 케이스는 제거하고 V2 케이스 유지.
+6. stale 주석 정리: 815-833 블록을 현실(legacy 제거 완료, V2가 정본)에 맞게 갱신 또는 삭제.
 
 **재사용할 기존 자산**
 
@@ -229,31 +230,31 @@ editPBLV2 의 인터뷰 슬라이스 병합부(1014-1107)는 trainingEnv 16필�
 
 **위치 (현재 main 기준 확인)**
 
-| 파일 | 라인 | 메모 |
-|---|---|---|
-| `src/lib/utils/upload-notice-attachment.ts` | 1-4 | 핵심 사례: lib→app 역참조. createUploadUrlAction, registerAttachmentAction를 @/app/(dashboard)/ops/notices/actions에서 value import. 이 util 소비자는 src/components/notices/NoticeForm.tsx:20 와 src/components/notices/AttachmentUploader.tsx:13 두 곳뿐. ops/notices/actions.ts는 이 util을 역import하지 않음 → 순환 없음(확인 완료) |
-| `src/components/Navigation.tsx` | 7 | import { logoutUser } from '@/app/(auth)/actions'. (dashboard)/layout.tsx에서 사용되는 공유 셸 컴포넌트 — 단일 피처 귀속 불가. NotificationBell·MessageIcon을 자식으로 포함 |
-| `src/components/MessageIcon.tsx` | 14 | fetchUnreadConversationCount from @/app/(dashboard)/dashboard/messages/actions. layout.tsx + Navigation에서 사용(공유 셸) |
-| `src/components/NotificationBell.tsx` | 15-19 | fetchNotifications 등 4개 함수를 @/app/(dashboard)/notifications/actions에서 import(다중 라인 import 블록 15-19). Navigation에서만 사용 |
-| `src/components/assessment/PublicSelfAssessmentForm.tsx` | 22 | submitPublicAssessment from @/app/assessment/actions. 소비자: src/app/assessment/[token]/PublicAssessmentClient.tsx (단일 라우트) → assessment/[token]/_components 로 이동 후보 |
-| `src/components/auth/DeleteAccountSection.tsx` | 5 | deleteAccount from @/app/(auth)/actions. 소비자: (dashboard)/dashboard/settings/page.tsx (단일) → settings/_components 이동 후보 |
-| `src/components/consultant/ProfileForm.tsx` | 6 | updateConsultantProfile, saveConsultantProfile from @/app/(auth)/actions. 소비자: (auth)/register/page.tsx + ProfilePageClient (다중 라우트) → 공유로 남기거나 actions 재구조화 필요 |
-| `src/components/consultant/ProfilePageClient.tsx` | 4 | fetchConsultantProfile from @/app/(auth)/actions. 소비자: consultant/profile/page.tsx + dashboard/profile/page.tsx (다중 라우트) → 공유 컴포넌트 |
-| `src/components/gallery/AdminFilters.tsx` | 16-17 | fetchConsultantOptions(value) + ConsultantOption(type) from @/app/(dashboard)/gallery/actions. 소비자: gallery/_components/GalleryContent.tsx (단일) → gallery/_components 이동 후보 |
-| `src/components/gallery/GalleryCard.tsx` | 15 | import type { GalleryRoadmapItem } — type-only 역참조. 소비자: gallery/_components/GalleryContent.tsx. 타입만이므로 GalleryRoadmapItem을 공용 타입 모듈로 추출하면 저비용 해소 |
-| `src/components/gallery/LikeButton.tsx` | 6 | toggleLike, togglePBLLike from @/app/(dashboard)/gallery/actions. 소비자: gallery/[id]/_components 2개 + GalleryCard |
-| `src/components/gallery/ShareToggle.tsx` | 6 | toggleShare from @/app/(dashboard)/gallery/actions. 소비자: consultant/projects/[id]/roadmap/_components/result-v2/RoadmapResultClient.tsx (gallery actions를 roadmap 라우트에서 호출 — 피처 교차) |
-| `src/components/gallery/UseRoadmapDialog.tsx` | 11-12 | value + type(EligibleProject) from @/app/(dashboard)/gallery/actions. 소비자: gallery/[id]/_components/GalleryDetailContent.tsx (단일) |
-| `src/components/notices/AttachmentList.tsx` | 8 | deleteAttachmentAction from @/app/(dashboard)/ops/notices/actions. 소비자: notices/[id]/_components/NoticeAttachmentDownloader.tsx + NoticeForm(ops). 다운로드(일반)·관리(ops) 두 라우트 교차 |
-| `src/components/notices/NoticeForm.tsx` | 19-21 | @/app/(dashboard)/ops/notices/actions(다중 라인 19) + getAttachmentDownloadUrl from @/app/(dashboard)/notices/actions(21). 소비자: ops/notices/[id]/edit/page.tsx + ops/notices/new/page.tsx → ops/notices/_components 이동 후보 |
-| `src/components/ops/AssessmentTokenSection.tsx` | 20 | @/app/(dashboard)/ops/projects/actions(다중 라인 import 종료 20). 소비자: ops/projects/[id]/page.tsx (단일) → ops/projects/[id]/_components 이동 후보 |
-| `src/components/ops/AssignmentForm.tsx` | 5 | assignConsultant from @/app/(dashboard)/ops/projects/actions. ⚠️ 비테스트 소비자 0개 확인 — 미사용(dead) 의심. 정리 시 별도 검증(knip) 권장, 본 항목과 분리 |
-| `src/components/ops/ConsultantSelector.tsx` | 8 | @/app/(dashboard)/ops/projects/actions(다중 라인 종료 8). 소비자: ManualAssignmentForm |
-| `src/components/ops/ManualAssignmentForm.tsx` | 5-8 | assignConsultant(value,5) + ConsultantCandidate(type,8) from @/app/(dashboard)/ops/projects/actions. 소비자: AssignmentTabSection |
-| `src/components/ops/SelfAssessmentForm.tsx` | 6 | createSelfAssessment from @/app/(dashboard)/ops/projects/actions. 소비자: CollapsibleDirectInput(ops) |
-| `src/components/ops/UserManagementTable.tsx` | 6 | updateUserStatus from @/app/(auth)/actions. 소비자: ops/users/page.tsx (단일) → ops/users/_components 이동 후보 |
-| `src/components/ops/assignment/RecommendationResults.tsx` | 6 | assignConsultant from @/app/(dashboard)/ops/projects/actions. 소비자: AssignmentTabSection + ops/assignment/index.ts 배럴 |
-| `eslint.config.mjs` | 5-21 | import 경계 규칙 부재(no-restricted-imports/boundaries 없음). 이것이 drift를 무방비로 누적시킨 근본 원인 — 정리 후 회귀 방지 규칙 추가 지점 |
+| 파일                                                      | 라인  | 메모                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/utils/upload-notice-attachment.ts`               | 1-4   | 핵심 사례: lib→app 역참조. createUploadUrlAction, registerAttachmentAction를 @/app/(dashboard)/ops/notices/actions에서 value import. 이 util 소비자는 src/components/notices/NoticeForm.tsx:20 와 src/components/notices/AttachmentUploader.tsx:13 두 곳뿐. ops/notices/actions.ts는 이 util을 역import하지 않음 → 순환 없음(확인 완료) |
+| `src/components/Navigation.tsx`                           | 7     | import { logoutUser } from '@/app/(auth)/actions'. (dashboard)/layout.tsx에서 사용되는 공유 셸 컴포넌트 — 단일 피처 귀속 불가. NotificationBell·MessageIcon을 자식으로 포함                                                                                                                                                             |
+| `src/components/MessageIcon.tsx`                          | 14    | fetchUnreadConversationCount from @/app/(dashboard)/dashboard/messages/actions. layout.tsx + Navigation에서 사용(공유 셸)                                                                                                                                                                                                               |
+| `src/components/NotificationBell.tsx`                     | 15-19 | fetchNotifications 등 4개 함수를 @/app/(dashboard)/notifications/actions에서 import(다중 라인 import 블록 15-19). Navigation에서만 사용                                                                                                                                                                                                 |
+| `src/components/assessment/PublicSelfAssessmentForm.tsx`  | 22    | submitPublicAssessment from @/app/assessment/actions. 소비자: src/app/assessment/[token]/PublicAssessmentClient.tsx (단일 라우트) → assessment/[token]/\_components 로 이동 후보                                                                                                                                                        |
+| `src/components/auth/DeleteAccountSection.tsx`            | 5     | deleteAccount from @/app/(auth)/actions. 소비자: (dashboard)/dashboard/settings/page.tsx (단일) → settings/\_components 이동 후보                                                                                                                                                                                                       |
+| `src/components/consultant/ProfileForm.tsx`               | 6     | updateConsultantProfile, saveConsultantProfile from @/app/(auth)/actions. 소비자: (auth)/register/page.tsx + ProfilePageClient (다중 라우트) → 공유로 남기거나 actions 재구조화 필요                                                                                                                                                    |
+| `src/components/consultant/ProfilePageClient.tsx`         | 4     | fetchConsultantProfile from @/app/(auth)/actions. 소비자: consultant/profile/page.tsx + dashboard/profile/page.tsx (다중 라우트) → 공유 컴포넌트                                                                                                                                                                                        |
+| `src/components/gallery/AdminFilters.tsx`                 | 16-17 | fetchConsultantOptions(value) + ConsultantOption(type) from @/app/(dashboard)/gallery/actions. 소비자: gallery/\_components/GalleryContent.tsx (단일) → gallery/\_components 이동 후보                                                                                                                                                  |
+| `src/components/gallery/GalleryCard.tsx`                  | 15    | import type { GalleryRoadmapItem } — type-only 역참조. 소비자: gallery/\_components/GalleryContent.tsx. 타입만이므로 GalleryRoadmapItem을 공용 타입 모듈로 추출하면 저비용 해소                                                                                                                                                         |
+| `src/components/gallery/LikeButton.tsx`                   | 6     | toggleLike, togglePBLLike from @/app/(dashboard)/gallery/actions. 소비자: gallery/[id]/\_components 2개 + GalleryCard                                                                                                                                                                                                                   |
+| `src/components/gallery/ShareToggle.tsx`                  | 6     | toggleShare from @/app/(dashboard)/gallery/actions. 소비자: consultant/projects/[id]/roadmap/\_components/result-v2/RoadmapResultClient.tsx (gallery actions를 roadmap 라우트에서 호출 — 피처 교차)                                                                                                                                     |
+| `src/components/gallery/UseRoadmapDialog.tsx`             | 11-12 | value + type(EligibleProject) from @/app/(dashboard)/gallery/actions. 소비자: gallery/[id]/\_components/GalleryDetailContent.tsx (단일)                                                                                                                                                                                                 |
+| `src/components/notices/AttachmentList.tsx`               | 8     | deleteAttachmentAction from @/app/(dashboard)/ops/notices/actions. 소비자: notices/[id]/\_components/NoticeAttachmentDownloader.tsx + NoticeForm(ops). 다운로드(일반)·관리(ops) 두 라우트 교차                                                                                                                                          |
+| `src/components/notices/NoticeForm.tsx`                   | 19-21 | @/app/(dashboard)/ops/notices/actions(다중 라인 19) + getAttachmentDownloadUrl from @/app/(dashboard)/notices/actions(21). 소비자: ops/notices/[id]/edit/page.tsx + ops/notices/new/page.tsx → ops/notices/\_components 이동 후보                                                                                                       |
+| `src/components/ops/AssessmentTokenSection.tsx`           | 20    | @/app/(dashboard)/ops/projects/actions(다중 라인 import 종료 20). 소비자: ops/projects/[id]/page.tsx (단일) → ops/projects/[id]/\_components 이동 후보                                                                                                                                                                                  |
+| `src/components/ops/AssignmentForm.tsx`                   | 5     | assignConsultant from @/app/(dashboard)/ops/projects/actions. ⚠️ 비테스트 소비자 0개 확인 — 미사용(dead) 의심. 정리 시 별도 검증(knip) 권장, 본 항목과 분리                                                                                                                                                                             |
+| `src/components/ops/ConsultantSelector.tsx`               | 8     | @/app/(dashboard)/ops/projects/actions(다중 라인 종료 8). 소비자: ManualAssignmentForm                                                                                                                                                                                                                                                  |
+| `src/components/ops/ManualAssignmentForm.tsx`             | 5-8   | assignConsultant(value,5) + ConsultantCandidate(type,8) from @/app/(dashboard)/ops/projects/actions. 소비자: AssignmentTabSection                                                                                                                                                                                                       |
+| `src/components/ops/SelfAssessmentForm.tsx`               | 6     | createSelfAssessment from @/app/(dashboard)/ops/projects/actions. 소비자: CollapsibleDirectInput(ops)                                                                                                                                                                                                                                   |
+| `src/components/ops/UserManagementTable.tsx`              | 6     | updateUserStatus from @/app/(auth)/actions. 소비자: ops/users/page.tsx (단일) → ops/users/\_components 이동 후보                                                                                                                                                                                                                        |
+| `src/components/ops/assignment/RecommendationResults.tsx` | 6     | assignConsultant from @/app/(dashboard)/ops/projects/actions. 소비자: AssignmentTabSection + ops/assignment/index.ts 배럴                                                                                                                                                                                                               |
+| `eslint.config.mjs`                                       | 5-21  | import 경계 규칙 부재(no-restricted-imports/boundaries 없음). 이것이 drift를 무방비로 누적시킨 근본 원인 — 정리 후 회귀 방지 규칙 추가 지점                                                                                                                                                                                             |
 
 **왜 문제인가**
 
@@ -262,15 +263,15 @@ editPBLV2 의 인터뷰 슬라이스 병합부(1014-1107)는 trainingEnv 16필�
 **접근법**
 
 1. [단계 0: 안전망] 변경 전 npm run validate && npm run build로 베이스라인 그린 확인. 본 항목은 코드 '이동'이라 vitest가 import 깨짐을 즉시 잡는 안전망. AssignmentForm.tsx는 비테스트 소비자 0개이므로 본 작업 전 knip으로 dead 여부 확정 후 별도 처리(이동 대상에서 제외).
-2. [단계 1: lib→app 역참조 1건 해소(최우선·저위험)] src/lib/utils/upload-notice-attachment.ts를 ops/notices 피처 영역으로 이동. 두 가지 선택지: (A) src/app/(dashboard)/ops/notices/_components/ 또는 notices 피처 lib 폴더로 파일 이동 — 단 소비자가 NoticeForm·AttachmentUploader(둘 다 src/components/notices) 라서, 이상적으로는 이 컴포넌트들도 함께 ops/notices/_components로 이동(단계 4와 묶음). (B) 최소 변경: 파일을 src/app/(dashboard)/ops/notices/upload-notice-attachment.ts로 이동하고 NoticeForm.tsx:20·AttachmentUploader.tsx:13의 import 경로만 갱신. 동반 테스트 upload-notice-attachment.test.ts도 함께 이동. 이동 후 lib/에서 @/app/ grep 결과 0건 확인.
-3. [단계 2: 회귀 방지 가드(저위험·고효과)] eslint.config.mjs에 no-restricted-imports zone 규칙 추가: src/lib/** 파일이 @/app/* 를 import하면 error. (단계 3 완료 후) src/components/** 도 동일 규칙 확대. 이것이 근본 원인(경계 미강제) 해결. 기존 test 파일(@/app mock 24건)은 files 오버라이드로 예외 처리.
+2. [단계 1: lib→app 역참조 1건 해소(최우선·저위험)] src/lib/utils/upload-notice-attachment.ts를 ops/notices 피처 영역으로 이동. 두 가지 선택지: (A) src/app/(dashboard)/ops/notices/\_components/ 또는 notices 피처 lib 폴더로 파일 이동 — 단 소비자가 NoticeForm·AttachmentUploader(둘 다 src/components/notices) 라서, 이상적으로는 이 컴포넌트들도 함께 ops/notices/\_components로 이동(단계 4와 묶음). (B) 최소 변경: 파일을 src/app/(dashboard)/ops/notices/upload-notice-attachment.ts로 이동하고 NoticeForm.tsx:20·AttachmentUploader.tsx:13의 import 경로만 갱신. 동반 테스트 upload-notice-attachment.test.ts도 함께 이동. 이동 후 lib/에서 @/app/ grep 결과 0건 확인.
+3. [단계 2: 회귀 방지 가드(저위험·고효과)] eslint.config.mjs에 no-restricted-imports zone 규칙 추가: src/lib/** 파일이 @/app/\* 를 import하면 error. (단계 3 완료 후) src/components/** 도 동일 규칙 확대. 이것이 근본 원인(경계 미강제) 해결. 기존 test 파일(@/app mock 24건)은 files 오버라이드로 예외 처리.
 4. [단계 3: 타입-only 역참조 분리 추출(중위험·중간 효과)] type-only import(GalleryCard.tsx:15 GalleryRoadmapItem, AdminFilters.tsx:17 ConsultantOption, UseRoadmapDialog.tsx:12 EligibleProject, ManualAssignmentForm.tsx:8 ConsultantCandidate)는 해당 타입을 src/types/ 또는 피처 공용 types.ts로 추출하고 actions.ts가 재-export하게 하면, 컴포넌트는 타입만 의존하므로 역참조 일부를 저비용 해소. value import만 남겨 다음 단계 범위 축소.
-5. [단계 4: 단일-라우트 전용 컴포넌트를 _components로 이동(피처별 배치 처리)] 소비자가 단일 라우트인 것부터 이동: PublicSelfAssessmentForm→assessment/[token]/_components, DeleteAccountSection→dashboard/settings/_components, AdminFilters·GalleryCard·UseRoadmapDialog→gallery 해당 _components, NoticeForm·AttachmentList·AttachmentUploader→ops/notices/_components(+notices/[id]/_components 다운로드 분리), AssessmentTokenSection→ops/projects/[id]/_components, UserManagementTable→ops/users/_components. 각 이동마다 page/소비자 import 경로 + 동반 *.test.tsx 위치·import 갱신. 이동은 git mv로 히스토리 보존. 피처 1개씩 PR 분리 권장.
+5. [단계 4: 단일-라우트 전용 컴포넌트를 _components로 이동(피처별 배치 처리)] 소비자가 단일 라우트인 것부터 이동: PublicSelfAssessmentForm→assessment/[token]/\_components, DeleteAccountSection→dashboard/settings/\_components, AdminFilters·GalleryCard·UseRoadmapDialog→gallery 해당 \_components, NoticeForm·AttachmentList·AttachmentUploader→ops/notices/\_components(+notices/[id]/\_components 다운로드 분리), AssessmentTokenSection→ops/projects/[id]/\_components, UserManagementTable→ops/users/\_components. 각 이동마다 page/소비자 import 경로 + 동반 \*.test.tsx 위치·import 갱신. 이동은 git mv로 히스토리 보존. 피처 1개씩 PR 분리 권장.
 6. [단계 5: 다중-라우트 공유 컴포넌트 처리(고난도·신중)] Navigation·MessageIcon·NotificationBell(셸, layout.tsx 공유), ProfileForm·ProfilePageClient(2개 라우트), ShareToggle/LikeButton(gallery↔roadmap 교차)은 src/components에 남기되 역참조를 의존성 역전으로 해소: 컴포넌트가 action을 직접 import하지 않고 prop(onAction 콜백) 또는 서버에서 주입받게 시그니처 변경(이 경우 category가 '버그수정' 경계에 근접하므로 동작 불변 검증 강화 필요). 또는 호출 대상 action들을 src/lib/actions 또는 src/app 외 공용 위치로 끌어내림(action 자체의 'use server'·세션 의존성 때문에 라우트 밖 이동 시 별도 검토). 이 단계는 가장 위험하므로 단계 1~4 안정화 후 별도 설계.
 
 **재사용할 기존 자산**
 
-- 기존 _components/ 규약: CLAUDE.md '라우트 디렉터리 규칙'의 _components/(라우트 내부 전용 컴포넌트). 이미 22개 라우트에 _components/ 존재(예: src/app/(dashboard)/ops/notices/_components/, gallery/[id]/_components/) — 이동 대상지 그대로 재사용
+- 기존 \_components/ 규약: CLAUDE.md '라우트 디렉터리 규칙'의 \_components/(라우트 내부 전용 컴포넌트). 이미 22개 라우트에 \_components/ 존재(예: src/app/(dashboard)/ops/notices/\_components/, gallery/[id]/\_components/) — 이동 대상지 그대로 재사용
 - src/lib/types/action-result.ts의 ActionResult<T> — upload util 이동 후에도 그대로 사용(피처 무관 공용 타입은 lib에 정상 잔류)
 - src/app/(auth)/actions/index.ts 배럴 — (auth)/actions 소비처 경로는 디렉터리 배럴이므로 이동 시 import 갱신 불필요(대상은 컴포넌트 쪽 이동)
 - eslint.config.mjs의 files 오버라이드 패턴(이미 e2e용 존재) — test 파일 @/app mock 예외 처리에 동일 패턴 재사용
@@ -278,12 +279,12 @@ editPBLV2 의 인터뷰 슬라이스 병합부(1014-1107)는 trainingEnv 16필�
 
 **동작 변화** — 없음 — 동작 불변. 단계 1~4는 파일 위치·import 경로 변경만으로 런타임 동작·번들 결과·라우팅에 영향 없음(컴포넌트 식별자·props·action 시그니처 불변). 단, 단계 5에서 '의존성 역전(action을 prop으로 주입)'을 택하면 컴포넌트 시그니처가 바뀌므로 그 부분만 별도 항목으로 분리해 동작 불변을 회귀 테스트로 보증해야 함(본 항목 범위에서는 단계 4까지를 순수정리로 한정).
 
-**검증** — 각 이동 직후 npm run validate(typecheck가 깨진 import 경로를 즉시 검출 — 가장 강력한 안전망) + npm run build. 컴포넌트별 동반 *.test.tsx(예: NoticeForm.test.tsx, UserManagementTable.test.tsx 등 — 거의 모든 대상에 코로케이션 테스트 존재)가 이동 후에도 통과하면 동작 불변 증명. 추가로 lib·components에서 '@/app/' grep 0건(단계별 목표치) 확인. CLAUDE.md 그렙 규칙대로 src/+e2e/ 전수 grep으로 옛 경로 잔존 점검. UI 플로우(공지 첨부 업로드, 배정, 갤러리 좋아요/공유)는 E2E(npm run test:e2e)로 통합 흐름 확인. 신규 테스트는 불필요(이동만), 단 ESLint 경계 규칙 추가 시 위반 케이스가 잡히는지 1회 수동 확인.
+**검증** — 각 이동 직후 npm run validate(typecheck가 깨진 import 경로를 즉시 검출 — 가장 강력한 안전망) + npm run build. 컴포넌트별 동반 \*.test.tsx(예: NoticeForm.test.tsx, UserManagementTable.test.tsx 등 — 거의 모든 대상에 코로케이션 테스트 존재)가 이동 후에도 통과하면 동작 불변 증명. 추가로 lib·components에서 '@/app/' grep 0건(단계별 목표치) 확인. CLAUDE.md 그렙 규칙대로 src/+e2e/ 전수 grep으로 옛 경로 잔존 점검. UI 플로우(공지 첨부 업로드, 배정, 갤러리 좋아요/공유)는 E2E(npm run test:e2e)로 통합 흐름 확인. 신규 테스트는 불필요(이동만), 단 ESLint 경계 규칙 추가 시 위반 케이스가 잡히는지 1회 수동 확인.
 
 **리스크**
 
 - 범위가 큼(비테스트 22개 + 테스트 24개 = 46개 파일 영향). 한 PR에 몰면 리뷰·충돌 위험 — 반드시 단계/피처별 분할(단계1 lib 1건 → 단계2 ESLint → 단계3 타입 → 단계4 피처별)
-- 다중-라우트 공유 컴포넌트(Navigation·ProfileForm·ProfilePageClient·ShareToggle·LikeButton·AttachmentList)는 단일 _components로 이동 불가 — 무리한 이동 시 다른 라우트가 라우트 내부 디렉터리를 역참조하는 새 역전을 만든다. 이들은 공유 잔류 + 의존성 역전(단계5)로만 해결
+- 다중-라우트 공유 컴포넌트(Navigation·ProfileForm·ProfilePageClient·ShareToggle·LikeButton·AttachmentList)는 단일 \_components로 이동 불가 — 무리한 이동 시 다른 라우트가 라우트 내부 디렉터리를 역참조하는 새 역전을 만든다. 이들은 공유 잔류 + 의존성 역전(단계5)로만 해결
 - action 자체를 라우트 밖으로 끌어내리는 선택지는 'use server' 파일의 위치·세션 의존성 때문에 단순 이동이 어렵고 동작 변경 위험 — 본 항목에서는 컴포넌트 이동을 우선
 - AssignmentForm.tsx는 소비자 0개로 dead 의심 — 이동 대상에 넣지 말고 knip 확정 후 삭제(별도 정리 항목). 착오로 이동하면 무의미한 작업
 - git mv 없이 신규 파일 작성+삭제로 처리하면 히스토리·blame 단절. 반드시 git mv 사용
@@ -303,17 +304,17 @@ editPBLV2 의 인터뷰 슬라이스 병합부(1014-1107)는 trainingEnv 16필�
 
 **위치 (현재 main 기준 확인)**
 
-| 파일 | 라인 | 메모 |
-|---|---|---|
-| `src/lib/services/matching/matching-llm.ts` | 28-52 | generateLLMMatchingRecommendations 본문. line 43에서 callLLMForJSON 호출 직전에 쿼터 확인 없음. 파일 전체(193줄)에 quota/checkAndRecord/usage 참조 0건(grep으로 matching 서비스 디렉터리 전수 NONE 확인). actorUserId는 인자로 이미 받고 있어(line 30) 쿼터 호출에 그대로 사용 가능. |
-| `src/app/api/matching/generate/route.ts` | 62-77 | catch 블록의 429 분기. line 64 message.includes('사용량 한도') 등으로 매칭하지만, 매칭 서비스가 그 메시지를 던지지 않으므로 프로덕션 도달 불가. line 73 code:'QUOTA_EXCEEDED', line 75 status:429 + Retry-After:3600. |
-| `src/lib/services/roadmap/roadmap-generator.ts` | 261-265 | 참조 패턴(정답). checkAndRecordLLMUsage(actorUserId) 호출 후 quotaCheck.exceeded 시 throw new Error(quotaCheck.message \|\| '사용량 한도를 초과했습니다.'). 이 throw 메시지가 route 429 분기 문자열과 일치하는 계약. line 547·583에도 동일 패턴 반복. |
-| `src/app/(dashboard)/consultant/projects/[id]/actions.ts` | 290-294 | Server Action 변형 참조 패턴. 쿼터 초과 시 throw 대신 ActionResult { success:false, error } 반환. 매칭은 API Route라 throw 방식(roadmap-generator)이 적합. |
-| `src/lib/services/llm.ts` | 204-215 | callLLMForJSON/callLLM 은 쿼터를 기록하지 않음 — 쿼터는 호출자 책임임을 확인(roadmap·interview-guide 모두 호출 전 별도로 checkAndRecordLLMUsage 수행). 따라서 매칭도 호출자가 직접 걸어야 함. |
-| `src/lib/services/quota.ts` | 132-162 | checkAndRecordLLMUsage(userId, tokensIn=0, tokensOut=0) 시그니처. RPC check_and_increment_llm_usage 로 원자적 확인+증가. 반환 { exceeded, reason?: 'daily'\|'monthly', message? }. 매칭은 tokensIn/Out 미지정 호출로 충분(로드맵도 인자 없이 호출). |
-| `src/app/api/matching/generate/route.test.ts` | 222-241 | 429 분기 테스트가 generateLLMMatchingRecommendations 를 mock 으로 '일별 사용량 한도를 초과했습니다.' 거부시켜 통과 — 실제 서비스가 그 메시지를 던진다는 보장이 전혀 없는 거짓 안전망(분기 도달 불가를 가림). |
-| `src/app/api/matching/generate/route.ts` | 23-32 | 남용 표면 평가용. 호출 권한은 isOpsManager 로 운영관리자 전용(OPS_ADMIN/SYSTEM_ADMIN). 외부 노출 아님. |
-| `src/components/ops/assignment/useAssignmentMatching.ts` | 63-69 | 유일한 UI 호출처 — 운영관리 배정 화면에서 /api/matching/generate POST. 내부 관리자 전용 트리거. |
+| 파일                                                      | 라인    | 메모                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/lib/services/matching/matching-llm.ts`               | 28-52   | generateLLMMatchingRecommendations 본문. line 43에서 callLLMForJSON 호출 직전에 쿼터 확인 없음. 파일 전체(193줄)에 quota/checkAndRecord/usage 참조 0건(grep으로 matching 서비스 디렉터리 전수 NONE 확인). actorUserId는 인자로 이미 받고 있어(line 30) 쿼터 호출에 그대로 사용 가능. |
+| `src/app/api/matching/generate/route.ts`                  | 62-77   | catch 블록의 429 분기. line 64 message.includes('사용량 한도') 등으로 매칭하지만, 매칭 서비스가 그 메시지를 던지지 않으므로 프로덕션 도달 불가. line 73 code:'QUOTA_EXCEEDED', line 75 status:429 + Retry-After:3600.                                                                |
+| `src/lib/services/roadmap/roadmap-generator.ts`           | 261-265 | 참조 패턴(정답). checkAndRecordLLMUsage(actorUserId) 호출 후 quotaCheck.exceeded 시 throw new Error(quotaCheck.message \|\| '사용량 한도를 초과했습니다.'). 이 throw 메시지가 route 429 분기 문자열과 일치하는 계약. line 547·583에도 동일 패턴 반복.                                |
+| `src/app/(dashboard)/consultant/projects/[id]/actions.ts` | 290-294 | Server Action 변형 참조 패턴. 쿼터 초과 시 throw 대신 ActionResult { success:false, error } 반환. 매칭은 API Route라 throw 방식(roadmap-generator)이 적합.                                                                                                                           |
+| `src/lib/services/llm.ts`                                 | 204-215 | callLLMForJSON/callLLM 은 쿼터를 기록하지 않음 — 쿼터는 호출자 책임임을 확인(roadmap·interview-guide 모두 호출 전 별도로 checkAndRecordLLMUsage 수행). 따라서 매칭도 호출자가 직접 걸어야 함.                                                                                        |
+| `src/lib/services/quota.ts`                               | 132-162 | checkAndRecordLLMUsage(userId, tokensIn=0, tokensOut=0) 시그니처. RPC check_and_increment_llm_usage 로 원자적 확인+증가. 반환 { exceeded, reason?: 'daily'\|'monthly', message? }. 매칭은 tokensIn/Out 미지정 호출로 충분(로드맵도 인자 없이 호출).                                  |
+| `src/app/api/matching/generate/route.test.ts`             | 222-241 | 429 분기 테스트가 generateLLMMatchingRecommendations 를 mock 으로 '일별 사용량 한도를 초과했습니다.' 거부시켜 통과 — 실제 서비스가 그 메시지를 던진다는 보장이 전혀 없는 거짓 안전망(분기 도달 불가를 가림).                                                                         |
+| `src/app/api/matching/generate/route.ts`                  | 23-32   | 남용 표면 평가용. 호출 권한은 isOpsManager 로 운영관리자 전용(OPS_ADMIN/SYSTEM_ADMIN). 외부 노출 아님.                                                                                                                                                                               |
+| `src/components/ops/assignment/useAssignmentMatching.ts`  | 63-69   | 유일한 UI 호출처 — 운영관리 배정 화면에서 /api/matching/generate POST. 내부 관리자 전용 트리거.                                                                                                                                                                                      |
 
 **왜 문제인가**
 
@@ -357,11 +358,11 @@ LLM 호출 쿼터·사용량 추적이 경로별로 비일관적이다. 로드�
 
 **위치 (현재 main 기준 확인)**
 
-| 파일 | 라인 | 메모 |
-|---|---|---|
-| `src/lib/services/roadmap/roadmap-generator.ts` | 386-392 | generateRoadmap 내부. `if (validateStatusTransition(projectData.status, 'ROADMAP_DRAFTED')) { await supabase.from('projects').update({ status: 'ROADMAP_DRAFTED' }).eq('id', projectId); }` — 반환 객체를 destructure하지 않아 error 미확인. 직후 감사로그/알림 후 라인 418-422에서 `{ roadmapId, result, validation }`(성공) 반환. |
-| `src/lib/services/matching/matching-helpers.ts` | 200-202 | updateProjectStatusIfNeeded 내부. `if (project?.status && validateStatusTransition(project.status, 'MATCH_RECOMMENDED')) { await supabase.from('projects').update({ status: 'MATCH_RECOMMENDED' }).eq('id', projectId); }` — error 미확인. 함수는 void 반환이며 호출부(matching 서비스)는 추천 저장을 success로 종료. |
-| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts` | 356-359 | generatePBLAction 내부(try 블록). `if (validateStatusTransition(project.status, 'PBL_DRAFTED')) { await adminSupabase.from('projects').update({ status: 'PBL_DRAFTED' }).eq('id', projectId); }` — error 미확인. 직후 감사로그·activity 로그·revalidatePath 후 라인 385에서 `{ success: true, data: { pblId } }` 반환. |
+| 파일                                                          | 라인    | 메모                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/services/roadmap/roadmap-generator.ts`               | 386-392 | generateRoadmap 내부. `if (validateStatusTransition(projectData.status, 'ROADMAP_DRAFTED')) { await supabase.from('projects').update({ status: 'ROADMAP_DRAFTED' }).eq('id', projectId); }` — 반환 객체를 destructure하지 않아 error 미확인. 직후 감사로그/알림 후 라인 418-422에서 `{ roadmapId, result, validation }`(성공) 반환. |
+| `src/lib/services/matching/matching-helpers.ts`               | 200-202 | updateProjectStatusIfNeeded 내부. `if (project?.status && validateStatusTransition(project.status, 'MATCH_RECOMMENDED')) { await supabase.from('projects').update({ status: 'MATCH_RECOMMENDED' }).eq('id', projectId); }` — error 미확인. 함수는 void 반환이며 호출부(matching 서비스)는 추천 저장을 success로 종료.               |
+| `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts` | 356-359 | generatePBLAction 내부(try 블록). `if (validateStatusTransition(project.status, 'PBL_DRAFTED')) { await adminSupabase.from('projects').update({ status: 'PBL_DRAFTED' }).eq('id', projectId); }` — error 미확인. 직후 감사로그·activity 로그·revalidatePath 후 라인 385에서 `{ success: true, data: { pblId } }` 반환.              |
 
 **왜 문제인가**
 
@@ -480,7 +481,7 @@ LLM 호출 쿼터·사용량 추적이 경로별로 비일관적이다. 로드�
 
 ### P8 인터뷰 저장 중복+legacy — 정정/보강 필요
 
-- **⚠️ 동작 보존 단서:** 실재한다. 계획 step 2가 'mapToDb(merged) + interview_date 기본값 주입 (d) upsert'를 단일 골격으로 기술하는데, 이를 Roadmap 방식(update/insert 양쪽에 interview_date 포함 row 사용)으로 일률 구현하면 PBL UPDATE 동작이 바뀐다. 시나리오: 컨설턴트가 기존 PBL 인터뷰를 자동저장/수정하면, 현행은 update(dbPayload={pbl_data})로 interview_date를 보존(원래 입력일 유지)하지만, 새 persistInterview가 통일 row를 쓰면 매 PBL 수정마다 interview_date가 오늘 날짜로 덮어써지고 interviewer_id·project_id도 재기록된다(interviewer_id는 동일인이라 무해하나 interview_date 변조는 데이터 의미 변경 = 동작 변경). 더 위험한 점은 기존 V2 테스트가 이를 못 잡는다는 것: PBL update 테스트(actions-v2.test.ts 665-702)는 pblData.* 키만 단언하고 update 페이로드에 interview_date가 끼었는지 검증하지 않으며, roadmap update 테스트(350-411)도 company_details만 본다. 즉 '기존 테스트가 안전망'이라는 계획 전제가 이 특정 회귀에 대해서는 성립하지 않아, 동작 변경이 회귀 그물을 빠져나간다.
+- **⚠️ 동작 보존 단서:** 실재한다. 계획 step 2가 'mapToDb(merged) + interview_date 기본값 주입 (d) upsert'를 단일 골격으로 기술하는데, 이를 Roadmap 방식(update/insert 양쪽에 interview_date 포함 row 사용)으로 일률 구현하면 PBL UPDATE 동작이 바뀐다. 시나리오: 컨설턴트가 기존 PBL 인터뷰를 자동저장/수정하면, 현행은 update(dbPayload={pbl_data})로 interview_date를 보존(원래 입력일 유지)하지만, 새 persistInterview가 통일 row를 쓰면 매 PBL 수정마다 interview_date가 오늘 날짜로 덮어써지고 interviewer_id·project_id도 재기록된다(interviewer_id는 동일인이라 무해하나 interview_date 변조는 데이터 의미 변경 = 동작 변경). 더 위험한 점은 기존 V2 테스트가 이를 못 잡는다는 것: PBL update 테스트(actions-v2.test.ts 665-702)는 pblData.\* 키만 단언하고 update 페이로드에 interview_date가 끼었는지 검증하지 않으며, roadmap update 테스트(350-411)도 company_details만 본다. 즉 '기존 테스트가 안전망'이라는 계획 전제가 이 특정 회귀에 대해서는 성립하지 않아, 동작 변경이 회귀 그물을 빠져나간다.
 - **사실 정정:**
   - '뿐(only)'이 틀렸다. 두 함수의 UPDATE 페이로드 구조 자체가 비대칭이다. Roadmap V2는 update(row)에 row={project_id, interviewer_id, interview_date: 오늘, ...dbPayload}를 통째로 써서 매 update마다 interview_date를 오늘로 덮어쓰고 interviewer_id·project_id도 재기록한다(945-958). PBL V2는 update(dbPayload)로 dbPayload={pbl_data}만 쓰므로 interview_date/interviewer_id/project_id를 건드리지 않는다(1132-1136). 이 차이는 mapRoadmapInterviewToDb가 interview_date를 반환하지 않기(298-331) 때문에 더 본질적이다. 또 활동로그도 비대칭: Roadmap은 CREATE/UPDATE에 따라 '저장/수정' 문구 분기(1005-1009), PBL은 'PBL 인터뷰가 저장되었습니다.' 고정(1188-1192).
     - → **정정:** 차이 목록에 '② UPDATE 페이로드 형태: Roadmap=full row(interview_date 오늘 덮어쓰기+interviewer_id+project_id 재기록), PBL=pbl_data 단독(이들 컬럼 미터치)' 와 '③ 활동로그 문구: Roadmap=create/update 분기, PBL=고정' 을 추가하고 '뿐'을 삭제. persistInterview는 update/insert에 같은 row를 쓰지 말고 track별로 update 페이로드(interview_date 주입 여부 포함)를 파라미터화해야 함.
@@ -504,7 +505,7 @@ LLM 호출 쿼터·사용량 추적이 경로별로 비일관적이다. 로드�
 
 ### P7 계층 역전 — 정정/보강 필요
 
-- **⚠️ 동작 보존 단서:** 단계 1~4는 검증 결과 동작 불변이 맞다(파일 이동 + import 경로 갱신만, 사이드이펙트·번들·라우팅·alias 영향 0 확인). 그러나 두 가지 미묘한 함정: (1) 단계 1 옵션 B는 upload util을 src/app/(dashboard)/ops/notices/로 옮기되 소비자(NoticeForm·AttachmentUploader)는 src/components/notices에 잔류시키므로, lib→app 역참조를 components→app 역참조로 '이동'만 시킬 뿐 역전 자체를 해소하지 못한다. 이 상태로 단계 2의 ESLint src/lib/** 가드를 켜면 lib는 깨끗해지지만 새로 생긴 components→app 참조가 단계 4까지 잔존 — '해결'이 아니라 문제 위치 이전. 옵션 A(컴포넌트 동반 이동)를 권장으로 명시해야 동작 불변+역전 해소가 동시 성립. (2) 단계 5의 '의존성 역전(action을 prop으로 주입)'은 컴포넌트 시그니처(props)를 바꾸므로 명백한 동작 변경 — 계획서가 이를 line 267에서 '단계 4까지만 순수정리'로 스스로 격리한 것은 정확. 단 셸 컴포넌트(Navigation/MessageIcon/NotificationBell)는 옵션 A·B 어느 쪽으로도 단일 _components 이동이 불가하므로(layout.tsx 공유) 단계 4에서 '동작 불변'으로 처리 가능한 대상이 아님 — 결국 단계 5(동작 변경 위험 구간)로 넘어가는 항목이 다수라, '순수정리로 끝나는 비율'이 계획서 인상보다 작다(22개 중 셸 3 + 다중라우트 ProfileForm/ProfilePageClient 2 + 교차 ShareToggle/LikeButton/AttachmentList 3 = 최소 8개가 단계 4 범위 밖)
+- **⚠️ 동작 보존 단서:** 단계 1~4는 검증 결과 동작 불변이 맞다(파일 이동 + import 경로 갱신만, 사이드이펙트·번들·라우팅·alias 영향 0 확인). 그러나 두 가지 미묘한 함정: (1) 단계 1 옵션 B는 upload util을 src/app/(dashboard)/ops/notices/로 옮기되 소비자(NoticeForm·AttachmentUploader)는 src/components/notices에 잔류시키므로, lib→app 역참조를 components→app 역참조로 '이동'만 시킬 뿐 역전 자체를 해소하지 못한다. 이 상태로 단계 2의 ESLint src/lib/\*\* 가드를 켜면 lib는 깨끗해지지만 새로 생긴 components→app 참조가 단계 4까지 잔존 — '해결'이 아니라 문제 위치 이전. 옵션 A(컴포넌트 동반 이동)를 권장으로 명시해야 동작 불변+역전 해소가 동시 성립. (2) 단계 5의 '의존성 역전(action을 prop으로 주입)'은 컴포넌트 시그니처(props)를 바꾸므로 명백한 동작 변경 — 계획서가 이를 line 267에서 '단계 4까지만 순수정리'로 스스로 격리한 것은 정확. 단 셸 컴포넌트(Navigation/MessageIcon/NotificationBell)는 옵션 A·B 어느 쪽으로도 단일 \_components 이동이 불가하므로(layout.tsx 공유) 단계 4에서 '동작 불변'으로 처리 가능한 대상이 아님 — 결국 단계 5(동작 변경 위험 구간)로 넘어가는 항목이 다수라, '순수정리로 끝나는 비율'이 계획서 인상보다 작다(22개 중 셸 3 + 다중라우트 ProfileForm/ProfilePageClient 2 + 교차 ShareToggle/LikeButton/AttachmentList 3 = 최소 8개가 단계 4 범위 밖)
 - **사실 정정:**
   - '24건'은 lib+components 스코프 한정 수치이며 계획서가 이를 명시하지 않아 오해 소지. 전체 src 기준 @/app 참조 테스트는 32개(src/app 내 테스트 포함). 또한 24건 중 src/lib/actions/auth-order-verification.test.ts는 vi.mock가 아닌 동적 await import('@/app...') 12건을 사용 — no-restricted-imports(정적 import 대상) 규칙이 잡지 못하므로 'mock 예외 처리' 프레이밍이 부정확
     - → **정정:** 'lib+components 테스트 24개(components 22 + lib 2)'로 스코프 명시. ESLint files 오버라이드는 src/lib/**·src/components/** 테스트 파일을 모두 포함해야 함(src/lib/actions 포함). auth-order-verification.test.ts의 동적 import는 no-restricted-imports로는 안 잡히므로 별도 인지(가드 누수 아님, 정리 대상도 아님)
@@ -512,13 +513,13 @@ LLM 호출 쿼터·사용량 추적이 경로별로 비일관적이다. 로드�
     - → **정정:** rules 블록 8-18 / e2e 오버라이드 19-25 / 회귀 가드 추가 지점은 rules 블록(8-18) 또는 새 zone 오브젝트로 명시
 - **추가 리스크:**
   - 옵션 B 채택 시 lib→app가 components→app로 자리만 옮겨 ESLint lib 가드 통과해도 실질 역전 미해소 — '핵심 사례 1건 해결'이라는 성과 서술이 과장될 수 있음. 옵션 A를 디폴트로 못박아야 함
-  - 단계 4에서 components→_components 이동 시 동반 *.test.tsx의 상대 import(예: import X from './X')와 vi.mock 경로(@/app/... 절대경로는 불변)를 함께 갱신해야 함. 절대경로 mock은 안 깨지지만 컴포넌트 자체의 상대 import(예: './LikeButton')는 _components 내부 구조에 따라 갱신 필요 — git mv 후 typecheck가 잡지만 PR당 변경량이 계획서 추정보다 큼
-  - RecommendationResults는 ops/assignment/index.ts 배럴 + AssignmentTabSection 두 곳에서 쓰여 단일 _components 이동 대상이 아님(계획서 표는 단일라우트군에 안 넣었으나 단계 4 '단일' 분류에서 명시 제외 필요)
+  - 단계 4에서 components→_components 이동 시 동반 \*.test.tsx의 상대 import(예: import X from './X')와 vi.mock 경로(@/app/... 절대경로는 불변)를 함께 갱신해야 함. 절대경로 mock은 안 깨지지만 컴포넌트 자체의 상대 import(예: './LikeButton')는 \_components 내부 구조에 따라 갱신 필요 — git mv 후 typecheck가 잡지만 PR당 변경량이 계획서 추정보다 큼
+  - RecommendationResults는 ops/assignment/index.ts 배럴 + AssignmentTabSection 두 곳에서 쓰여 단일 \_components 이동 대상이 아님(계획서 표는 단일라우트군에 안 넣었으나 단계 4 '단일' 분류에서 명시 제외 필요)
   - auth-order-verification.test.ts의 동적 await import('@/app...')는 lib 내부 역참조처럼 보이지만 테스트 검증용이라 정리 대상 아님 — ESLint 가드 작성 시 이 파일의 동적 import를 '위반으로 오탐'하지 않도록 files 오버라이드에 반드시 포함(정적 import만 막으면 자동 통과하지만 인지 필요)
-  - PublicSelfAssessmentForm은 assessment/[token]/_components 이동 후보지만, 이 컴포넌트가 src/components/assessment에 다른 비역참조 형제와 함께 있을 경우 디렉터리 분해로 응집도가 오히려 흩어질 수 있음 — 형제 컴포넌트 동시 점검 필요
+  - PublicSelfAssessmentForm은 assessment/[token]/\_components 이동 후보지만, 이 컴포넌트가 src/components/assessment에 다른 비역참조 형제와 함께 있을 경우 디렉터리 분해로 응집도가 오히려 흩어질 수 있음 — 형제 컴포넌트 동시 점검 필요
 - **보강(반영할 개선):**
-  - 단계 1을 '옵션 A(util + NoticeForm + AttachmentUploader를 함께 ops/notices/_components로 이동)'를 기본으로 채택하도록 명시. 옵션 B는 'lib 가드를 임시로 켜기 위한 중간 단계'로만 허용하고, 같은 PR 또는 직후 PR에서 컴포넌트 동반 이동으로 components→app 신규 역전을 제거한다는 후속 조건을 못박을 것
-  - ESLint files 오버라이드 글롭을 'src/lib/**/*.test.{ts,tsx}'와 'src/components/**/*.test.{ts,tsx}' 둘 다로 명시하고, src/lib/actions/auth-order-verification.test.ts(동적 import 12건)가 no-restricted-imports 정적 규칙으로는 애초에 안 걸린다는 점을 주석으로 기록 — '24건 mock 예외'가 정적 import 대상만임을 분명히
+  - 단계 1을 '옵션 A(util + NoticeForm + AttachmentUploader를 함께 ops/notices/\_components로 이동)'를 기본으로 채택하도록 명시. 옵션 B는 'lib 가드를 임시로 켜기 위한 중간 단계'로만 허용하고, 같은 PR 또는 직후 PR에서 컴포넌트 동반 이동으로 components→app 신규 역전을 제거한다는 후속 조건을 못박을 것
+  - ESLint files 오버라이드 글롭을 'src/lib/**/\*.test.{ts,tsx}'와 'src/components/**/\*.test.{ts,tsx}' 둘 다로 명시하고, src/lib/actions/auth-order-verification.test.ts(동적 import 12건)가 no-restricted-imports 정적 규칙으로는 애초에 안 걸린다는 점을 주석으로 기록 — '24건 mock 예외'가 정적 import 대상만임을 분명히
   - '24건' 앞에 '(lib+components 스코프)' 한정자 추가. 전체 src 기준 32건과 구분. 리스크 섹션의 '46개' 분해도 '비테스트 22 + lib·components 테스트 24'로 스코프 표기
   - 단계 4의 '단일-라우트 전용' 목록에서 RecommendationResults를 명시 제외(배럴+AssignmentTabSection 다중 소비). 단계 4 대상은 AssessmentTokenSection·UserManagementTable·PublicSelfAssessmentForm·DeleteAccountSection·AdminFilters·UseRoadmapDialog로 한정 — 각 1라우트임을 검증 완료했으므로 표에 '소비자 단일 확인필' 칼럼 추가
   - 단계 4 각 이동 시 '컴포넌트의 상대 import(형제 컴포넌트 경로)도 갱신 필요(vi.mock @/app 절대경로는 불변)'를 검증 체크리스트에 추가. typecheck가 안전망이나 PR당 diff 규모를 미리 명시
@@ -558,4 +559,3 @@ LLM 호출 쿼터·사용량 추적이 경로별로 비일관적이다. 로드�
   - 1차 로깅의 실효 경로를 명시: console.error 가 Vercel Functions 로그로만 가고 알람이 없다면 사실상 사후 포렌식 용도임을 인정하고, 진짜 desync 방지는 2차(RPC 원자화) 또는 운영자 재동기화 UI(별도 항목)가 필요함을 우선순위로 분리. '높음 심각도'에 비해 1차 해결의 커버리지가 낮다는 점을 명문화
   - 신규 테스트에 vi.spyOn(console,'error') + mockRestore 격리를 명시하고, 3경로 각각 'update error 주입 시 ① console.error 호출 ② 함수는 기존 성공 응답 반환(roadmapId/scoredCandidates/{success:true}) 유지' 를 단언하도록 구체화
   - 착수 직전 그렙 재확인 대상에 'preserveStatus', 'updateProjectStatusIfNeeded' 외에 '.update({ status:' 패턴 전수 그렙을 추가해 3곳 외 동일 데시싱크 누락분(예: finalize·archive 경로)이 없는지 1회 점검 — 계획서가 3곳으로 한정했으나 동종 패턴 잔존 가능성 확인 권장
-

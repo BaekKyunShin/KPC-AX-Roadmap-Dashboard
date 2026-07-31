@@ -2,16 +2,16 @@
  * consultant/projects/[id]/interview/actions.ts 테스트
  *
  * 테스트 대상:
- * - fetchInterview: 인터뷰 조회 (인증/프로젝트 배정 검증)
  * - processSttFile: STT 처리 (인증/역할/크기검증/LLM)
  * - deleteSttInsights: STT 인사이트 삭제
+ * - extractSttInsights: STT 텍스트 인사이트 추출
  *
  * 감사 이슈:
  * - #23: verifyProjectAccess 역할 체크 — CONSULTANT_APPROVED 아닌 역할 거부 검증
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchInterview, processSttFile, deleteSttInsights, extractSttInsights } from './actions';
+import { processSttFile, deleteSttInsights, extractSttInsights } from './actions';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
@@ -87,80 +87,7 @@ afterEach(() => {
 // ─── 테스트 헬퍼 ────────────────────────────────────────────────────────────
 
 const USER_A_ID = '550e8400-e29b-41d4-a716-446655440001';
-const USER_B_ID = '550e8400-e29b-41d4-a716-446655440002';
 const PROJECT_ID = '550e8400-e29b-41d4-a716-446655440020';
-
-// ─── fetchInterview ─────────────────────────────────────────────────────────
-
-describe('fetchInterview', () => {
-  let serverMock: ReturnType<typeof createMockSupabase>;
-
-  beforeEach(() => {
-    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
-    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('인증되지 않은 사용자 → null 반환', async () => {
-    serverMock = createMockSupabase({ authUser: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
-
-    const result = await fetchInterview(PROJECT_ID);
-
-    expect(result).toBeNull();
-  });
-
-  it('배정되지 않은 프로젝트 → null 반환', async () => {
-    // 1) requireAuth: role 조회
-    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    // 2) project access → 다른 컨설턴트에게 배정
-    serverMock.addResult({
-      data: { assigned_consultant_id: USER_B_ID },
-      error: null,
-    });
-
-    const result = await fetchInterview(PROJECT_ID);
-
-    expect(result).toBeNull();
-  });
-
-  it('정상 조회 → 인터뷰 데이터 반환', async () => {
-    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    // project access → 본인에게 배정
-    serverMock.addResult({
-      data: { assigned_consultant_id: USER_A_ID },
-      error: null,
-    });
-    // interview 조회
-    serverMock.addResult({
-      data: {
-        id: 'interview-1',
-        project_id: PROJECT_ID,
-        interview_date: '2026-02-15',
-        participants: [{ id: 'p1', name: '홍길동' }],
-      },
-      error: null,
-    });
-
-    const result = await fetchInterview(PROJECT_ID);
-
-    expect(result).toBeTruthy();
-    expect(result?.id).toBe('interview-1');
-  });
-
-  it('프로젝트 조회 실패 → null 반환', async () => {
-    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    // project → null (not found)
-    serverMock.addResult({ data: null, error: null });
-
-    const result = await fetchInterview(PROJECT_ID);
-
-    expect(result).toBeNull();
-  });
-});
 
 // ─── processSttFile ─────────────────────────────────────────────────────────
 
@@ -371,40 +298,6 @@ describe('deleteSttInsights', () => {
     const result = await deleteSttInsights(PROJECT_ID);
 
     expect(result).toEqual({ success: true });
-  });
-});
-
-describe('fetchInterview — 에러/엣지 케이스', () => {
-  let serverMock: ReturnType<typeof createMockSupabase>;
-
-  beforeEach(() => {
-    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
-    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('인터뷰 없는 프로젝트 → null 반환', async () => {
-    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    serverMock.addResult({ data: { assigned_consultant_id: USER_A_ID }, error: null });
-    // interviews 조회 → null (인터뷰 없음)
-    serverMock.addResult({ data: null, error: { code: 'PGRST116' } });
-
-    const result = await fetchInterview(PROJECT_ID);
-
-    // 에러가 발생해도 catch에서 null 반환
-    expect(result).toBeNull();
-  });
-
-  it('예외 발생 → null 반환 (catch 처리)', async () => {
-    // createClient가 throw
-    vi.mocked(createClient).mockRejectedValueOnce(new Error('connection error'));
-
-    const result = await fetchInterview(PROJECT_ID);
-
-    expect(result).toBeNull();
   });
 });
 

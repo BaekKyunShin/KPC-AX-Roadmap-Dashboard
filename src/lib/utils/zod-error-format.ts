@@ -20,7 +20,7 @@ import type { ZodError, ZodIssue } from 'zod';
 export function formatZodIssuesForToast(
   error: ZodError,
   labelMap: Record<string, string>,
-  options: { maxItems?: number } = {},
+  options: { maxItems?: number } = {}
 ): string {
   const maxItems = options.maxItems ?? 5;
   // Zod v3 의 ZodError.issues 는 항상 array 보장 — null/undefined fallback 불필요.
@@ -59,4 +59,27 @@ export function formatZodIssuesForToast(
  */
 function normalizePath(path: ReadonlyArray<string | number>): string {
   return path.map((p) => (typeof p === 'number' ? '*' : p)).join('.');
+}
+
+/**
+ * Zod 이슈 메시지 원문을 줄바꿈으로 join 한다 — 서버 Action 반환용.
+ *
+ * `formatZodIssuesForToast` 와 달리 labelMap 을 받지 않는다. 스키마 메시지가
+ * 이미 사용자용 한국어 문구인 경로(인터뷰 V2 저장 Action) 전용으로,
+ * 세 곳에 인라인 복제돼 있던 `#001` join 블록을 추출한 것이다.
+ *
+ * @param options.maxItems 토스트 가독성 보호 (기본 5)
+ * @param options.fallback 유효 메시지가 하나도 없을 때 문구
+ */
+export function joinZodMessagesForToast(
+  error: ZodError,
+  options: { maxItems?: number; fallback?: string } = {}
+): string {
+  const maxItems = options.maxItems ?? 5;
+  const fallback = options.fallback ?? '필수 입력 항목을 확인해주세요.';
+  const messages = error.issues
+    .map((issue) => issue.message)
+    .filter((m) => Boolean(m?.trim()))
+    .slice(0, maxItems);
+  return messages.length > 0 ? messages.join('\n') : fallback;
 }
