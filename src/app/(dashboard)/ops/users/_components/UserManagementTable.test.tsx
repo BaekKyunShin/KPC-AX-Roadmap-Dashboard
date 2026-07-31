@@ -56,7 +56,11 @@ function makeUser(overrides: Partial<UserWithProfile> = {}): UserWithProfile {
 /** Server Action이 수동으로 resolve 가능한 지연 Promise를 반환하도록 설정 */
 function mockDeferredAction() {
   let resolve!: (value: { success: true }) => void;
-  mockUpdateUserStatus.mockReturnValue(new Promise((r) => { resolve = r; }));
+  mockUpdateUserStatus.mockReturnValue(
+    new Promise((r) => {
+      resolve = r;
+    })
+  );
   return () => resolve({ success: true });
 }
 
@@ -235,9 +239,7 @@ describe('UserManagementTable', () => {
     });
 
     it('currentUserId 미지정 시 기존 동작 유지 (모든 사용자에 액션 버튼 표시)', () => {
-      render(
-        <UserManagementTable users={[makeUser({ role: 'CONSULTANT_APPROVED' })]} />,
-      );
+      render(<UserManagementTable users={[makeUser({ role: 'CONSULTANT_APPROVED' })]} />);
       // 정지 버튼이 정상 노출 (currentUserId 없음 → self 가드 미적용)
       expect(getTable().getByText('정지')).toBeInTheDocument();
       expect(screen.queryByTestId('self-row-marker')).toBeNull();
@@ -259,11 +261,7 @@ describe('UserManagementTable', () => {
   // #006 회귀 — 데스크톱 셀의 긴 이메일이 단어 단위로 줄바꿈되어 임의 위치에서
   // 끊어지지 않도록 break-all 클래스 적용.
   it('#006: 데스크톱 이메일 셀에 break-all 클래스가 적용된다', () => {
-    render(
-      <UserManagementTable
-        users={[makeUser({ email: 'audit-c-20260428@test.com' })]}
-      />,
-    );
+    render(<UserManagementTable users={[makeUser({ email: 'audit-c-20260428@test.com' })]} />);
     const desktopEmail = getTable().getByTestId('user-email-desktop');
     expect(desktopEmail).toHaveClass('break-all');
     expect(desktopEmail).toHaveTextContent('audit-c-20260428@test.com');
@@ -289,10 +287,34 @@ describe('UserManagementTable', () => {
   describe('검색 · 필터 · 페이지네이션 (#1)', () => {
     function makeUsers(): UserWithProfile[] {
       return [
-        makeUser({ id: 'u1', name: '박철수', email: 'park@test.com', role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }),
-        makeUser({ id: 'u2', name: '김영희', email: 'kim@test.com', role: 'USER_PENDING', status: 'ACTIVE' }),
-        makeUser({ id: 'u3', name: '이민수', email: 'lee@test.com', role: 'CONSULTANT_APPROVED', status: 'SUSPENDED' }),
-        makeUser({ id: 'u4', name: '최지영', email: 'choi@test.com', role: 'OPS_ADMIN', status: 'ACTIVE' }),
+        makeUser({
+          id: 'u1',
+          name: '박철수',
+          email: 'park@test.com',
+          role: 'CONSULTANT_APPROVED',
+          status: 'ACTIVE',
+        }),
+        makeUser({
+          id: 'u2',
+          name: '김영희',
+          email: 'kim@test.com',
+          role: 'USER_PENDING',
+          status: 'ACTIVE',
+        }),
+        makeUser({
+          id: 'u3',
+          name: '이민수',
+          email: 'lee@test.com',
+          role: 'CONSULTANT_APPROVED',
+          status: 'SUSPENDED',
+        }),
+        makeUser({
+          id: 'u4',
+          name: '최지영',
+          email: 'choi@test.com',
+          role: 'OPS_ADMIN',
+          status: 'ACTIVE',
+        }),
       ];
     }
 
@@ -322,7 +344,11 @@ describe('UserManagementTable', () => {
 
     it('11번째 사용자는 첫 페이지에 노출되지 않는다 (페이지당 10건)', () => {
       const many: UserWithProfile[] = Array.from({ length: 12 }, (_, i) =>
-        makeUser({ id: `u${i + 1}`, name: `사용자${String(i + 1).padStart(2, '0')}`, email: `u${i + 1}@t.com` }),
+        makeUser({
+          id: `u${i + 1}`,
+          name: `사용자${String(i + 1).padStart(2, '0')}`,
+          email: `u${i + 1}@t.com`,
+        })
       );
       render(<UserManagementTable users={many} />);
       expect(getTable().getByText('사용자01')).toBeInTheDocument();
@@ -336,7 +362,9 @@ describe('UserManagementTable', () => {
       render(<UserManagementTable users={makeUsers()} />);
       await user.type(screen.getByPlaceholderText(/이름·이메일·전화번호/), '존재없음ZZZ');
       // title 에 검색어가 따옴표로 명시되고, 필터가 비었으므로 description 미노출
-      expect(screen.getAllByText(/'존재없음ZZZ'과\(와\) 일치하는 사용자가 없습니다/).length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText(/'존재없음ZZZ'과\(와\) 일치하는 사용자가 없습니다/).length
+      ).toBeGreaterThan(0);
       expect(screen.queryByText(/현재 적용된 필터/)).not.toBeInTheDocument();
       // 「필터 초기화」 버튼 노출
       expect(screen.getAllByRole('button', { name: '필터 초기화' }).length).toBeGreaterThan(0);
@@ -357,7 +385,7 @@ describe('UserManagementTable', () => {
 
     it('총 사용자 수 캡션이 페이지 정보와 함께 노출된다', () => {
       const many: UserWithProfile[] = Array.from({ length: 12 }, (_, i) =>
-        makeUser({ id: `u${i + 1}`, name: `사용자${i + 1}`, email: `u${i + 1}@t.com` }),
+        makeUser({ id: `u${i + 1}`, name: `사용자${i + 1}`, email: `u${i + 1}@t.com` })
       );
       render(<UserManagementTable users={many} />);
       // 예: "총 12명" 또는 "총 12명 중 1~10"

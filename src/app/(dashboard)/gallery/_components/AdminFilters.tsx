@@ -13,8 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { fetchConsultantOptions } from '@/app/(dashboard)/gallery/actions';
-import type { ConsultantOption } from '@/app/(dashboard)/gallery/actions';
+import { fetchConsultantOptions } from '../actions';
+import type { ConsultantOption } from '../actions';
 
 const DEFAULT_FILTER_VALUE = 'all';
 
@@ -148,7 +148,9 @@ export function AdminFilters() {
 
             <Select
               value={currentConsultant}
-              onValueChange={(v) => updateParam('consultantId', v === DEFAULT_FILTER_VALUE ? '' : v)}
+              onValueChange={(v) =>
+                updateParam('consultantId', v === DEFAULT_FILTER_VALUE ? '' : v)
+              }
             >
               <SelectTrigger className="w-full sm:w-[150px]" aria-label="컨설턴트 필터">
                 <SelectValue placeholder="컨설턴트" />
@@ -164,7 +166,12 @@ export function AdminFilters() {
             </Select>
 
             {hasAdminFilters && (
-              <Button variant="ghost" size="icon" onClick={handleResetAdminFilters} aria-label="필터 초기화">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleResetAdminFilters}
+                aria-label="필터 초기화"
+              >
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -175,13 +182,25 @@ export function AdminFilters() {
         {hasAdminFilters && (
           <div className="mt-3 flex flex-wrap gap-2">
             {currentStatus !== DEFAULT_FILTER_VALUE && (
-              <FilterBadge label="상태" value={getStatusLabel(currentStatus)} onClear={() => updateParam('status', '')} />
+              <FilterBadge
+                label="상태"
+                value={getStatusLabel(currentStatus)}
+                onClear={() => updateParam('status', '')}
+              />
             )}
             {currentShared !== DEFAULT_FILTER_VALUE && (
-              <FilterBadge label="공유" value={getSharedLabel(currentShared)} onClear={() => updateParam('isShared', '')} />
+              <FilterBadge
+                label="공유"
+                value={getSharedLabel(currentShared)}
+                onClear={() => updateParam('isShared', '')}
+              />
             )}
             {currentConsultant !== DEFAULT_FILTER_VALUE && (
-              <FilterBadge label="컨설턴트" value={getConsultantLabel(currentConsultant)} onClear={() => updateParam('consultantId', '')} />
+              <FilterBadge
+                label="컨설턴트"
+                value={getConsultantLabel(currentConsultant)}
+                onClear={() => updateParam('consultantId', '')}
+              />
             )}
           </div>
         )}

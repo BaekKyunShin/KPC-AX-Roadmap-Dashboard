@@ -85,7 +85,11 @@ const COACHING_LABELS: Record<string, string> = {
 
 const ROLE_BADGE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   USER_PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '컨설턴트 (승인 대기)' },
-  OPS_ADMIN_PENDING: { bg: 'bg-amber-100', text: 'text-amber-800', label: '운영관리자 (승인 대기)' },
+  OPS_ADMIN_PENDING: {
+    bg: 'bg-amber-100',
+    text: 'text-amber-800',
+    label: '운영관리자 (승인 대기)',
+  },
   CONSULTANT_APPROVED: { bg: 'bg-green-100', text: 'text-green-800', label: '컨설턴트' },
   OPS_ADMIN: { bg: 'bg-purple-100', text: 'text-purple-800', label: '운영관리자' },
   SYSTEM_ADMIN: { bg: 'bg-red-100', text: 'text-red-800', label: '시스템관리자' },
@@ -185,9 +189,7 @@ function UserMobileCard({
         <div className="text-gray-500">상태</div>
         <div>{getStatusBadge(user.status)}</div>
         <div className="text-gray-500">가입일</div>
-        <div className="text-gray-900">
-          {formatDateKR(user.created_at)}
-        </div>
+        <div className="text-gray-900">{formatDateKR(user.created_at)}</div>
       </div>
 
       {/* 푸터: 프로필 보기 + 관리 액션 */}
@@ -226,7 +228,9 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
   // (#1) 검색·필터·페이지네이션 — URL state 동기화. ProjectList 패턴 차용.
   const [searchInput, setSearchInput] = useState(urlSearchParams.get('search') || '');
   const [roleFilter, setRoleFilter] = useState(urlSearchParams.get('role') || DEFAULT_FILTER_VALUE);
-  const [statusFilter, setStatusFilter] = useState(urlSearchParams.get('status') || DEFAULT_FILTER_VALUE);
+  const [statusFilter, setStatusFilter] = useState(
+    urlSearchParams.get('status') || DEFAULT_FILTER_VALUE
+  );
   const [page, setPage] = useState(Number(urlSearchParams.get('page')) || 1);
   // #2 H5 — 정지(destructive) 사전 확인 다이얼로그용 state. id+name 보관해 「{사용자명}님을 정지하시겠습니까?」 노출.
   const [confirmSuspend, setConfirmSuspend] = useState<{ id: string; name: string } | null>(null);
@@ -296,14 +300,19 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
   const startIdx = filtered.length === 0 ? 0 : (safePage - 1) * ITEMS_PER_PAGE + 1;
   const endIdx = Math.min(filtered.length, safePage * ITEMS_PER_PAGE);
 
-  const selectedRoleLabel = roleFilter === DEFAULT_FILTER_VALUE
-    ? null
-    : ROLE_FILTER_OPTIONS.find((opt) => opt.value === roleFilter)?.label ?? null;
-  const selectedStatusLabel = statusFilter === DEFAULT_FILTER_VALUE
-    ? null
-    : STATUS_FILTER_OPTIONS.find((opt) => opt.value === statusFilter)?.label ?? null;
+  const selectedRoleLabel =
+    roleFilter === DEFAULT_FILTER_VALUE
+      ? null
+      : (ROLE_FILTER_OPTIONS.find((opt) => opt.value === roleFilter)?.label ?? null);
+  const selectedStatusLabel =
+    statusFilter === DEFAULT_FILTER_VALUE
+      ? null
+      : (STATUS_FILTER_OPTIONS.find((opt) => opt.value === statusFilter)?.label ?? null);
 
-  const hasFilters = !!debouncedSearch || roleFilter !== DEFAULT_FILTER_VALUE || statusFilter !== DEFAULT_FILTER_VALUE;
+  const hasFilters =
+    !!debouncedSearch ||
+    roleFilter !== DEFAULT_FILTER_VALUE ||
+    statusFilter !== DEFAULT_FILTER_VALUE;
   const isFilteredEmpty = filtered.length === 0 && users.length > 0;
 
   // #4 H1·H7 — 검색·필터 0건일 때 한 영역으로 통합된 EmptyState. 데스크톱·모바일 두 분기에서 재사용.
@@ -315,9 +324,8 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
       selectedRoleLabel ? `역할: ${selectedRoleLabel}` : null,
       selectedStatusLabel ? `상태: ${selectedStatusLabel}` : null,
     ].filter((s): s is string => s !== null);
-    const descriptionText = filterParts.length > 0
-      ? `현재 적용된 필터: ${filterParts.join(', ')}`
-      : undefined;
+    const descriptionText =
+      filterParts.length > 0 ? `현재 적용된 필터: ${filterParts.join(', ')}` : undefined;
     const handleResetAll = () => {
       setSearchInput('');
       handleRoleChange(DEFAULT_FILTER_VALUE);
@@ -528,13 +536,25 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
           {hasFilters && (
             <div className="mt-3 flex flex-wrap gap-2">
               {debouncedSearch && (
-                <FilterBadge label="검색" value={debouncedSearch} onClear={() => setSearchInput('')} />
+                <FilterBadge
+                  label="검색"
+                  value={debouncedSearch}
+                  onClear={() => setSearchInput('')}
+                />
               )}
               {selectedRoleLabel && (
-                <FilterBadge label="역할" value={selectedRoleLabel} onClear={() => handleRoleChange(DEFAULT_FILTER_VALUE)} />
+                <FilterBadge
+                  label="역할"
+                  value={selectedRoleLabel}
+                  onClear={() => handleRoleChange(DEFAULT_FILTER_VALUE)}
+                />
               )}
               {selectedStatusLabel && (
-                <FilterBadge label="상태" value={selectedStatusLabel} onClear={() => handleStatusChange(DEFAULT_FILTER_VALUE)} />
+                <FilterBadge
+                  label="상태"
+                  value={selectedStatusLabel}
+                  onClear={() => handleStatusChange(DEFAULT_FILTER_VALUE)}
+                />
               )}
             </div>
           )}
@@ -553,84 +573,79 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
         {/* 데스크톱: 테이블 뷰 */}
         <div className="hidden md:block">
           <Table className="min-w-[700px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead className={TABLE_COLUMNS.user}>사용자</TableHead>
-              <TableHead className={TABLE_COLUMNS.role}>역할</TableHead>
-              <TableHead className={TABLE_COLUMNS.status}>상태</TableHead>
-              <TableHead className={TABLE_COLUMNS.profile}>프로필</TableHead>
-              <TableHead className={TABLE_COLUMNS.joinDate}>가입일</TableHead>
-              <TableHead className={TABLE_COLUMNS.actions}>관리</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pagedUsers.map((user) => (
-              <TableRow key={user.id}>
-                {/* 사용자 정보 */}
-                <TableCell className="pl-4 md:pl-20 pr-6 text-left">
-                  <div>
-                    <div className="font-medium text-gray-900">{user.name}</div>
-                    {/* #006 — 긴 이메일이 셀 너비에 맞춰 단어 단위로 줄바꿈되도록 break-all 적용 */}
-                    <div
-                      className="text-gray-500 break-all"
-                      data-testid="user-email-desktop"
-                    >
-                      {user.email}
+            <TableHeader>
+              <TableRow>
+                <TableHead className={TABLE_COLUMNS.user}>사용자</TableHead>
+                <TableHead className={TABLE_COLUMNS.role}>역할</TableHead>
+                <TableHead className={TABLE_COLUMNS.status}>상태</TableHead>
+                <TableHead className={TABLE_COLUMNS.profile}>프로필</TableHead>
+                <TableHead className={TABLE_COLUMNS.joinDate}>가입일</TableHead>
+                <TableHead className={TABLE_COLUMNS.actions}>관리</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pagedUsers.map((user) => (
+                <TableRow key={user.id}>
+                  {/* 사용자 정보 */}
+                  <TableCell className="pl-4 md:pl-20 pr-6 text-left">
+                    <div>
+                      <div className="font-medium text-gray-900">{user.name}</div>
+                      {/* #006 — 긴 이메일이 셀 너비에 맞춰 단어 단위로 줄바꿈되도록 break-all 적용 */}
+                      <div className="text-gray-500 break-all" data-testid="user-email-desktop">
+                        {user.email}
+                      </div>
+                      {user.phone && <div className="text-gray-500">{user.phone}</div>}
                     </div>
-                    {user.phone && <div className="text-gray-500">{user.phone}</div>}
-                  </div>
-                </TableCell>
+                  </TableCell>
 
-                {/* 역할 */}
-                <TableCell>{getRoleBadge(user.role)}</TableCell>
+                  {/* 역할 */}
+                  <TableCell>{getRoleBadge(user.role)}</TableCell>
 
-                {/* 상태 */}
-                <TableCell>{getStatusBadge(user.status)}</TableCell>
+                  {/* 상태 */}
+                  <TableCell>{getStatusBadge(user.status)}</TableCell>
 
-                {/* 프로필 */}
-                <TableCell>
-                  {user.consultant_profile ? (
-                    <TableActionLink
-                      variant="primary"
-                      onClick={() => handleProfileClick(user.consultant_profile!, user.name)}
-                    >
-                      프로필 보기
-                    </TableActionLink>
-                  ) : (
-                    <span className="text-gray-400">미등록</span>
-                  )}
-                </TableCell>
+                  {/* 프로필 */}
+                  <TableCell>
+                    {user.consultant_profile ? (
+                      <TableActionLink
+                        variant="primary"
+                        onClick={() => handleProfileClick(user.consultant_profile!, user.name)}
+                      >
+                        프로필 보기
+                      </TableActionLink>
+                    ) : (
+                      <span className="text-gray-400">미등록</span>
+                    )}
+                  </TableCell>
 
-                {/* 가입일 */}
-                <TableCell className="text-gray-500">
-                  {formatDateKR(user.created_at)}
-                </TableCell>
+                  {/* 가입일 */}
+                  <TableCell className="text-gray-500">{formatDateKR(user.created_at)}</TableCell>
 
-                {/* 관리 */}
-                <TableCell className="font-medium">{renderUserActions(user)}</TableCell>
-              </TableRow>
-            ))}
+                  {/* 관리 */}
+                  <TableCell className="font-medium">{renderUserActions(user)}</TableCell>
+                </TableRow>
+              ))}
 
-            {/* 빈 상태 — 검색·필터 결과 0건 vs 사용자 자체가 0명을 구분 */}
-            {users.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="p-0">
-                  <EmptyState
-                    icon={<Users className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
-                    title="등록된 사용자가 없습니다"
-                    description="사용자가 회원가입을 완료하면 이 목록에 표시됩니다"
-                  />
-                </TableCell>
-              </TableRow>
-            )}
-            {isFilteredEmpty && (
-              <TableRow>
-                <TableCell colSpan={6} className="p-0">
-                  {renderFilteredEmptyState()}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
+              {/* 빈 상태 — 검색·필터 결과 0건 vs 사용자 자체가 0명을 구분 */}
+              {users.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="p-0">
+                    <EmptyState
+                      icon={<Users className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
+                      title="등록된 사용자가 없습니다"
+                      description="사용자가 회원가입을 완료하면 이 목록에 표시됩니다"
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
+              {isFilteredEmpty && (
+                <TableRow>
+                  <TableCell colSpan={6} className="p-0">
+                    {renderFilteredEmptyState()}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
           </Table>
         </div>
 
@@ -687,7 +702,7 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
                   className="h-8 min-w-8 px-2"
                 >
                   {p}
-                </Button>,
+                </Button>
               );
             }
             return buttons;
@@ -730,9 +745,7 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 mb-1">프로필 등록일</h4>
-                  <p className="text-base">
-                    {formatDateKR(selectedProfile.profile.created_at)}
-                  </p>
+                  <p className="text-base">{formatDateKR(selectedProfile.profile.created_at)}</p>
                 </div>
               </div>
 
@@ -813,9 +826,7 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
               {/* 포트폴리오 */}
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">강의 포트폴리오</h4>
-                <p className={PROFILE_TEXT_AREA_CLASSES}>
-                  {selectedProfile.profile.portfolio}
-                </p>
+                <p className={PROFILE_TEXT_AREA_CLASSES}>{selectedProfile.profile.portfolio}</p>
               </div>
 
               {/* 강점/제약 */}

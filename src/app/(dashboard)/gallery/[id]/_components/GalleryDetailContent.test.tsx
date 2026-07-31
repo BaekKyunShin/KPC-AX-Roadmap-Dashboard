@@ -27,7 +27,7 @@ vi.mock('@/components/gallery/LikeButton', () => ({
   ),
 }));
 
-vi.mock('@/components/gallery/UseRoadmapDialog', () => ({
+vi.mock('./UseRoadmapDialog', () => ({
   UseRoadmapDialog: ({
     isOpen,
     onClose,

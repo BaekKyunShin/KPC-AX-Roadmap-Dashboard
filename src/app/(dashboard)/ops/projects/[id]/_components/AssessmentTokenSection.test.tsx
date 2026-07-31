@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // ============================================================================
 
 // Server Action 모킹
-vi.mock('@/app/(dashboard)/ops/projects/actions', () => ({
+vi.mock('../../actions', () => ({
   createAssessmentToken: vi.fn(),
 }));
 
@@ -26,7 +26,11 @@ vi.mock('@/lib/constants/toast-messages', () => ({
 
 // Radix UI Select 모킹 (jsdom에서 Radix 포털 미지원)
 vi.mock('@/components/ui/select', () => ({
-  Select: ({ children, value, onValueChange }: {
+  Select: ({
+    children,
+    value,
+    onValueChange,
+  }: {
     children: React.ReactNode;
     value?: string;
     onValueChange?: (value: string) => void;
@@ -101,9 +105,9 @@ vi.mock('@/components/ui/label', () => ({
 // ============================================================================
 
 import AssessmentTokenSection from './AssessmentTokenSection';
-import { createAssessmentToken } from '@/app/(dashboard)/ops/projects/actions';
+import { createAssessmentToken } from '../../actions';
 import { showSuccessToast, showErrorToast } from '@/lib/utils';
-import type { LatestTokenInfo } from '@/app/(dashboard)/ops/projects/actions';
+import type { LatestTokenInfo } from '../../actions';
 
 // ============================================================================
 // 테스트 데이터 팩토리
@@ -317,7 +321,10 @@ describe('AssessmentTokenSection', () => {
       await user.click(screen.getByRole('button', { name: /진단 링크 생성/ }));
 
       await waitFor(() => {
-        expect(showSuccessToast).toHaveBeenCalledWith('진단 링크 생성', '진단 링크가 생성되었습니다.');
+        expect(showSuccessToast).toHaveBeenCalledWith(
+          '진단 링크 생성',
+          '진단 링크가 생성되었습니다.'
+        );
       });
 
       await waitFor(() => {
@@ -393,18 +400,29 @@ describe('AssessmentTokenSection', () => {
 
       // 복사가 성공하면 showSuccessToast 호출로 간접 검증
       await waitFor(() => {
-        expect(showSuccessToast).toHaveBeenCalledWith('복사 완료', '링크가 클립보드에 복사되었습니다.');
+        expect(showSuccessToast).toHaveBeenCalledWith(
+          '복사 완료',
+          '링크가 클립보드에 복사되었습니다.'
+        );
       });
     });
 
     it('복사 성공 시 성공 토스트를 표시한다', async () => {
       const user = userEvent.setup();
-      render(<AssessmentTokenSection projectId="project-1" latestToken={makeActiveToken({ token: 'copytoken' })} />);
+      render(
+        <AssessmentTokenSection
+          projectId="project-1"
+          latestToken={makeActiveToken({ token: 'copytoken' })}
+        />
+      );
 
       await user.click(getCopyButton());
 
       await waitFor(() => {
-        expect(showSuccessToast).toHaveBeenCalledWith('복사 완료', '링크가 클립보드에 복사되었습니다.');
+        expect(showSuccessToast).toHaveBeenCalledWith(
+          '복사 완료',
+          '링크가 클립보드에 복사되었습니다.'
+        );
       });
     });
 
@@ -473,7 +491,14 @@ describe('AssessmentTokenSection', () => {
       const user = userEvent.setup();
       vi.mocked(createAssessmentToken).mockImplementation(async (formData: FormData) => {
         expect(formData.get('expires_in_days')).toBe('7');
-        return { success: true, data: { token: 'tok', url: 'http://localhost:3000/assessment/tok', expiresAt: new Date().toISOString() } };
+        return {
+          success: true,
+          data: {
+            token: 'tok',
+            url: 'http://localhost:3000/assessment/tok',
+            expiresAt: new Date().toISOString(),
+          },
+        };
       });
 
       render(<AssessmentTokenSection projectId="project-1" latestToken={null} />);
@@ -489,7 +514,14 @@ describe('AssessmentTokenSection', () => {
       const user = userEvent.setup();
       vi.mocked(createAssessmentToken).mockImplementation(async (formData: FormData) => {
         expect(formData.get('expires_in_days')).toBe('60');
-        return { success: true, data: { token: 'tok', url: 'http://localhost:3000/assessment/tok', expiresAt: new Date().toISOString() } };
+        return {
+          success: true,
+          data: {
+            token: 'tok',
+            url: 'http://localhost:3000/assessment/tok',
+            expiresAt: new Date().toISOString(),
+          },
+        };
       });
 
       render(<AssessmentTokenSection projectId="project-1" latestToken={null} />);

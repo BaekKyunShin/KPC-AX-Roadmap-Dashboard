@@ -16,8 +16,8 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
-import { GalleryCard } from '@/components/gallery/GalleryCard';
-import { AdminFilters } from '@/components/gallery/AdminFilters';
+import { GalleryCard } from './GalleryCard';
+import { AdminFilters } from './AdminFilters';
 import { TrackFilter, type TrackFilterValue } from '@/components/gallery/TrackFilter';
 import { ScopeFilter } from '@/components/gallery/ScopeFilter';
 import { PROJECT_INDUSTRIES } from '@/lib/constants/industry';
