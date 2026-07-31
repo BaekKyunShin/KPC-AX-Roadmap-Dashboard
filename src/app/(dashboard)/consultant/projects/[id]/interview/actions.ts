@@ -32,8 +32,9 @@ import { deepMerge } from '@/lib/utils/deep-merge';
 import { joinZodMessagesForToast } from '@/lib/utils/zod-error-format';
 import { after } from 'next/server';
 
+import type { ZodTypeAny } from 'zod';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
-import type { ProjectStatus, ProjectTrack } from '@/types/database';
+import type { AuditAction, ProjectStatus, ProjectTrack } from '@/types/database';
 
 // ============================================================================
 // 공통 헬퍼 함수
@@ -584,6 +585,191 @@ async function fetchProjectMetaForInterview(projectId: string): Promise<
   };
 }
 
+/** persistInterview 의 페이로드 빌더에 넘어가는 실행 컨텍스트 */
+interface PersistPayloadContext {
+  projectId: string;
+  userId: string;
+  /** 오늘 날짜 (YYYY-MM-DD) — interview_date 주입용 */
+  today: string;
+}
+
+/**
+ * 인터뷰 저장 공통 골격(persistInterview)의 트랙별 설정 (P8).
+ * 문구·페이로드 구성은 추출 전 두 함수의 코드와 문자 단위로 동일해야 한다.
+ */
+interface PersistInterviewConfig<T extends object, D extends object> {
+  /** 프로젝트 track 가드 + 감사로그 meta.track */
+  track: ProjectTrack;
+  /** track 불일치 시 사용자에게 반환할 문구 */
+  trackMismatchError: string;
+  /** options.autoSave 여부로 선택되는 Zod 스키마 쌍 */
+  schemas: { strict: ZodTypeAny; autoSave: ZodTypeAny };
+  /** (#4) 부분 머지를 위해 기존 row 에서 fetch 할 컬럼 (id 필수) */
+  selectCols: string;
+  /** DB row → camelCase (deepMerge 의 base) */
+  mapFromDb: (row: unknown) => Partial<T>;
+  /** camelCase → DB 컬럼 payload */
+  mapToDb: (merged: Partial<T>) => D;
+  /**
+   * UPDATE 페이로드 — ⚠️ 두 트랙이 의도적으로 비대칭이다 (특성화 테스트로 고정):
+   *   ROADMAP: 메타 3컬럼(project_id·interviewer_id·interview_date=오늘)을 매번
+   *            재기록해 인터뷰 날짜가 "최종 수정일" 시맨틱으로 동작한다.
+   *   PBL:     dbPayload(pbl_data) 단독 — 최초 입력일·작성자가 보존된다.
+   * 이 차이를 통일하면 조용한 동작 변경이 된다 (P8 계획서 부록).
+   */
+  buildUpdatePayload: (dbPayload: D, ctx: PersistPayloadContext) => object;
+  /**
+   * INSERT 페이로드 — 두 트랙 모두 메타 3컬럼 포함.
+   * (interview_date 는 마이그 069 이후 DB DEFAULT CURRENT_DATE 가 있어 명시
+   *  주입이 필수는 아니지만, 저장 페이로드 구성을 바꾸지 않기 위해 유지한다.)
+   */
+  buildInsertPayload: (dbPayload: D, ctx: PersistPayloadContext) => object;
+  /** 감사로그 action — ROADMAP 은 CREATE/UPDATE 분기, PBL 은 고정값 */
+  resolveAuditAction: (isUpdate: boolean) => AuditAction;
+  /** status 전이 성공 시 운영관리자 알림 문구 */
+  notification: { title: string; buildMessage: (companyName: string) => string };
+  /** 제출 시 활동로그 문구 — ROADMAP 은 저장/수정 분기, PBL 은 고정 */
+  buildActivityLog: (isUpdate: boolean) => string;
+  /** console.error prefix — '[saveRoadmapInterviewV2]' 형태 */
+  logPrefix: string;
+  /** 사용자 반환 에러 문구 */
+  errorMessages: { update: string; insert: string };
+}
+
+/**
+ * 인터뷰 저장 공통 골격 (P8) — saveRoadmapInterviewV2/savePBLInterviewV2 가
+ * 복제하던 파이프라인을 추출한 것: 인증·배정 → track 가드 → Zod 검증 →
+ * 기존 row fetch + deepMerge(#4 lost update 차단) → update/insert →
+ * 상태 전이(P6 에러 검사) → after(알림·감사로그·활동로그).
+ *
+ * 트랙별 차이(페이로드 구성·audit action·문구)는 전부 cfg 로 주입받는다.
+ * try/catch 는 두 wrapper 가 자기 문구로 감싸므로 여기서 잡지 않는다.
+ */
+async function persistInterview<T extends object, D extends object>(
+  projectId: string,
+  data: unknown,
+  options: { autoSave?: boolean } | undefined,
+  cfg: PersistInterviewConfig<T, D>
+): Promise<SimpleActionResult> {
+  // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용
+  const access = await verifyProjectAccess(projectId);
+  if ('error' in access) return { success: false, error: access.error };
+  const { user } = access;
+
+  // (2-추가) track/status/company_name/is_test_mode 조회
+  const projectData = await fetchProjectMetaForInterview(projectId);
+  if ('error' in projectData) {
+    return { success: false, error: projectData.error };
+  }
+  if (projectData.track !== cfg.track) {
+    return { success: false, error: cfg.trackMismatchError };
+  }
+
+  const schema = options?.autoSave ? cfg.schemas.autoSave : cfg.schemas.strict;
+  const validation = schema.safeParse(data);
+  if (!validation.success) {
+    // #001 — 모든 zod 에러를 join 해 사용자가 비어있는 필드를 한 번에 파악할 수 있게 한다.
+    // 클라이언트 측 RoadmapInterviewClient.tsx 의 동일 패턴과 일관성 유지.
+    return { success: false, error: joinZodMessagesForToast(validation.error) };
+  }
+  const validated = validation.data as Partial<T>;
+
+  const adminSupabase = createAdminClient();
+
+  // (#4) 부분 머지를 위해 기존 jsonb 컬럼들도 함께 fetch.
+  // id 만 select 하면 mapToDb(validated) 가 다른 필드를 빈 값으로 채워
+  // update 시 lost update 가 발생한다.
+  const { data: existing, error: fetchError } = await adminSupabase
+    .from('interviews')
+    .select(cfg.selectCols)
+    .eq('project_id', projectId)
+    .maybeSingle<{ id: string } & Record<string, unknown>>();
+
+  if (fetchError) {
+    console.error(`${cfg.logPrefix} Fetch:`, fetchError.message);
+    return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
+  }
+
+  // (#4) 기존 row 가 있으면 camelCase 로 변환 후 부분 patch 와 깊이 머지.
+  // 신규 row 면 validated 만 사용 (기존과 동일).
+  const merged: Partial<T> = existing ? deepMerge(cfg.mapFromDb(existing), validated) : validated;
+  const dbPayload = cfg.mapToDb(merged);
+  const ctx: PersistPayloadContext = {
+    projectId,
+    userId: user.id,
+    today: new Date().toISOString().slice(0, 10),
+  };
+
+  const isUpdate = Boolean(existing);
+  if (existing) {
+    const { error: updateError } = await adminSupabase
+      .from('interviews')
+      .update(cfg.buildUpdatePayload(dbPayload, ctx))
+      .eq('id', existing.id);
+    if (updateError) {
+      console.error(`${cfg.logPrefix} Update:`, updateError.message);
+      return { success: false, error: cfg.errorMessages.update };
+    }
+  } else {
+    const { error: insertError } = await adminSupabase
+      .from('interviews')
+      .insert(cfg.buildInsertPayload(dbPayload, ctx));
+    if (insertError) {
+      console.error(`${cfg.logPrefix} Insert:`, insertError.message);
+      return { success: false, error: cfg.errorMessages.insert };
+    }
+  }
+  const auditAction = cfg.resolveAuditAction(isUpdate);
+
+  // 전이 실패 시 statusTransitioned 를 세우지 않는다 — 이 플래그가 아래
+  // "인터뷰 완료" 알림의 조건이라, 상태는 그대로인데 알림만 나가면
+  // 운영자가 목록에서 '배정됨'을 보고 모순을 겪는다.
+  let statusTransitioned = false;
+  if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
+    const { error: statusError } = await adminSupabase
+      .from('projects')
+      .update({ status: 'INTERVIEWED' })
+      .eq('id', projectId);
+    if (statusError) {
+      console.error(
+        `${cfg.logPrefix} status 전이 실패(${projectData.status}→INTERVIEWED) project=${projectId}:`,
+        statusError.message
+      );
+    } else {
+      statusTransitioned = true;
+    }
+  }
+
+  after(async () => {
+    if (statusTransitioned && !projectData.is_test_mode) {
+      await createNotificationForAdmins({
+        type: 'interview_complete',
+        title: cfg.notification.title,
+        message: cfg.notification.buildMessage(projectData.company_name || '(알 수 없는 기업)'),
+        link: `/ops/projects/${projectId}`,
+      });
+    }
+
+    await createAuditLog({
+      actorUserId: user.id,
+      action: auditAction,
+      targetType: 'interview',
+      targetId: projectId,
+      meta: {
+        track: cfg.track,
+        schema_version: 'v2_camelCase',
+        auto_save: Boolean(options?.autoSave),
+      },
+    });
+
+    if (!options?.autoSave) {
+      await insertSystemActivityLog(projectId, user.id, cfg.buildActivityLog(isUpdate));
+    }
+  });
+
+  return { success: true };
+}
+
 /**
  * 로드맵 인터뷰 저장 — camelCase 신규 스키마 (Task 2.1).
  *
@@ -598,139 +784,44 @@ export async function saveRoadmapInterviewV2(
   options?: { autoSave?: boolean }
 ): Promise<SimpleActionResult> {
   try {
-    // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용
-    const access = await verifyProjectAccess(projectId);
-    if ('error' in access) return { success: false, error: access.error };
-    const { user } = access;
-
-    // (2-추가) track/status/company_name/is_test_mode 조회
-    const projectData = await fetchProjectMetaForInterview(projectId);
-    if ('error' in projectData) {
-      return { success: false, error: projectData.error };
-    }
-    if (projectData.track !== 'ROADMAP') {
-      return {
-        success: false,
-        error: 'PBL 트랙 프로젝트는 PBL 인터뷰 화면을 사용해야 합니다.',
-      };
-    }
-
-    const schema = options?.autoSave
-      ? RoadmapInterviewAutoSaveSchema
-      : RoadmapInterviewStrictSchema;
-    const validation = schema.safeParse(data);
-    if (!validation.success) {
-      // #001 — 모든 zod 에러를 join 해 사용자가 비어있는 필드를 한 번에 파악할 수 있게 한다.
-      // 클라이언트 측 RoadmapInterviewClient.tsx 의 동일 패턴과 일관성 유지.
-      return { success: false, error: joinZodMessagesForToast(validation.error) };
-    }
-    const validated = validation.data as Partial<RoadmapInterviewStrict>;
-
-    const adminSupabase = createAdminClient();
-
-    // (#4) 부분 머지를 위해 기존 jsonb 컬럼들도 함께 fetch.
-    // 이전에는 id 만 select 했기 때문에 mapRoadmapInterviewToDb(validated) 가
-    // 다른 필드를 빈 객체·빈 배열로 채워 update 시 lost update 가 발생했다.
-    const { data: existing, error: fetchError } = await adminSupabase
-      .from('interviews')
-      .select('id, company_details, job_tasks, improvement_goals')
-      .eq('project_id', projectId)
-      .maybeSingle();
-
-    if (fetchError) {
-      console.error('[saveRoadmapInterviewV2] Fetch:', fetchError.message);
-      return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
-    }
-
-    // (#4) 기존 row 가 있으면 camelCase 로 변환 후 부분 patch 와 깊이 머지.
-    // 신규 row 면 validated 만 사용 (기존과 동일).
-    const merged: Partial<RoadmapInterviewStrict> = existing
-      ? deepMerge(mapDbToRoadmapInterview(existing), validated)
-      : validated;
-    const dbPayload = mapRoadmapInterviewToDb(merged);
-    // 기존 로드맵 저장 Action 과 동일하게 interviewer_id 는 항상 기록한다.
-    // interviews 테이블의 interview_date 는 NOT NULL 제약이 있어 INSERT 시
-    // 반드시 값을 제공해야 한다 (DB 기본값이 없는 환경 호환). camelCase V2
-    // 스키마엔 필드가 없으므로 오늘 날짜(YYYY-MM-DD)를 기본값으로 주입한다.
-    const row = {
-      project_id: projectId,
-      interviewer_id: user.id,
-      interview_date: new Date().toISOString().slice(0, 10),
-      ...dbPayload,
-    };
-
-    let auditAction: 'INTERVIEW_CREATE' | 'INTERVIEW_UPDATE';
-
-    if (existing) {
-      const { error: updateError } = await adminSupabase
-        .from('interviews')
-        .update(row)
-        .eq('id', existing.id);
-      if (updateError) {
-        console.error('[saveRoadmapInterviewV2] Update:', updateError.message);
-        return { success: false, error: '인터뷰 수정에 실패했습니다.' };
-      }
-      auditAction = 'INTERVIEW_UPDATE';
-    } else {
-      const { error: insertError } = await adminSupabase.from('interviews').insert(row);
-      if (insertError) {
-        console.error('[saveRoadmapInterviewV2] Insert:', insertError.message);
-        return { success: false, error: '인터뷰 저장에 실패했습니다.' };
-      }
-      auditAction = 'INTERVIEW_CREATE';
-    }
-
-    // 전이 실패 시 statusTransitioned 를 세우지 않는다 — 이 플래그가 아래
-    // "인터뷰 완료" 알림의 조건이라, 상태는 그대로인데 알림만 나가면
-    // 운영자가 목록에서 '배정됨'을 보고 모순을 겪는다.
-    let statusTransitioned = false;
-    if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
-      const { error: statusError } = await adminSupabase
-        .from('projects')
-        .update({ status: 'INTERVIEWED' })
-        .eq('id', projectId);
-      if (statusError) {
-        console.error(
-          `[saveRoadmapInterviewV2] status 전이 실패(${projectData.status}→INTERVIEWED) project=${projectId}:`,
-          statusError.message
-        );
-      } else {
-        statusTransitioned = true;
-      }
-    }
-
-    after(async () => {
-      if (statusTransitioned && !projectData.is_test_mode) {
-        await createNotificationForAdmins({
-          type: 'interview_complete',
-          title: '인터뷰 완료',
-          message: `${projectData.company_name || '(알 수 없는 기업)'} 프로젝트 인터뷰가 완료되었습니다.`,
-          link: `/ops/projects/${projectId}`,
-        });
-      }
-
-      await createAuditLog({
-        actorUserId: user.id,
-        action: auditAction,
-        targetType: 'interview',
-        targetId: projectId,
-        meta: {
-          track: 'ROADMAP',
-          schema_version: 'v2_camelCase',
-          auto_save: Boolean(options?.autoSave),
-        },
-      });
-
-      if (!options?.autoSave) {
-        const logContent =
-          auditAction === 'INTERVIEW_CREATE'
-            ? '인터뷰가 저장되었습니다.'
-            : '인터뷰가 수정되었습니다.';
-        await insertSystemActivityLog(projectId, user.id, logContent);
-      }
+    return await persistInterview(projectId, data, options, {
+      track: 'ROADMAP',
+      trackMismatchError: 'PBL 트랙 프로젝트는 PBL 인터뷰 화면을 사용해야 합니다.',
+      schemas: {
+        strict: RoadmapInterviewStrictSchema,
+        autoSave: RoadmapInterviewAutoSaveSchema,
+      },
+      selectCols: 'id, company_details, job_tasks, improvement_goals',
+      mapFromDb: (row) =>
+        mapDbToRoadmapInterview(row as Parameters<typeof mapDbToRoadmapInterview>[0]),
+      mapToDb: mapRoadmapInterviewToDb,
+      // 기존 로드맵 저장 Action 과 동일하게 interviewer_id 는 항상 기록하고,
+      // update 에도 interview_date(오늘)를 재기록한다 — 특성화 테스트로 고정.
+      buildUpdatePayload: (dbPayload, ctx) => ({
+        project_id: ctx.projectId,
+        interviewer_id: ctx.userId,
+        interview_date: ctx.today,
+        ...dbPayload,
+      }),
+      buildInsertPayload: (dbPayload, ctx) => ({
+        project_id: ctx.projectId,
+        interviewer_id: ctx.userId,
+        interview_date: ctx.today,
+        ...dbPayload,
+      }),
+      resolveAuditAction: (isUpdate) => (isUpdate ? 'INTERVIEW_UPDATE' : 'INTERVIEW_CREATE'),
+      notification: {
+        title: '인터뷰 완료',
+        buildMessage: (companyName) => `${companyName} 프로젝트 인터뷰가 완료되었습니다.`,
+      },
+      buildActivityLog: (isUpdate) =>
+        isUpdate ? '인터뷰가 수정되었습니다.' : '인터뷰가 저장되었습니다.',
+      logPrefix: '[saveRoadmapInterviewV2]',
+      errorMessages: {
+        update: '인터뷰 수정에 실패했습니다.',
+        insert: '인터뷰 저장에 실패했습니다.',
+      },
     });
-
-    return { success: true };
   } catch (error) {
     console.error('[saveRoadmapInterviewV2 Error]', error);
     return { success: false, error: '인터뷰 저장 중 오류가 발생했습니다.' };
@@ -795,123 +886,39 @@ export async function savePBLInterviewV2(
   options?: { autoSave?: boolean }
 ): Promise<SimpleActionResult> {
   try {
-    // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용
-    const access = await verifyProjectAccess(projectId);
-    if ('error' in access) return { success: false, error: access.error };
-    const { user } = access;
-
-    // (2-추가) track/status/company_name/is_test_mode 조회
-    const projectData = await fetchProjectMetaForInterview(projectId);
-    if ('error' in projectData) {
-      return { success: false, error: projectData.error };
-    }
-    if (projectData.track !== 'PBL') {
-      return {
-        success: false,
-        error: '로드맵 트랙 프로젝트는 로드맵 인터뷰 화면을 사용해야 합니다.',
-      };
-    }
-
-    const schema = options?.autoSave ? PBLInterviewAutoSaveSchema : PBLInterviewStrictSchema;
-    const validation = schema.safeParse(data);
-    if (!validation.success) {
-      // #001 — 모든 zod 에러를 join 해 사용자가 비어있는 필드를 한 번에 파악할 수 있게 한다.
-      // 클라이언트 측 RoadmapInterviewClient.tsx 의 동일 패턴과 일관성 유지.
-      return { success: false, error: joinZodMessagesForToast(validation.error) };
-    }
-    const validated = validation.data as Partial<PBLInterviewStrict>;
-
-    const adminSupabase = createAdminClient();
-
-    // (#4) 부분 머지를 위해 pbl_data 컬럼도 함께 fetch.
-    const { data: existing, error: fetchError } = await adminSupabase
-      .from('interviews')
-      .select('id, pbl_data')
-      .eq('project_id', projectId)
-      .maybeSingle();
-
-    if (fetchError) {
-      console.error('[savePBLInterviewV2] Fetch:', fetchError.message);
-      return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
-    }
-
-    // (#4) 기존 row 가 있으면 camelCase 로 변환 후 부분 patch 와 깊이 머지.
-    const merged: Partial<PBLInterviewStrict> = existing
-      ? deepMerge(mapDbToPBLInterview(existing), validated)
-      : validated;
-    const dbPayload = mapPBLInterviewToDb(merged);
-
-    if (existing) {
-      const { error: updateError } = await adminSupabase
-        .from('interviews')
-        .update(dbPayload)
-        .eq('id', existing.id);
-      if (updateError) {
-        console.error('[savePBLInterviewV2] Update:', updateError.message);
-        return { success: false, error: 'PBL 인터뷰 수정에 실패했습니다.' };
-      }
-    } else {
+    return await persistInterview(projectId, data, options, {
+      track: 'PBL',
+      trackMismatchError: '로드맵 트랙 프로젝트는 로드맵 인터뷰 화면을 사용해야 합니다.',
+      schemas: {
+        strict: PBLInterviewStrictSchema,
+        autoSave: PBLInterviewAutoSaveSchema,
+      },
+      selectCols: 'id, pbl_data',
+      mapFromDb: (row) => mapDbToPBLInterview(row as Parameters<typeof mapDbToPBLInterview>[0]),
+      mapToDb: mapPBLInterviewToDb,
+      // PBL update 는 pbl_data 단독 — interview_date(최초 입력일)·interviewer_id
+      // 를 보존한다. ROADMAP 과 의도적 비대칭 (특성화 테스트로 고정).
+      buildUpdatePayload: (dbPayload) => dbPayload,
       // interview_date NOT NULL 제약 호환 — camelCase V2 스키마엔 필드가 없으므로
       // 오늘 날짜(YYYY-MM-DD) 기본값 주입. Roadmap V2 Action 과 동일 패턴.
-      const { error: insertError } = await adminSupabase.from('interviews').insert({
-        project_id: projectId,
-        interviewer_id: user.id,
-        interview_date: new Date().toISOString().slice(0, 10),
+      buildInsertPayload: (dbPayload, ctx) => ({
+        project_id: ctx.projectId,
+        interviewer_id: ctx.userId,
+        interview_date: ctx.today,
         ...dbPayload,
-      });
-      if (insertError) {
-        console.error('[savePBLInterviewV2] Insert:', insertError.message);
-        return { success: false, error: 'PBL 인터뷰 저장에 실패했습니다.' };
-      }
-    }
-
-    // 전이 실패 시 statusTransitioned 를 세우지 않는다 — 이 플래그가 아래
-    // "인터뷰 완료" 알림의 조건이라, 상태는 그대로인데 알림만 나가면
-    // 운영자가 목록에서 '배정됨'을 보고 모순을 겪는다.
-    let statusTransitioned = false;
-    if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
-      const { error: statusError } = await adminSupabase
-        .from('projects')
-        .update({ status: 'INTERVIEWED' })
-        .eq('id', projectId);
-      if (statusError) {
-        console.error(
-          `[savePBLInterviewV2] status 전이 실패(${projectData.status}→INTERVIEWED) project=${projectId}:`,
-          statusError.message
-        );
-      } else {
-        statusTransitioned = true;
-      }
-    }
-
-    after(async () => {
-      if (statusTransitioned && !projectData.is_test_mode) {
-        await createNotificationForAdmins({
-          type: 'interview_complete',
-          title: 'PBL 인터뷰 완료',
-          message: `${projectData.company_name || '(알 수 없는 기업)'} PBL 프로젝트 인터뷰가 완료되었습니다.`,
-          link: `/ops/projects/${projectId}`,
-        });
-      }
-
-      await createAuditLog({
-        actorUserId: user.id,
-        action: 'PBL_INTERVIEW_SAVED',
-        targetType: 'interview',
-        targetId: projectId,
-        meta: {
-          track: 'PBL',
-          schema_version: 'v2_camelCase',
-          auto_save: Boolean(options?.autoSave),
-        },
-      });
-
-      if (!options?.autoSave) {
-        await insertSystemActivityLog(projectId, user.id, 'PBL 인터뷰가 저장되었습니다.');
-      }
+      }),
+      resolveAuditAction: () => 'PBL_INTERVIEW_SAVED',
+      notification: {
+        title: 'PBL 인터뷰 완료',
+        buildMessage: (companyName) => `${companyName} PBL 프로젝트 인터뷰가 완료되었습니다.`,
+      },
+      buildActivityLog: () => 'PBL 인터뷰가 저장되었습니다.',
+      logPrefix: '[savePBLInterviewV2]',
+      errorMessages: {
+        update: 'PBL 인터뷰 수정에 실패했습니다.',
+        insert: 'PBL 인터뷰 저장에 실패했습니다.',
+      },
     });
-
-    return { success: true };
   } catch (error) {
     console.error('[savePBLInterviewV2 Error]', error);
     return { success: false, error: 'PBL 인터뷰 저장 중 오류가 발생했습니다.' };
