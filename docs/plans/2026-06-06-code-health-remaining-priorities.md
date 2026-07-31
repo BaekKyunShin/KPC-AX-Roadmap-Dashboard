@@ -1,7 +1,7 @@
 # 코드 헬스 감사 — 잔여 우선순위 실행 계획
 
 > **작성:** 2026-06-06 · **출처:** 2026-06-05 코드 헬스 감사(11관점·21에이전트, 전체 B/76) → 잔여 우선순위 정밀 재조사(6에이전트, 현재 main 코드 기준 file:line 재확인)
-> **상태(2026-07-31):** 6건 중 **3건 완료** — `P5`(PR #135) · `P6`(PR #138) · `P8`(PR #154). 잔여 3건 중 `P7` 은 **1단계 완료·분할안 확정**(PR #155, 아래 진행 블록 참조), `P9`·`P4` 미착수.
+> **상태(2026-07-31):** 6건 중 **3건 완료** — `P5`(PR #135) · `P6`(PR #138) · `P8`(PR #154). 잔여 3건 중 `P7` 은 **1단계+분할안 B·C 완료**(PR #155·#156, 아래 진행 블록 참조), `P9`·`P4` 미착수.
 > 완료 항목의 본문은 **기록용으로 그대로 둔다**(당시 판단 근거 보존). 실제 결과는 아래 요약표 밑 "완료 항목" 블록을 볼 것 — **세 건 모두 본문이 적은 것과 실제(범위·전제)가 달랐다.**
 
 ## Context
@@ -41,6 +41,10 @@ AI(Claude Code)로 대량 생성된 B2B 대시보드의 코드 헬스 감사 결
 > **1단계 실행 결과:** `NoticeForm`·`AttachmentUploader`·`UploadProgress`·`upload-notice-attachment`(+동반 테스트 4) **8파일**을 `ops/notices/_components` 로 git mv(rename 98~100%), 갱신은 import·vi.mock 경로 10곳뿐. `AttachmentList` 는 **의도적으로 잔류**. lib 가드는 `no-restricted-imports` + `group: ['@/app/**']`(본문 표기 `@/app/*` 는 minimatch 상 깊은 경로를 못 잡아 **정정**) + lib 테스트 예외. 결함 주입 2회 검증 — ① mock 경로를 옛 것으로 역치환 시 34건 중 **14건 실패**(mock 실효 = 갱신이 실제로 필요했음을 실증) ② lib 위반 import 주입 시 lint error 검출. `src/lib` 내 `@/app` 정적 참조 **0건 달성**.
 >
 > **실측 정정(본문·부록 대비):** ① **`UploadProgress.tsx` 가 이동 대상 목록에 아예 없다**(NoticeForm·AttachmentUploader 가 import — 빠뜨리면 참조 고아) ② `AttachmentList` 는 본문(단계 4 이동 목록)과 부록(단계 5 이월)이 **모순** — 실측상 일반 열람 `notices/[id]/_components/NoticeAttachmentDownloader.tsx` 가 소비해 **이동 시 새 역전이 생기므로 부록이 옳다** ③ 형제 import 는 부록 서술("상대만 갱신")과 반대로 **전부 절대경로**(`@/components/notices/...`)였고, `NoticeForm.test.tsx` 의 vi.mock 2건은 미갱신 시 **typecheck·lint 를 통과하면서 mock 만 조용히 실효**하는 유일한 구멍(결함 주입으로 실증) ④ "type-only 역참조 4건" 은 실측 **1건**(`GalleryCard`)뿐 — 3건은 value+type 혼재라 타입 추출만으로 해소 불가, 인라인 `type` 지정자 2건(`AssessmentTokenSection`·`ConsultantSelector`)은 문서 누락 ⑤ vi.mock 은 24건이 아니라 **호출 23·파일 22**, 위치표 라인 번호도 다수 stale. **부수 발견:** `uploadAttachmentAction`(ops/notices/actions.ts) 프로덕션 소비자 0건 dead 후보 · `ops/projects/actions.test.ts`(42KB) 가 배럴 전환 후 형제 위치에 잔존 · 이동한 util 은 coverage include 미매치(기존 `_components/*.ts` 9개와 동일 관례, CI 비차단).
+>
+> 🔄 **분할안 B+C 완료 (PR #156, 2026-07-31)** — gallery 3종(`AdminFilters`·`GalleryCard`·`UseRoadmapDialog`)+테스트를 gallery 해당 `_components` 로, ops 2종(`AssessmentTokenSection`·`UserManagementTable`)+테스트를 ops 해당 `_components` 로 git mv(10파일). dead 2종(`AssignmentForm`·`MatchingRecommendations`)+테스트 4파일 삭제(단위 테스트 6774→6725, −49). 결함 주입 1회(AdminFilters mock 을 옛 절대경로로 역치환 → 19건 중 2건 실패 검출 후 원복). C 묶음은 주입 생략 — mock 경로가 절대·상대 모두 같은 모듈로 resolve 라 실효 구멍이 구조적으로 없음.
+>
+> **실측 정정(분할안 B·C 대비, 6번째 사례):** ① **B 의 "GalleryCard 타입 추출" 전제("여러 라우트 소비라 이동 불가")가 틀렸다** — 비테스트 소비자는 `GalleryContent.tsx` 1곳뿐 → 사용자 결정으로 **통째 이동**(타입 추출 폐기, 본문 단계 4의 원래 이동 목록과 일치). 형제 `./LikeButton` import 만 절대화(LikeButton 은 3소비자 다중이라 잔류) ② **`MatchingRecommendations` 가 AssignmentForm 과 동일 dead**(외부 소비자 0, import 문 0 의 완전 독립 파일, knip 은 자기 테스트가 import 해 미탐지) → 사용자 승인으로 동반 삭제 ③ **UserManagementTable 의 역참조는 ops actions 가 아니라 `(auth)/actions` 배럴** — `ops/users/actions.ts` 는 존재하지 않는 파일. 이동 후에도 이 import 는 유지(크로스 라우트그룹, components→app 이 app→app 정방향이 되는 것 자체가 해소) ④ 이동 후 `src/components` 잔여 역참조 **14파일**(셸 3 + ProfileForm·ProfilePageClient + PublicSelfAssessmentForm + DeleteAccountSection + LikeButton·ShareToggle + AttachmentList + ops 4: ConsultantSelector·ManualAssignmentForm·SelfAssessmentForm·RecommendationResults) — **다음은 분할안 D**(DeleteAccountSection·PublicSelfAssessmentForm, `assessment/[token]/_components` 신설), 이후 E(ops 조립 4종 실측)·F(components 가드).
 
 > 📌 **착수 전 [부록: 2차 적대 검증 정정·보강](#부록-2차-적대-검증-정정보강-착수-전-필독)을 먼저 읽을 것.** 본문과 충돌 시 부록이 우선. (특히 P4 동작-등가 단서는 누락 시 "순수정리"가 버그가 됨.)
 
