@@ -472,6 +472,164 @@ describe('saveRoadmapInterviewV2', () => {
     expect(overview.selected_tasks_summary).toBe('기존 과업');
   });
 
+  // ── P8 특성화 — Roadmap V2 는 update 에도 row(project_id·interviewer_id·
+  // interview_date)를 통째로 재사용해 매 저장마다 세 컬럼을 덮어쓴다.
+  // PBL V2(update 는 pbl_data 단독)와 비대칭이며, 공통 골격 추출 시 이
+  // 비대칭이 통일되면 동작 변경이다. 아래 케이스들이 현행을 고정한다.
+  it('특성화: update 페이로드에 interview_date(오늘)·interviewer_id·project_id 를 포함해 덮어쓴다', async () => {
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'ROADMAP' });
+    adminMock.addResult({
+      data: {
+        id: 'existing-interview-id',
+        company_details: {
+          roadmap_overview: {
+            establishment_necessity: '기존 필요성',
+            performance_activities: [],
+            ai_competency_level: 'INTERMEDIATE',
+            selected_tasks_summary: '기존 과업',
+          },
+          roadmap_company_requirements: {
+            company_status: '기존 상태',
+            main_problems: '기존 문제',
+            push_willingness: '기존 의지',
+            expected_outcomes: '기존 성과',
+          },
+        },
+        job_tasks: [],
+        improvement_goals: [],
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null }); // update
+
+    const before = new Date().toISOString().slice(0, 10);
+    const r = await saveRoadmapInterviewV2(
+      PROJECT_ID,
+      { companyRequirements: { problem: '새 문제' } },
+      { autoSave: true }
+    );
+    const after = new Date().toISOString().slice(0, 10);
+    expect(r.success).toBe(true);
+
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
+    expect(updateCalls.length).toBeGreaterThan(0);
+    const updated = updateCalls[0][0];
+    expect(updated.project_id).toBe(PROJECT_ID);
+    expect(updated.interviewer_id).toBe(USER_A);
+    expect([before, after]).toContain(updated.interview_date);
+  });
+
+  it('특성화: insert 페이로드에 interview_date(오늘)가 포함된다', async () => {
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'ROADMAP' });
+    adminMock.addResult({ data: null, error: null }); // maybeSingle → 신규
+    adminMock.addResult({ data: null, error: null }); // insert
+
+    const before = new Date().toISOString().slice(0, 10);
+    const r = await saveRoadmapInterviewV2(PROJECT_ID, {}, { autoSave: true });
+    const after = new Date().toISOString().slice(0, 10);
+    expect(r.success).toBe(true);
+
+    const insertCalls = adminMock.chainable.insert.mock.calls as Array<[Record<string, unknown>]>;
+    expect(insertCalls.length).toBeGreaterThan(0);
+    expect([before, after]).toContain(insertCalls[0][0].interview_date);
+  });
+
+  it('특성화: 기존 row 에 제출하면 audit INTERVIEW_UPDATE + 활동로그 "인터뷰가 수정되었습니다."', async () => {
+    const { createAuditLog } = await import('@/lib/services/audit');
+    const { insertSystemActivityLog } = await import('@/lib/services/activity-log');
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'ROADMAP' });
+    adminMock.addResult({
+      data: {
+        id: 'existing-interview-id',
+        company_details: {},
+        job_tasks: [],
+        improvement_goals: [],
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null }); // update
+    adminMock.addResult({ data: null, error: null }); // status update
+
+    const r = await saveRoadmapInterviewV2(PROJECT_ID, validRoadmapV2());
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'INTERVIEW_UPDATE' })
+    );
+    expect(insertSystemActivityLog).toHaveBeenCalledWith(
+      PROJECT_ID,
+      USER_A,
+      '인터뷰가 수정되었습니다.'
+    );
+  });
+
+  it('특성화: 신규 제출 활동로그는 "인터뷰가 저장되었습니다."', async () => {
+    const { insertSystemActivityLog } = await import('@/lib/services/activity-log');
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'ROADMAP' });
+    adminMock.addResult({ data: null, error: null }); // maybeSingle
+    adminMock.addResult({ data: null, error: null }); // insert
+    adminMock.addResult({ data: null, error: null }); // status update
+
+    await saveRoadmapInterviewV2(PROJECT_ID, validRoadmapV2());
+    await flushAfterCallbacks();
+
+    expect(insertSystemActivityLog).toHaveBeenCalledWith(
+      PROJECT_ID,
+      USER_A,
+      '인터뷰가 저장되었습니다.'
+    );
+  });
+
+  it('특성화: autoSave 저장은 활동로그를 남기지 않는다 (감사로그는 남긴다)', async () => {
+    const { createAuditLog } = await import('@/lib/services/audit');
+    const { insertSystemActivityLog } = await import('@/lib/services/activity-log');
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'ROADMAP' });
+    adminMock.addResult({ data: null, error: null }); // maybeSingle
+    adminMock.addResult({ data: null, error: null }); // insert
+
+    await saveRoadmapInterviewV2(PROJECT_ID, {}, { autoSave: true });
+    await flushAfterCallbacks();
+
+    expect(insertSystemActivityLog).not.toHaveBeenCalled();
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'INTERVIEW_CREATE',
+        meta: expect.objectContaining({ auto_save: true }),
+      })
+    );
+  });
+
+  it('특성화: 인터뷰 완료 알림의 title·message·link 워딩', async () => {
+    const { createNotificationForAdmins } = await import('@/lib/services/notification');
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'ROADMAP', company_name: '테스트' });
+    adminMock.addResult({ data: null, error: null }); // maybeSingle
+    adminMock.addResult({ data: null, error: null }); // insert
+    adminMock.addResult({ data: null, error: null }); // status update
+
+    await saveRoadmapInterviewV2(PROJECT_ID, validRoadmapV2());
+    await flushAfterCallbacks();
+
+    expect(createNotificationForAdmins).toHaveBeenCalledWith({
+      type: 'interview_complete',
+      title: '인터뷰 완료',
+      message: '테스트 프로젝트 인터뷰가 완료되었습니다.',
+      link: `/ops/projects/${PROJECT_ID}`,
+    });
+  });
+
   it('HRD PDF extractedText 가 DB 의 extracted_text 로 save 된다 (Critical 리뷰 수정)', async () => {
     await mockCachedAuth();
     mockProjectAssignmentCheck(serverMock);
@@ -820,6 +978,116 @@ describe('savePBLInterviewV2', () => {
     expect(pblData.companyName).toBe('기존 기업');
     expect(pblData.trainingHours).toBe(40);
     expect(pblData.businessIssues).toBe('기존 비즈니스 이슈');
+  });
+
+  // ── P8 특성화 — PBL V2 의 update 는 pbl_data 단독이라 interview_date(최초
+  // 입력일)·interviewer_id 를 보존한다. Roadmap V2(update 에도 세 컬럼 덮어쓰기)
+  // 와 비대칭이며, 공통 골격 추출이 이를 통일하면 "PBL 인터뷰를 수정할 때마다
+  // 등록일이 오늘로 밀리는" 조용한 동작 변경이 된다. 아래가 현행을 고정한다.
+  it('특성화: update 페이로드는 pbl_data 단독이다 (interview_date·interviewer_id·project_id 미포함)', async () => {
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'PBL' });
+    adminMock.addResult({
+      data: {
+        id: 'existing-pbl-interview-id',
+        pbl_data: { companyName: '기존 기업', courseName: '기존 과정' },
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null }); // update
+
+    const r = await savePBLInterviewV2(PROJECT_ID, { courseName: '새 과정' }, { autoSave: true });
+    expect(r.success).toBe(true);
+
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
+    expect(updateCalls.length).toBeGreaterThan(0);
+    expect(Object.keys(updateCalls[0][0])).toEqual(['pbl_data']);
+  });
+
+  it('특성화: insert 페이로드에 interview_date(오늘)가 포함된다', async () => {
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'PBL' });
+    adminMock.addResult({ data: null, error: null }); // maybeSingle → 신규
+    adminMock.addResult({ data: null, error: null }); // insert
+
+    const before = new Date().toISOString().slice(0, 10);
+    const r = await savePBLInterviewV2(PROJECT_ID, {}, { autoSave: true });
+    const after = new Date().toISOString().slice(0, 10);
+    expect(r.success).toBe(true);
+
+    const insertCalls = adminMock.chainable.insert.mock.calls as Array<[Record<string, unknown>]>;
+    expect(insertCalls.length).toBeGreaterThan(0);
+    expect([before, after]).toContain(insertCalls[0][0].interview_date);
+  });
+
+  it('특성화: 기존 row 에 제출해도 audit 은 PBL_INTERVIEW_SAVED 고정 + 활동로그 "PBL 인터뷰가 저장되었습니다."', async () => {
+    const { createAuditLog } = await import('@/lib/services/audit');
+    const { insertSystemActivityLog } = await import('@/lib/services/activity-log');
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'PBL' });
+    adminMock.addResult({
+      data: { id: 'existing-pbl-interview-id', pbl_data: { companyName: '기존 기업' } },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null }); // update
+    adminMock.addResult({ data: null, error: null }); // status update
+
+    const r = await savePBLInterviewV2(PROJECT_ID, validPBLV2());
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'PBL_INTERVIEW_SAVED' })
+    );
+    expect(insertSystemActivityLog).toHaveBeenCalledWith(
+      PROJECT_ID,
+      USER_A,
+      'PBL 인터뷰가 저장되었습니다.'
+    );
+  });
+
+  it('특성화: autoSave 저장은 활동로그를 남기지 않는다 (감사로그는 남긴다)', async () => {
+    const { createAuditLog } = await import('@/lib/services/audit');
+    const { insertSystemActivityLog } = await import('@/lib/services/activity-log');
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'PBL' });
+    adminMock.addResult({ data: null, error: null }); // maybeSingle
+    adminMock.addResult({ data: null, error: null }); // insert
+
+    await savePBLInterviewV2(PROJECT_ID, {}, { autoSave: true });
+    await flushAfterCallbacks();
+
+    expect(insertSystemActivityLog).not.toHaveBeenCalled();
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'PBL_INTERVIEW_SAVED',
+        meta: expect.objectContaining({ auto_save: true }),
+      })
+    );
+  });
+
+  it('특성화: 인터뷰 완료 알림의 title·message·link 워딩 (PBL 전용 문구)', async () => {
+    const { createNotificationForAdmins } = await import('@/lib/services/notification');
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'PBL', company_name: '테스트' });
+    adminMock.addResult({ data: null, error: null }); // maybeSingle
+    adminMock.addResult({ data: null, error: null }); // insert
+    adminMock.addResult({ data: null, error: null }); // status update
+
+    await savePBLInterviewV2(PROJECT_ID, validPBLV2());
+    await flushAfterCallbacks();
+
+    expect(createNotificationForAdmins).toHaveBeenCalledWith({
+      type: 'interview_complete',
+      title: 'PBL 인터뷰 완료',
+      message: '테스트 PBL 프로젝트 인터뷰가 완료되었습니다.',
+      link: `/ops/projects/${PROJECT_ID}`,
+    });
   });
 });
 
