@@ -29,9 +29,10 @@ export default async function PBLPage({ params }: { params: Promise<{ id: string
     redirect('/dashboard');
   }
   // 트랙 불일치 시 프로젝트 상세로 돌려보냄 (이전 버전은 /roadmap으로 강제 리다이렉트해
-  // PBL 페이지에서도 튕겨나가는 버그가 있었음 — OFA-11에서 수정)
+  // PBL 페이지에서도 튕겨나가는 버그가 있었음 — OFA-11에서 수정).
+  // `trackMismatch` 사유 플래그는 roadmap 페이지 가드와 대칭이다 (#015).
   if (projectInfoResult.data.track !== 'PBL') {
-    redirect(`/consultant/projects/${id}`);
+    redirect(`/consultant/projects/${id}?trackMismatch=1`);
   }
 
   const pageData = pageDataResult.success

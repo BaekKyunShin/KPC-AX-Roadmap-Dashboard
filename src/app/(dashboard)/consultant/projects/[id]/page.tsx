@@ -24,6 +24,7 @@ import { CompanyInfoEditableCard } from './_components/CompanyInfoEditableCard';
 import { ProjectDetailTabs } from './_components/ProjectDetailTabs';
 import { InterviewGuide } from './_components/InterviewGuide';
 import ActivityLog from './_components/ActivityLog';
+import { TrackMismatchNotice } from './_components/TrackMismatchNotice';
 
 const ConsultantAssessmentResult = dynamic(
   () =>
@@ -35,10 +36,18 @@ const ConsultantAssessmentResult = dynamic(
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  /**
+   * `trackMismatch=1` — 트랙이 맞지 않는 주소(예: PBL 프로젝트의 `/roadmap`)에서
+   * 이 페이지로 되돌려보내진 경우에만 붙는다 (#015). optional 형태는 같은 라우트의
+   * `interview/page.tsx` 선례를 따른다.
+   */
+  searchParams?: Promise<{ trackMismatch?: string }>;
 }
 
-export default async function ConsultantProjectDetailPage({ params }: PageProps) {
+export default async function ConsultantProjectDetailPage({ params, searchParams }: PageProps) {
   const { id: projectId } = await params;
+  const sp = (await searchParams) ?? {};
+  const cameFromTrackMismatch = sp.trackMismatch === '1';
 
   const user = await getCachedUser();
   if (!user) {
@@ -161,6 +170,15 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
           </div>
         }
       />
+
+      {/* 트랙이 맞지 않는 주소에서 되돌아온 경우에만 사유 안내 (#015) */}
+      {cameFromTrackMismatch ? (
+        <TrackMismatchNotice
+          projectId={projectId}
+          track={inferTrack(projectData.track)}
+          status={projectData.status}
+        />
+      ) : null}
 
       {/* 탭 네비게이션 */}
       <ProjectDetailTabs

@@ -22,7 +22,8 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+
+import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -145,14 +146,13 @@ export function CompanyInfoEditableCard({
     setCurrentUpdatedAt(updatedAt);
   }, [updatedAt]);
 
-  const isDirty =
-    mode === 'edit' && JSON.stringify(draft) !== JSON.stringify(committed);
+  const isDirty = mode === 'edit' && JSON.stringify(draft) !== JSON.stringify(committed);
 
   useBeforeUnloadGuard(isDirty);
 
   const setField = <K extends keyof UpdateProjectByConsultantInput>(
     key: K,
-    value: UpdateProjectByConsultantInput[K],
+    value: UpdateProjectByConsultantInput[K]
   ) => {
     setDraft((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: '' }));
@@ -201,11 +201,11 @@ export function CompanyInfoEditableCard({
         setCurrentUpdatedAt(result.data.updated_at);
         setMode('view');
         setErrors({});
-        toast.success('기업 정보가 저장되었습니다.');
+        showSuccessToast('기업 정보가 저장되었습니다.');
         // 백그라운드 동기화 — 다른 컴포넌트(목록·OPS 뷰 등)가 최신값 반영
         router.refresh();
       } else {
-        toast.error(result.error ?? '저장에 실패했습니다.');
+        showErrorToast(result.error ?? '저장에 실패했습니다.');
       }
     });
   }
@@ -242,7 +242,10 @@ export function CompanyInfoEditableCard({
           <InfoRow
             icon={Users}
             label="규모"
-            value={COMPANY_SIZE_LABELS[committed.company_size as CompanySizeValue] ?? committed.company_size}
+            value={
+              COMPANY_SIZE_LABELS[committed.company_size as CompanySizeValue] ??
+              committed.company_size
+            }
           />
           <InfoRow icon={MapPin} label="주소" value={committed.company_address} />
         </dl>
@@ -394,13 +397,10 @@ export function CompanyInfoEditableCard({
                 </SelectItem>
               ))}
               {/* 운영 historical 값 보존 — enum 외 값이라도 표시 */}
-              {!(COMPANY_SIZE_VALUES as readonly string[]).includes(
-                draft.company_size,
-              ) && draft.company_size && (
-                <SelectItem value={draft.company_size}>
-                  {draft.company_size}
-                </SelectItem>
-              )}
+              {!(COMPANY_SIZE_VALUES as readonly string[]).includes(draft.company_size) &&
+                draft.company_size && (
+                  <SelectItem value={draft.company_size}>{draft.company_size}</SelectItem>
+                )}
             </SelectContent>
           </Select>
         </EditRow>
@@ -519,10 +519,7 @@ export function CompanyInfoEditableCard({
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <MessageSquareText className="h-3.5 w-3.5 text-gray-400" />
-          <label
-            htmlFor="customer_comment"
-            className="text-xs font-medium text-gray-500"
-          >
+          <label htmlFor="customer_comment" className="text-xs font-medium text-gray-500">
             고객 요청사항
           </label>
         </div>
@@ -541,19 +538,14 @@ export function CompanyInfoEditableCard({
       <div className="space-y-2 mt-3">
         <div className="flex items-center gap-2">
           <StickyNote className="h-3.5 w-3.5 text-amber-500" />
-          <label
-            htmlFor="consultant_internal_note"
-            className="text-xs font-medium text-gray-500"
-          >
+          <label htmlFor="consultant_internal_note" className="text-xs font-medium text-gray-500">
             훈련코치 전용 메모 (AI 자동 생성에 미반영)
           </label>
         </div>
         <Textarea
           id="consultant_internal_note"
           value={draft.consultant_internal_note ?? ''}
-          onChange={(e) =>
-            setField('consultant_internal_note', e.target.value || null)
-          }
+          onChange={(e) => setField('consultant_internal_note', e.target.value || null)}
           disabled={isPending}
           maxLength={4000}
           rows={4}
