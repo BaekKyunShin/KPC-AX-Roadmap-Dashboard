@@ -1,7 +1,7 @@
 # 코드 헬스 감사 — 잔여 우선순위 실행 계획
 
 > **작성:** 2026-06-06 · **출처:** 2026-06-05 코드 헬스 감사(11관점·21에이전트, 전체 B/76) → 잔여 우선순위 정밀 재조사(6에이전트, 현재 main 코드 기준 file:line 재확인)
-> **상태(2026-07-31):** 6건 중 **3건 완료** — `P5`(PR #135) · `P6`(PR #138) · `P8`(PR #154). 잔여 3건(`P9`·`P4`·`P7`) 미착수.
+> **상태(2026-07-31):** 6건 중 **3건 완료** — `P5`(PR #135) · `P6`(PR #138) · `P8`(PR #154). 잔여 3건 중 `P7` 은 **1단계 완료·분할안 확정**(PR #155, 아래 진행 블록 참조), `P9`·`P4` 미착수.
 > 완료 항목의 본문은 **기록용으로 그대로 둔다**(당시 판단 근거 보존). 실제 결과는 아래 요약표 밑 "완료 항목" 블록을 볼 것 — **세 건 모두 본문이 적은 것과 실제(범위·전제)가 달랐다.**
 
 ## Context
@@ -33,6 +33,14 @@ AI(Claude Code)로 대량 생성된 B2B 대시보드의 코드 헬스 감사 결
 > - **`P5` 완료 (PR #135, 2026-07-29)** — 실제 누락은 매칭만이 아니라 **PBL 생성·STT 녹취록 분석·`/test-pbl` 포함 4곳**이었다. 계층은 매칭만 서비스(throw — route 가 메시지로 429 판정), 나머지는 액션(서비스에서 throw 하면 `getLLMUserFriendlyError` 가 쿼터 메시지를 뭉갠다). STT 는 **입력 검증 뒤** 배치(쿼터는 확인과 동시에 차감).
 > - **`P6` 완료 (PR #138, 2026-07-29)** — 본문이 지목한 3곳이 아니라 **8곳**이었다. 누락분은 인터뷰 저장 3곳(`interview/actions.ts`)과 진단 완료 2곳(`assessment/actions.ts`·`ops/.../crud.ts`). 인터뷰 3곳은 로깅뿐 아니라 **알림 오발송까지** 고쳤다 — `statusTransitioned` 를 전이 성공 시에만 세워, 전이 실패 시 "인터뷰 완료" 알림이 나가지 않는다. 진단 2곳은 `.eq('status','NEW')` 멱등 가드가 있어 0행 매치가 정상이므로 error 만 검사한다. 부록이 예고한 2차(반환 타입 변경·RPC 원자화)는 **미착수**.
 > - **`P8` 완료 (PR #154, 2026-07-31)** — 부록의 정정(내부 순서 재배열·update 페이로드 track별 분리·특성화 선작성)대로 실행했고, 실측에서 본문·부록의 추가 오류도 드러났다: ① 본문 위치표는 **전 항목 stale**(+33~48행) ② 부록 415행의 "roadmap 단일 row+**upsert**"도 부정확 — 둘 다 update/insert **명시 분기**이며 진짜 차이는 **row 객체를 두 분기가 공유하느냐**다 ③ "기존 V2 테스트가 안전망" 전제는 거짓(`interview_date` 단언 0건) → **특성화 11개 선작성 + 결함 주입 2회**(추출 전 함수 레벨·추출 후 헬퍼 레벨)로 회귀 그물을 먼저 짰다 ④ 본문·부록 모두 놓친 `save*V2` 호출처 1곳 추가 발견(`roadmap/actions.ts` 결과 인라인 편집 → 인터뷰 write-back — 시그니처 불변으로 무영향) ⑤ zod join 치환은 부록대로 V2 2곳만(V1 은 함수째 삭제, "단일 필드 1줄"·"빈 errors fallback" 엣지는 `zod-error-format.test.ts` 의 유틸 케이스로 이관). knip 은 `fetchPBLInterview` 플래그가 사라진 대신 V1 전용 스키마 타입 2개(`RoadmapInterviewInput`·`RoadmapInterviewAutoSaveInput`)가 새 unused 로 드러났다(스키마 파일은 P8 범위 밖 — 후속 정리 후보). → **후속(같은 PR, 의도된 동작 변경 1건): 인터뷰 날짜를 최초 입력일로 통일** — 위 ②의 비대칭(Roadmap 이 update 마다 `interview_date`·`interviewer_id` 를 오늘/현재 사용자로 덮어써 화면·산출물의 "인터뷰 일자"가 사실상 최종 수정일로 동작)은 특성화로 보존했다가, 머지 전 사용자가 "둘 다 최초 입력일" 정책을 확정해 제거했다(특성화도 새 동작 기준으로 뒤집어 RED→GREEN + 결함 주입 재검증, 페이로드 빌더 콜백도 공통 로직으로 단순화). `interviewer_id` 는 프로덕션 read 0건 write-only 실측. ⚠️ 기존 row 의 이미 밀린 날짜는 소급 복원 불가(최초 입력일 기록이 없음) — 앞으로의 저장부터 보존된다.
+
+> 🔄 **`P7` 1단계 완료 + 분할안 확정 (PR #155, 2026-07-31)** — 착수 실측(탐사 에이전트 2)으로 본문·부록의 오류를 정정하고 아래 분할안을 확정했다.
+>
+> **분할안(확정):** **A(완료)** = 단계 0·1 실측판 + 단계 2 전반부(lib 가드) → **B** = 단계 4 gallery 묶음(`AdminFilters`·`UseRoadmapDialog` 이동 + `GalleryCard` 타입 추출로 단계 3 축소판 흡수) → **C** = 단계 4 ops 묶음(`AssessmentTokenSection`·`UserManagementTable` + `AssignmentForm` dead 삭제[테스트 동반]) → **D** = 단계 4 나머지(`DeleteAccountSection`·`PublicSelfAssessmentForm` — `assessment/[token]/_components` **신설** 필요 + `components/assessment` 형제 응집도 점검) → **E** = ops 조립 컴포넌트군(`ConsultantSelector`·`ManualAssignmentForm`·`SelfAssessmentForm`·`RecommendationResults`) 소비자 위치 실측 후 방침 결정 → **F** = components 가드(잔여 역참조 0 이후에만. 대안: 기존 위반 파일 예외 목록과 함께 조기 도입) → **단계 5**(셸 3 + `ProfileForm`/`ProfilePageClient` + `ShareToggle`/`LikeButton`/`AttachmentList`)는 **동작 변경 경계 — 별도 설계 + 사용자 승인**.
+>
+> **1단계 실행 결과:** `NoticeForm`·`AttachmentUploader`·`UploadProgress`·`upload-notice-attachment`(+동반 테스트 4) **8파일**을 `ops/notices/_components` 로 git mv(rename 98~100%), 갱신은 import·vi.mock 경로 10곳뿐. `AttachmentList` 는 **의도적으로 잔류**. lib 가드는 `no-restricted-imports` + `group: ['@/app/**']`(본문 표기 `@/app/*` 는 minimatch 상 깊은 경로를 못 잡아 **정정**) + lib 테스트 예외. 결함 주입 2회 검증 — ① mock 경로를 옛 것으로 역치환 시 34건 중 **14건 실패**(mock 실효 = 갱신이 실제로 필요했음을 실증) ② lib 위반 import 주입 시 lint error 검출. `src/lib` 내 `@/app` 정적 참조 **0건 달성**.
+>
+> **실측 정정(본문·부록 대비):** ① **`UploadProgress.tsx` 가 이동 대상 목록에 아예 없다**(NoticeForm·AttachmentUploader 가 import — 빠뜨리면 참조 고아) ② `AttachmentList` 는 본문(단계 4 이동 목록)과 부록(단계 5 이월)이 **모순** — 실측상 일반 열람 `notices/[id]/_components/NoticeAttachmentDownloader.tsx` 가 소비해 **이동 시 새 역전이 생기므로 부록이 옳다** ③ 형제 import 는 부록 서술("상대만 갱신")과 반대로 **전부 절대경로**(`@/components/notices/...`)였고, `NoticeForm.test.tsx` 의 vi.mock 2건은 미갱신 시 **typecheck·lint 를 통과하면서 mock 만 조용히 실효**하는 유일한 구멍(결함 주입으로 실증) ④ "type-only 역참조 4건" 은 실측 **1건**(`GalleryCard`)뿐 — 3건은 value+type 혼재라 타입 추출만으로 해소 불가, 인라인 `type` 지정자 2건(`AssessmentTokenSection`·`ConsultantSelector`)은 문서 누락 ⑤ vi.mock 은 24건이 아니라 **호출 23·파일 22**, 위치표 라인 번호도 다수 stale. **부수 발견:** `uploadAttachmentAction`(ops/notices/actions.ts) 프로덕션 소비자 0건 dead 후보 · `ops/projects/actions.test.ts`(42KB) 가 배럴 전환 후 형제 위치에 잔존 · 이동한 util 은 coverage include 미매치(기존 `_components/*.ts` 9개와 동일 관례, CI 비차단).
 
 > 📌 **착수 전 [부록: 2차 적대 검증 정정·보강](#부록-2차-적대-검증-정정보강-착수-전-필독)을 먼저 읽을 것.** 본문과 충돌 시 부록이 우선. (특히 P4 동작-등가 단서는 누락 시 "순수정리"가 버그가 됨.)
 
