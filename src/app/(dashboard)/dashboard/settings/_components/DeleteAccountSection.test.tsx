@@ -27,7 +27,11 @@ vi.mock('@/components/ui/alert-dialog', async () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require('react');
 
-  function AlertDialog({ children, open, onOpenChange }: {
+  function AlertDialog({
+    children,
+    open,
+    onOpenChange,
+  }: {
     children: React.ReactNode;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -41,21 +45,34 @@ vi.mock('@/components/ui/alert-dialog', async () => {
       <div data-testid="alert-dialog">
         {React.Children.map(children, (child: React.ReactElement) =>
           React.isValidElement(child)
-            ? React.cloneElement(child as React.ReactElement<{ isOpen: boolean; setOpen: (v: boolean) => void; onOpenChange?: (v: boolean) => void }>, {
-                isOpen: internalOpen,
-                setOpen: (v: boolean) => {
-                  setInternalOpen(v);
-                  onOpenChange?.(v);
-                },
-                onOpenChange,
-              })
-            : child,
+            ? React.cloneElement(
+                child as React.ReactElement<{
+                  isOpen: boolean;
+                  setOpen: (v: boolean) => void;
+                  onOpenChange?: (v: boolean) => void;
+                }>,
+                {
+                  isOpen: internalOpen,
+                  setOpen: (v: boolean) => {
+                    setInternalOpen(v);
+                    onOpenChange?.(v);
+                  },
+                  onOpenChange,
+                }
+              )
+            : child
         )}
       </div>
     );
   }
 
-  function AlertDialogTrigger({ children, asChild, isOpen: _isOpen, setOpen, ...props }: {
+  function AlertDialogTrigger({
+    children,
+    asChild,
+    isOpen: _isOpen,
+    setOpen,
+    ...props
+  }: {
     children: React.ReactNode;
     asChild?: boolean;
     isOpen?: boolean;
@@ -67,10 +84,20 @@ vi.mock('@/components/ui/alert-dialog', async () => {
         onClick: () => setOpen?.(true),
       });
     }
-    return <button onClick={() => setOpen?.(true)} {...props}>{children}</button>;
+    return (
+      <button onClick={() => setOpen?.(true)} {...props}>
+        {children}
+      </button>
+    );
   }
 
-  function AlertDialogContent({ children, isOpen, setOpen, onOpenChange, ...props }: {
+  function AlertDialogContent({
+    children,
+    isOpen,
+    setOpen,
+    onOpenChange,
+    ...props
+  }: {
     children: React.ReactNode;
     isOpen?: boolean;
     setOpen?: (v: boolean) => void;
@@ -82,8 +109,14 @@ vi.mock('@/components/ui/alert-dialog', async () => {
       <div role="alertdialog" {...props}>
         {React.Children.map(children, (child: React.ReactElement) =>
           React.isValidElement(child)
-            ? React.cloneElement(child as React.ReactElement<{ setOpen: (v: boolean) => void; onOpenChange?: (v: boolean) => void }>, { setOpen, onOpenChange })
-            : child,
+            ? React.cloneElement(
+                child as React.ReactElement<{
+                  setOpen: (v: boolean) => void;
+                  onOpenChange?: (v: boolean) => void;
+                }>,
+                { setOpen, onOpenChange }
+              )
+            : child
         )}
       </div>
     );
@@ -95,10 +128,21 @@ vi.mock('@/components/ui/alert-dialog', async () => {
   function AlertDialogTitle({ children }: { children: React.ReactNode }) {
     return <h2>{children}</h2>;
   }
-  function AlertDialogDescription({ children, asChild: _asChild }: { children: React.ReactNode; asChild?: boolean }) {
+  function AlertDialogDescription({
+    children,
+    asChild: _asChild,
+  }: {
+    children: React.ReactNode;
+    asChild?: boolean;
+  }) {
     return <div>{children}</div>;
   }
-  function AlertDialogFooter({ children, setOpen, onOpenChange, ...props }: {
+  function AlertDialogFooter({
+    children,
+    setOpen,
+    onOpenChange,
+    ...props
+  }: {
     children: React.ReactNode;
     setOpen?: (v: boolean) => void;
     onOpenChange?: (v: boolean) => void;
@@ -108,13 +152,25 @@ vi.mock('@/components/ui/alert-dialog', async () => {
       <div {...props}>
         {React.Children.map(children, (child: React.ReactElement) =>
           React.isValidElement(child)
-            ? React.cloneElement(child as React.ReactElement<{ setOpen: (v: boolean) => void; onOpenChange?: (v: boolean) => void }>, { setOpen, onOpenChange })
-            : child,
+            ? React.cloneElement(
+                child as React.ReactElement<{
+                  setOpen: (v: boolean) => void;
+                  onOpenChange?: (v: boolean) => void;
+                }>,
+                { setOpen, onOpenChange }
+              )
+            : child
         )}
       </div>
     );
   }
-  function AlertDialogCancel({ children, setOpen, onOpenChange, disabled, ...props }: {
+  function AlertDialogCancel({
+    children,
+    setOpen,
+    onOpenChange,
+    disabled,
+    ...props
+  }: {
     children: React.ReactNode;
     setOpen?: (v: boolean) => void;
     onOpenChange?: (v: boolean) => void;
@@ -134,7 +190,15 @@ vi.mock('@/components/ui/alert-dialog', async () => {
       </button>
     );
   }
-  function AlertDialogAction({ children, onClick, disabled, setOpen: _setOpen, onOpenChange: _onOpenChange, variant: _variant, ...props }: {
+  function AlertDialogAction({
+    children,
+    onClick,
+    disabled,
+    setOpen: _setOpen,
+    onOpenChange: _onOpenChange,
+    variant: _variant,
+    ...props
+  }: {
     children: React.ReactNode;
     onClick?: (e: React.MouseEvent) => void;
     disabled?: boolean;
@@ -187,7 +251,7 @@ describe('DeleteAccountSection', () => {
     it('계정 삭제 경고 설명을 표시한다', () => {
       render(<DeleteAccountSection />);
       expect(
-        screen.getByText(/계정을 삭제하면 모든 개인정보가 영구적으로 삭제되며/),
+        screen.getByText(/계정을 삭제하면 모든 개인정보가 영구적으로 삭제되며/)
       ).toBeInTheDocument();
     });
 
@@ -294,7 +358,10 @@ describe('DeleteAccountSection', () => {
     });
 
     it('deleteAccount 실패 시 에러 메시지를 표시한다', async () => {
-      mockDeleteAccount.mockResolvedValue({ success: false, error: '비밀번호가 일치하지 않습니다.' });
+      mockDeleteAccount.mockResolvedValue({
+        success: false,
+        error: '비밀번호가 일치하지 않습니다.',
+      });
       const user = userEvent.setup();
       render(<DeleteAccountSection />);
 
