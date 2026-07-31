@@ -18,9 +18,12 @@ export default async function RoadmapPage({ params }: { params: Promise<{ id: st
     fetchProjectInfo(id),
   ]);
 
-  // PBL 트랙 프로젝트가 /roadmap 으로 들어오면 상세로 돌려보냄 (PBL 페이지 분기 대칭)
+  // PBL 트랙 프로젝트가 /roadmap 으로 들어오면 상세로 돌려보냄 (PBL 페이지 분기 대칭).
+  // `trackMismatch` 는 상세 페이지가 "왜 돌아왔는지" 배너를 띄우기 위한 사유 플래그다
+  // (`login?password-changed=1` 과 같은 방식). 어느 트랙인지는 상세 페이지가
+  // 프로젝트를 조회하며 이미 알고 있으므로 플래그 하나면 충분하다.
   if (projectInfoResult.success && projectInfoResult.data.track === 'PBL') {
-    redirect(`/consultant/projects/${id}`);
+    redirect(`/consultant/projects/${id}?trackMismatch=1`);
   }
 
   const companyName =

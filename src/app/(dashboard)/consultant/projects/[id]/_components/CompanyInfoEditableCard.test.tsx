@@ -16,11 +16,13 @@ vi.mock('../actions', () => ({
   updateProjectCompanyInfo: vi.fn(),
 }));
 
-vi.mock('sonner', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
+// 토스트는 앱 공통 래퍼(`@/lib/utils/toast`)를 통과해야 한다 (#013).
+// 위임 변수를 밖에 두는 이유는 vitest 의 vi.mock hoisting 회피 — LikeButton.test.tsx 와 같은 방식.
+const mockShowSuccessToast = vi.fn();
+const mockShowErrorToast = vi.fn();
+vi.mock('@/lib/utils/toast', () => ({
+  showSuccessToast: (...args: unknown[]) => mockShowSuccessToast(...args),
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
 // ─── Radix Select 가 사용하는 jsdom 누락 API 폴리필 ───────────────────────────
@@ -68,15 +70,13 @@ describe('CompanyInfoEditableCard', () => {
           projectId={PROJECT_ID}
           initial={baseInitial}
           updatedAt={UPDATED_AT}
-        />,
+        />
       );
 
       expect(screen.getByText('기업 정보')).toBeInTheDocument();
       expect(screen.getByText('㈜KPC인재개발센터')).toBeInTheDocument();
       expect(screen.getByText('hong@kpc.or.kr')).toBeInTheDocument();
-      expect(
-        screen.getByTestId('company-info-edit-button'),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('company-info-edit-button')).toBeInTheDocument();
     });
 
     it('내부 메모가 있으면 view 모드에서 표시된다', () => {
@@ -85,7 +85,7 @@ describe('CompanyInfoEditableCard', () => {
           projectId={PROJECT_ID}
           initial={baseInitial}
           updatedAt={UPDATED_AT}
-        />,
+        />
       );
       expect(screen.getByText('의사결정자 김상무')).toBeInTheDocument();
     });
@@ -96,7 +96,7 @@ describe('CompanyInfoEditableCard', () => {
           projectId={PROJECT_ID}
           initial={{ ...baseInitial, consultant_internal_note: null }}
           updatedAt={UPDATED_AT}
-        />,
+        />
       );
       expect(screen.getByText(/아직 메모가 없습니다/)).toBeInTheDocument();
     });
@@ -110,7 +110,7 @@ describe('CompanyInfoEditableCard', () => {
           projectId={PROJECT_ID}
           initial={baseInitial}
           updatedAt={UPDATED_AT}
-        />,
+        />
       );
 
       await user.click(screen.getByTestId('company-info-edit-button'));
@@ -133,7 +133,7 @@ describe('CompanyInfoEditableCard', () => {
           projectId={PROJECT_ID}
           initial={baseInitial}
           updatedAt={UPDATED_AT}
-        />,
+        />
       );
 
       await user.click(screen.getByTestId('company-info-edit-button'));
@@ -147,13 +147,16 @@ describe('CompanyInfoEditableCard', () => {
         expect(updateProjectCompanyInfo).toHaveBeenCalledWith(
           PROJECT_ID,
           expect.objectContaining({ company_name: '㈜새이름인재개발센터' }),
-          UPDATED_AT,
+          UPDATED_AT
         );
       });
 
       await waitFor(() => {
         expect(mockRefresh).toHaveBeenCalled();
       });
+
+      // 성공 알림도 공통 래퍼를 거친다 (#013 — 이 단언이 없으면 한쪽만 되돌아가도 못 잡는다)
+      expect(mockShowSuccessToast).toHaveBeenCalledWith('기업 정보가 저장되었습니다.');
     });
 
     it('저장 실패 시 폼 유지 + 에러 토스트', async () => {
@@ -161,15 +164,13 @@ describe('CompanyInfoEditableCard', () => {
         success: false,
         error: '다른 사용자가 먼저 수정했습니다.',
       });
-      const { toast } = await import('sonner');
-
       const user = userEvent.setup();
       render(
         <CompanyInfoEditableCard
           projectId={PROJECT_ID}
           initial={baseInitial}
           updatedAt={UPDATED_AT}
-        />,
+        />
       );
 
       await user.click(screen.getByTestId('company-info-edit-button'));
@@ -179,7 +180,7 @@ describe('CompanyInfoEditableCard', () => {
       await user.click(screen.getByTestId('company-info-save-button'));
 
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith('다른 사용자가 먼저 수정했습니다.');
+        expect(mockShowErrorToast).toHaveBeenCalledWith('다른 사용자가 먼저 수정했습니다.');
       });
       // edit 모드 유지
       expect(screen.getByTestId('company-info-edit-form')).toBeInTheDocument();
@@ -194,7 +195,7 @@ describe('CompanyInfoEditableCard', () => {
           projectId={PROJECT_ID}
           initial={baseInitial}
           updatedAt={UPDATED_AT}
-        />,
+        />
       );
 
       await user.click(screen.getByTestId('company-info-edit-button'));
@@ -214,7 +215,7 @@ describe('CompanyInfoEditableCard', () => {
           projectId={PROJECT_ID}
           initial={baseInitial}
           updatedAt={UPDATED_AT}
-        />,
+        />
       );
 
       await user.click(screen.getByTestId('company-info-edit-button'));
@@ -237,7 +238,7 @@ describe('CompanyInfoEditableCard', () => {
           projectId={PROJECT_ID}
           initial={baseInitial}
           updatedAt={UPDATED_AT}
-        />,
+        />
       );
 
       await user.click(screen.getByTestId('company-info-edit-button'));
@@ -254,7 +255,7 @@ describe('CompanyInfoEditableCard', () => {
           projectId={PROJECT_ID}
           initial={baseInitial}
           updatedAt={UPDATED_AT}
-        />,
+        />
       );
 
       await user.click(screen.getByTestId('company-info-edit-button'));
@@ -264,9 +265,7 @@ describe('CompanyInfoEditableCard', () => {
 
       await user.click(screen.getByRole('button', { name: '취소' }));
 
-      expect(
-        screen.getByText('변경사항을 취소하시겠습니까?'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('변경사항을 취소하시겠습니까?')).toBeInTheDocument();
     });
 
     it('AlertDialog "취소하기" 클릭 → view 모드로 돌아가고 초기값 복원', async () => {
@@ -276,7 +275,7 @@ describe('CompanyInfoEditableCard', () => {
           projectId={PROJECT_ID}
           initial={baseInitial}
           updatedAt={UPDATED_AT}
-        />,
+        />
       );
 
       await user.click(screen.getByTestId('company-info-edit-button'));
