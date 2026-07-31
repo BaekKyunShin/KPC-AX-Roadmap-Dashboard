@@ -23,7 +23,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 const mockCreateSelfAssessment = vi.fn();
-vi.mock('@/app/(dashboard)/ops/projects/actions', () => ({
+vi.mock('../../actions', () => ({
   createSelfAssessment: (...args: unknown[]) => mockCreateSelfAssessment(...args),
 }));
 
@@ -37,10 +37,7 @@ vi.mock('@/lib/utils', () => ({
 // 테스트 데이터
 // ============================================================================
 
-function createTemplate(
-  dimensions: string[] = ['데이터', '인프라'],
-  questionsPerDim = 2
-) {
+function createTemplate(dimensions: string[] = ['데이터', '인프라'], questionsPerDim = 2) {
   const questions = dimensions.flatMap((dim, di) =>
     Array.from({ length: questionsPerDim }, (_, qi) => ({
       id: `q-${di}-${qi}`,
@@ -140,9 +137,7 @@ describe('SelfAssessmentForm', () => {
       const nextButton = screen.getByText('다음', { selector: 'button' });
       await user.click(nextButton);
 
-      expect(
-        screen.getByText('현재 단계의 모든 문항에 응답해 주세요.')
-      ).toBeInTheDocument();
+      expect(screen.getByText('현재 단계의 모든 문항에 응답해 주세요.')).toBeInTheDocument();
     });
 
     it('모든 질문에 답하면 다음 스텝으로 이동할 수 있다', async () => {
@@ -181,9 +176,7 @@ describe('SelfAssessmentForm', () => {
       renderForm();
 
       const stepButtons = screen.getAllByRole('button');
-      const infraButton = stepButtons.find((btn) =>
-        btn.textContent?.includes('인프라')
-      );
+      const infraButton = stepButtons.find((btn) => btn.textContent?.includes('인프라'));
       if (infraButton) {
         await user.click(infraButton);
         expect(screen.getByText('인프라 질문 1')).toBeInTheDocument();
@@ -360,9 +353,7 @@ describe('SelfAssessmentForm', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(
-          screen.getByText('자가진단 저장에 실패했습니다.')
-        ).toBeInTheDocument();
+        expect(screen.getByText('자가진단 저장에 실패했습니다.')).toBeInTheDocument();
       });
     });
 
@@ -381,9 +372,7 @@ describe('SelfAssessmentForm', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(
-          screen.getByText('자가진단 저장에 실패했습니다.')
-        ).toBeInTheDocument();
+        expect(screen.getByText('자가진단 저장에 실패했습니다.')).toBeInTheDocument();
       });
     });
 

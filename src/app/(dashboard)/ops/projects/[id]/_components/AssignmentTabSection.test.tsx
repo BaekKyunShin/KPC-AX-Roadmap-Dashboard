@@ -14,7 +14,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Server Actions 모킹
-vi.mock('@/app/(dashboard)/ops/projects/actions', () => ({
+vi.mock('../../actions', () => ({
   assignConsultant: vi.fn(),
 }));
 
@@ -161,16 +161,12 @@ describe('AssignmentTabSection', () => {
   describe('추천 미실행 상태', () => {
     it('자동 매칭 미실행 메시지를 표시한다', () => {
       render(<AssignmentTabSection {...unassignedNoRecsProps} />);
-      expect(
-        screen.getByText('아직 자동 매칭이 실행되지 않았습니다.')
-      ).toBeInTheDocument();
+      expect(screen.getByText('아직 자동 매칭이 실행되지 않았습니다.')).toBeInTheDocument();
     });
 
     it('컨설턴트 자동 매칭 버튼을 표시한다', () => {
       render(<AssignmentTabSection {...unassignedNoRecsProps} />);
-      expect(
-        screen.getByRole('button', { name: /컨설턴트 자동 매칭/ })
-      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /컨설턴트 자동 매칭/ })).toBeInTheDocument();
     });
   });
 
@@ -215,16 +211,16 @@ describe('AssignmentTabSection', () => {
 
     it('매칭 재계산 버튼을 표시한다', () => {
       render(<AssignmentTabSection {...unassignedWithRecsProps} />);
-      expect(
-        screen.getByRole('button', { name: /매칭 재계산/ })
-      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /매칭 재계산/ })).toBeInTheDocument();
     });
 
     it('컨설턴트 카드 클릭 시 배정 사유 입력란이 나타난다', () => {
       render(<AssignmentTabSection {...unassignedWithRecsProps} />);
 
       // 카드 클릭 전 배정 사유 입력란이 없어야 함
-      expect(screen.queryByPlaceholderText(/해당 컨설턴트를 배정하는 사유/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText(/해당 컨설턴트를 배정하는 사유/)
+      ).not.toBeInTheDocument();
 
       // 첫 번째 카드 클릭
       fireEvent.click(screen.getByText('김컨설턴트'));
@@ -303,9 +299,7 @@ describe('AssignmentTabSection', () => {
       render(<AssignmentTabSection {...assignedProps} />);
       fireEvent.click(screen.getByRole('button', { name: '재배정' }));
 
-      expect(
-        screen.getByText(/다른 컨설턴트로 재배정합니다/)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/다른 컨설턴트로 재배정합니다/)).toBeInTheDocument();
       expect(screen.getByText('자동 매칭')).toBeInTheDocument();
       expect(screen.getByText('수동 매칭')).toBeInTheDocument();
     });
@@ -318,9 +312,7 @@ describe('AssignmentTabSection', () => {
       fireEvent.click(screen.getByRole('button', { name: '취소' }));
 
       // 재배정 안내 메시지가 사라짐
-      expect(
-        screen.queryByText(/다른 컨설턴트로 재배정합니다/)
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/다른 컨설턴트로 재배정합니다/)).not.toBeInTheDocument();
     });
 
     it('FINALIZED 상태에서는 재배정 버튼을 표시하지 않는다', () => {

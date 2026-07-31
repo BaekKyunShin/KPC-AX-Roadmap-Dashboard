@@ -3,11 +3,7 @@
 import { useState } from 'react';
 import { CheckCircle2, AlertCircle, Sparkles, Info } from 'lucide-react';
 import ManualAssignmentForm from './ManualAssignmentForm';
-import {
-  AlertMessage,
-  TabNavigation,
-  TAB_DESCRIPTIONS,
-} from './assignment';
+import { AlertMessage, TabNavigation, TAB_DESCRIPTIONS } from './assignment';
 import type { TabType } from './assignment';
 import RecommendationResults from './assignment/RecommendationResults';
 import useAssignmentMatching from './assignment/useAssignmentMatching';
@@ -70,7 +66,9 @@ export default function AssignmentTabSection({
   const [activeTab, setActiveTab] = useState<TabType>('auto');
 
   // candidate 정보가 있는 추천만 필터링
-  const validRecommendations = recommendations.filter((r): r is ValidRecommendation => !!r.candidate);
+  const validRecommendations = recommendations.filter(
+    (r): r is ValidRecommendation => !!r.candidate
+  );
 
   const hasRecommendations = validRecommendations.length > 0;
 
@@ -161,7 +159,9 @@ export default function AssignmentTabSection({
   const renderTabContent = () => (
     <>
       <p className="text-sm text-gray-500 mb-4">{TAB_DESCRIPTIONS[activeTab]}</p>
-      {activeTab === 'auto' ? renderAutoMatchingContent() : (
+      {activeTab === 'auto' ? (
+        renderAutoMatchingContent()
+      ) : (
         <ManualAssignmentForm
           projectId={projectId}
           currentAssignment={projectData.assigned_consultant ?? null}
@@ -245,7 +245,12 @@ function EmptyState({
   return (
     <div className="text-center py-8">
       {error && onDismissError && <AlertMessage message={error} onDismiss={onDismissError} />}
-      <div className={cn('inline-flex items-center justify-center w-12 h-12 rounded-full mb-4', iconBgColor)}>
+      <div
+        className={cn(
+          'inline-flex items-center justify-center w-12 h-12 rounded-full mb-4',
+          iconBgColor
+        )}
+      >
         {icon}
       </div>
       <p className="text-gray-600 mb-2">{title}</p>
@@ -271,19 +276,27 @@ function AIMatchingLoader({ onCancel }: { onCancel: () => void }) {
         </div>
 
         {/* 메시지 */}
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">
-          AI 매칭 분석 중
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">AI 매칭 분석 중</h3>
         <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-          등록된 컨설턴트 프로필을 분석하여<br />
+          등록된 컨설턴트 프로필을 분석하여
+          <br />
           최적의 3명을 추천합니다
         </p>
 
         {/* 진행 상태 표시 */}
         <div className="flex items-center justify-center gap-1.5 mb-6">
-          <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-          <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-          <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+          <span
+            className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
+            style={{ animationDelay: '0ms' }}
+          />
+          <span
+            className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
+            style={{ animationDelay: '150ms' }}
+          />
+          <span
+            className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
+            style={{ animationDelay: '300ms' }}
+          />
         </div>
 
         {/* 취소 버튼 */}
@@ -317,7 +330,9 @@ function CurrentAssignmentInfo({
             <p className="text-emerald-800 font-medium truncate">{consultant.name}</p>
             <p className="text-sm text-emerald-600 truncate">{consultant.email}</p>
             {assignmentReason && (
-              <p className="text-sm text-emerald-600 mt-1 line-clamp-2">배정 사유: {assignmentReason}</p>
+              <p className="text-sm text-emerald-600 mt-1 line-clamp-2">
+                배정 사유: {assignmentReason}
+              </p>
             )}
           </div>
         </div>

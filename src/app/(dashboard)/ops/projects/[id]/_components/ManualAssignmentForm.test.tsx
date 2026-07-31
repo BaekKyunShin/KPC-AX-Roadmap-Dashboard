@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ManualAssignmentForm from './ManualAssignmentForm';
-import type { ConsultantCandidate } from '@/app/(dashboard)/ops/projects/actions';
+import type { ConsultantCandidate } from '../../actions';
 
 // ============================================================================
 // 모킹
@@ -24,7 +24,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 const mockAssignConsultant = vi.fn();
-vi.mock('@/app/(dashboard)/ops/projects/actions', () => ({
+vi.mock('../../actions', () => ({
   assignConsultant: (...args: unknown[]) => mockAssignConsultant(...args),
   fetchConsultantCandidates: vi.fn().mockResolvedValue({
     consultants: [],
@@ -87,11 +87,7 @@ vi.mock('./ConsultantSelector', () => ({
         >
           이컨설턴트 선택
         </button>
-        <button
-          type="button"
-          data-testid="deselect-consultant-btn"
-          onClick={() => onSelect(null)}
-        >
+        <button type="button" data-testid="deselect-consultant-btn" onClick={() => onSelect(null)}>
           선택 해제
         </button>
       </div>
@@ -120,9 +116,7 @@ async function selectConsultant(user: ReturnType<typeof userEvent.setup>) {
 }
 
 async function enterReason(user: ReturnType<typeof userEvent.setup>, text: string) {
-  const textarea = screen.getByPlaceholderText(
-    '해당 컨설턴트를 배정하는 사유를 입력해주세요.',
-  );
+  const textarea = screen.getByPlaceholderText('해당 컨설턴트를 배정하는 사유를 입력해주세요.');
   await user.type(textarea, text);
 }
 
@@ -158,7 +152,7 @@ describe('ManualAssignmentForm', () => {
     it('컨설턴트 미선택 시 배정 사유 입력이 숨겨진다', () => {
       renderForm();
       expect(
-        screen.queryByPlaceholderText('해당 컨설턴트를 배정하는 사유를 입력해주세요.'),
+        screen.queryByPlaceholderText('해당 컨설턴트를 배정하는 사유를 입력해주세요.')
       ).not.toBeInTheDocument();
     });
 
@@ -179,7 +173,7 @@ describe('ManualAssignmentForm', () => {
       renderForm();
       await selectConsultant(user);
       expect(
-        screen.getByPlaceholderText('해당 컨설턴트를 배정하는 사유를 입력해주세요.'),
+        screen.getByPlaceholderText('해당 컨설턴트를 배정하는 사유를 입력해주세요.')
       ).toBeInTheDocument();
     });
 
@@ -195,11 +189,11 @@ describe('ManualAssignmentForm', () => {
       renderForm();
       await selectConsultant(user);
       expect(
-        screen.getByPlaceholderText('해당 컨설턴트를 배정하는 사유를 입력해주세요.'),
+        screen.getByPlaceholderText('해당 컨설턴트를 배정하는 사유를 입력해주세요.')
       ).toBeInTheDocument();
       await user.click(screen.getByTestId('deselect-consultant-btn'));
       expect(
-        screen.queryByPlaceholderText('해당 컨설턴트를 배정하는 사유를 입력해주세요.'),
+        screen.queryByPlaceholderText('해당 컨설턴트를 배정하는 사유를 입력해주세요.')
       ).not.toBeInTheDocument();
     });
   });
@@ -210,9 +204,7 @@ describe('ManualAssignmentForm', () => {
       renderForm();
       await selectConsultant(user);
       await enterReason(user, '이 컨설턴트가 적합합니다.');
-      const textarea = screen.getByPlaceholderText(
-        '해당 컨설턴트를 배정하는 사유를 입력해주세요.',
-      );
+      const textarea = screen.getByPlaceholderText('해당 컨설턴트를 배정하는 사유를 입력해주세요.');
       expect(textarea).toHaveValue('이 컨설턴트가 적합합니다.');
     });
 
@@ -279,7 +271,7 @@ describe('ManualAssignmentForm', () => {
       await enterReason(user, '이 컨설턴트는 해당 분야에 전문 경험이 풍부합니다.');
       await user.click(screen.getByRole('button', { name: '배정하기' }));
       expect(
-        await screen.findByText(/김컨설턴트컨설턴트를 이 프로젝트에 배정하시겠습니까/),
+        await screen.findByText(/김컨설턴트컨설턴트를 이 프로젝트에 배정하시겠습니까/)
       ).toBeInTheDocument();
     });
 
@@ -297,12 +289,8 @@ describe('ManualAssignmentForm', () => {
       await user.click(screen.getByRole('button', { name: '배정하기' }));
 
       // 재배정 다이얼로그 워딩
-      expect(
-        await screen.findByText(/박기존 → 김컨설턴트로 변경하시겠습니까/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/박기존컨설턴트의 접근 권한은 즉시 해제됩니다/),
-      ).toBeInTheDocument();
+      expect(await screen.findByText(/박기존 → 김컨설턴트로 변경하시겠습니까/)).toBeInTheDocument();
+      expect(screen.getByText(/박기존컨설턴트의 접근 권한은 즉시 해제됩니다/)).toBeInTheDocument();
     });
   });
 
@@ -336,7 +324,7 @@ describe('ManualAssignmentForm', () => {
       expect(formData.get('project_id')).toBe('project-123');
       expect(formData.get('consultant_id')).toBe('consultant-1');
       expect(formData.get('assignment_reason')).toBe(
-        '이 컨설턴트는 해당 분야에 전문 경험이 풍부합니다.',
+        '이 컨설턴트는 해당 분야에 전문 경험이 풍부합니다.'
       );
     });
 
@@ -376,7 +364,7 @@ describe('ManualAssignmentForm', () => {
       await clickAssignAndConfirm(user);
       await waitFor(() => {
         expect(
-          screen.getByText('배정 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'),
+          screen.getByText('배정 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
         ).toBeInTheDocument();
       });
     });
@@ -395,10 +383,7 @@ describe('ManualAssignmentForm', () => {
         expect(screen.getByText('배정 실패')).toBeInTheDocument();
       });
 
-      const closeButton = screen
-        .getByText('배정 실패')
-        .closest('div')!
-        .querySelector('button')!;
+      const closeButton = screen.getByText('배정 실패').closest('div')!.querySelector('button')!;
       await user.click(closeButton);
       expect(screen.queryByText('배정 실패')).not.toBeInTheDocument();
     });

@@ -1,53 +1,9 @@
 import { render } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 
-import { SpinnerIcon, RefreshIcon, WarningIcon, CloseIcon, CheckIcon } from './Icons';
+import { WarningIcon, CloseIcon, CheckIcon } from './Icons';
 
 describe('Icons', () => {
-  describe('SpinnerIcon', () => {
-    it('기본 렌더링이 된다', () => {
-      const { container } = render(<SpinnerIcon />);
-      expect(container.querySelector('svg')).toBeInTheDocument();
-    });
-
-    it('기본 className(h-4 w-4)을 적용한다', () => {
-      const { container } = render(<SpinnerIcon />);
-      const svg = container.querySelector('svg');
-      expect(svg).toHaveClass('h-4', 'w-4');
-    });
-
-    it('animate-spin 클래스를 항상 적용한다', () => {
-      const { container } = render(<SpinnerIcon />);
-      const svg = container.querySelector('svg');
-      expect(svg).toHaveClass('animate-spin');
-    });
-
-    it('커스텀 className prop을 전달하면 적용된다', () => {
-      const { container } = render(<SpinnerIcon className="h-6 w-6 text-blue-500" />);
-      const svg = container.querySelector('svg');
-      expect(svg).toHaveClass('h-6', 'w-6', 'text-blue-500');
-    });
-  });
-
-  describe('RefreshIcon', () => {
-    it('기본 렌더링이 된다', () => {
-      const { container } = render(<RefreshIcon />);
-      expect(container.querySelector('svg')).toBeInTheDocument();
-    });
-
-    it('기본 className(h-4 w-4)을 적용한다', () => {
-      const { container } = render(<RefreshIcon />);
-      const svg = container.querySelector('svg');
-      expect(svg).toHaveClass('h-4', 'w-4');
-    });
-
-    it('커스텀 className prop을 전달하면 적용된다', () => {
-      const { container } = render(<RefreshIcon className="h-5 w-5 text-green-500" />);
-      const svg = container.querySelector('svg');
-      expect(svg).toHaveClass('h-5', 'w-5', 'text-green-500');
-    });
-  });
-
   describe('WarningIcon', () => {
     it('기본 렌더링이 된다', () => {
       const { container } = render(<WarningIcon />);

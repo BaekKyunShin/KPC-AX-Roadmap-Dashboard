@@ -3,7 +3,7 @@
 import { useState, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check } from 'lucide-react';
-import { createSelfAssessment } from '@/app/(dashboard)/ops/projects/actions';
+import { createSelfAssessment } from '../../actions';
 import { cn, showErrorToast, showSuccessToast } from '@/lib/utils';
 import {
   type Question,
@@ -15,7 +15,7 @@ import {
   NavigationButtons,
   groupQuestionsByDimension,
   toCircledNumber,
-} from './self-assessment';
+} from '@/components/ops/self-assessment';
 
 // ============================================================================
 // 타입 정의
@@ -62,7 +62,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
     dimensions
       .map((dim, index) => ({ dim, index }))
       .filter(({ dim }) => questionsByDimension[dim].every((q) => isQuestionAnswered(q)))
-      .map(({ index }) => index),
+      .map(({ index }) => index)
   );
 
   // 현재 스텝 완료 여부
@@ -84,7 +84,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
   const scrollAfterPaint = (
     getElement: () => HTMLElement | null | undefined,
     options: ScrollIntoViewOptions,
-    delay = 0,
+    delay = 0
   ) => {
     setTimeout(() => {
       requestAnimationFrame(() => {
@@ -100,7 +100,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
       scrollAfterPaint(
         () => document.getElementById(`question-${firstUnanswered.id}`),
         { behavior: 'smooth', block: 'center' },
-        delay,
+        delay
       );
     }
   };
@@ -110,10 +110,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
     if (step >= 0 && step < totalSteps) {
       setCurrentStep(step);
       setError(null);
-      scrollAfterPaint(
-        () => formRef.current,
-        { behavior: 'smooth', block: 'start' },
-      );
+      scrollAfterPaint(() => formRef.current, { behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -205,7 +202,11 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
       {error && (
         <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-center">
           <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+              clipRule="evenodd"
+            />
           </svg>
           {error}
         </div>

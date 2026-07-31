@@ -11,9 +11,7 @@ const mockTemplate = {
   id: 'template-1',
   version: 1,
   name: '기본 템플릿',
-  questions: [
-    { id: 'q1', order: 1, dimension: '데이터', question_text: '질문1', weight: 1 },
-  ],
+  questions: [{ id: 'q1', order: 1, dimension: '데이터', question_text: '질문1', weight: 1 }],
 };
 
 describe('CollapsibleDirectInput', () => {
@@ -51,9 +49,7 @@ describe('CollapsibleDirectInput', () => {
   });
 
   it('부제 텍스트가 표시됨', () => {
-    expect(
-      screen.getByText('전화·대면 등 오프라인으로 답변받은 경우')
-    ).toBeInTheDocument();
+    expect(screen.getByText('전화·대면 등 오프라인으로 답변받은 경우')).toBeInTheDocument();
   });
 });
 

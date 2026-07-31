@@ -15,7 +15,9 @@ const MAX_INDUSTRY_CHIPS = 3;
 /** 컨설턴트 프로필에서 산업/도메인 칩을 추출. available_industries 우선, fallback expertise_domains. */
 function pickIndustryChips(profile: ReturnType<typeof getConsultantProfile>): string[] {
   if (!profile) return [];
-  const industries = Array.isArray(profile.available_industries) ? profile.available_industries : [];
+  const industries = Array.isArray(profile.available_industries)
+    ? profile.available_industries
+    : [];
   if (industries.length > 0) return industries.slice(0, MAX_INDUSTRY_CHIPS);
   const expertise = Array.isArray(profile.expertise_domains) ? profile.expertise_domains : [];
   return expertise.slice(0, MAX_INDUSTRY_CHIPS);
@@ -28,20 +30,28 @@ interface SelectableCardProps {
 }
 
 /** 선택 가능한 컨설턴트 카드 (LLM 매칭용) */
-export default function SelectableCard({ recommendation, isSelected, onSelect }: SelectableCardProps) {
+export default function SelectableCard({
+  recommendation,
+  isSelected,
+  onSelect,
+}: SelectableCardProps) {
   // LLM은 이미 0-100 점수를 반환하므로 직접 사용 (정수로 반올림)
   const score = Math.round(Math.max(0, Math.min(100, recommendation.total_score)));
   const isTopRank = recommendation.rank === 1;
-  const parsedRationale = recommendation.rationale ? parseRationale(recommendation.rationale) : null;
+  const parsedRationale = recommendation.rationale
+    ? parseRationale(recommendation.rationale)
+    : null;
   const scoreColor = getScoreColorClass(score);
   const gaugeColor = getScoreGaugeColor(score);
 
   // 컨설턴트 프로필 (H6 — 운영자가 추천 카드에서 핵심 객관 정보를 한눈에 비교)
   const consultantProfile = getConsultantProfile(recommendation.candidate);
   const industryChips = pickIndustryChips(consultantProfile);
-  const yearsOfExperience = typeof consultantProfile?.years_of_experience === 'number' && consultantProfile.years_of_experience > 0
-    ? consultantProfile.years_of_experience
-    : null;
+  const yearsOfExperience =
+    typeof consultantProfile?.years_of_experience === 'number' &&
+    consultantProfile.years_of_experience > 0
+      ? consultantProfile.years_of_experience
+      : null;
   const hasProfileInfo = industryChips.length > 0 || yearsOfExperience !== null;
 
   return (
@@ -64,21 +74,29 @@ export default function SelectableCard({ recommendation, isSelected, onSelect }:
           <span
             className={cn(
               'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
-              isSelected ? 'bg-blue-500 text-white' : isTopRank ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-600'
+              isSelected
+                ? 'bg-blue-500 text-white'
+                : isTopRank
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-gray-200 text-gray-600'
             )}
           >
             {recommendation.rank}
           </span>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-semibold text-gray-900 truncate">{recommendation.candidate.name}</span>
+              <span className="font-semibold text-gray-900 truncate">
+                {recommendation.candidate.name}
+              </span>
               {isTopRank && (
                 <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium whitespace-nowrap">
                   AI 추천
                 </span>
               )}
             </div>
-            <span className="text-xs text-gray-500 truncate block">{recommendation.candidate.email}</span>
+            <span className="text-xs text-gray-500 truncate block">
+              {recommendation.candidate.email}
+            </span>
           </div>
         </div>
         {/* 점수 표시 (원형 게이지) */}
@@ -118,9 +136,7 @@ export default function SelectableCard({ recommendation, isSelected, onSelect }:
 
       {/* AI 분석 텍스트 */}
       {parsedRationale?.analysis && (
-        <p className="text-sm text-gray-700 leading-relaxed mb-3">
-          {parsedRationale.analysis}
-        </p>
+        <p className="text-sm text-gray-700 leading-relaxed mb-3">{parsedRationale.analysis}</p>
       )}
 
       {/* 강점 / 고려사항 */}
@@ -157,7 +173,9 @@ export default function SelectableCard({ recommendation, isSelected, onSelect }:
       <div
         className={cn(
           'mt-auto pt-3 border-t text-center text-xs font-medium transition-all',
-          isSelected ? 'text-blue-600 border-blue-100 bg-blue-50/50 -mx-4 -mb-4 px-4 pb-3 rounded-b-xl' : 'text-gray-400 border-gray-100'
+          isSelected
+            ? 'text-blue-600 border-blue-100 bg-blue-50/50 -mx-4 -mb-4 px-4 pb-3 rounded-b-xl'
+            : 'text-gray-400 border-gray-100'
         )}
       >
         {isSelected ? '✓ 선택됨' : '이 컨설턴트 선택하기'}

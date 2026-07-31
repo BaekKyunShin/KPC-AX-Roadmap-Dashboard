@@ -19,8 +19,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import ReasonLengthHint from '@/components/ops/assignment/ReasonLengthHint';
-import { REASON_LENGTH } from '@/components/ops/assignment/constants';
+import ReasonLengthHint from './assignment/ReasonLengthHint';
+import { REASON_LENGTH } from './assignment/constants';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 
 import { closeProject, reopenProject } from '../../actions';
