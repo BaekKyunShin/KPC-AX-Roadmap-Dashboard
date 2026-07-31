@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
-import { NoticeForm } from '@/components/notices/NoticeForm';
+import { NoticeForm } from '../../_components/NoticeForm';
 import { getNotice } from '@/lib/services/notice';
 import { isOpsManager } from '@/lib/constants/status';
 

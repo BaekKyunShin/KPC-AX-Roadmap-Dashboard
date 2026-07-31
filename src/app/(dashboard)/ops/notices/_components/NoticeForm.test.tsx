@@ -37,7 +37,7 @@ vi.mock('@/app/(dashboard)/ops/notices/actions', () => ({
 }));
 
 // 클라이언트 helper (Storage 직접 업로드)
-vi.mock('@/lib/utils/upload-notice-attachment', () => ({
+vi.mock('./upload-notice-attachment', () => ({
   uploadNoticeAttachmentDirect: (...args: unknown[]) => mockUploadNoticeAttachmentDirect(...args),
 }));
 
@@ -55,7 +55,7 @@ vi.mock('@/lib/utils/toast', () => ({
 }));
 
 // 하위 컴포넌트 경량 모킹
-vi.mock('@/components/notices/AttachmentUploader', () => ({
+vi.mock('./AttachmentUploader', () => ({
   AttachmentUploader: ({
     onFileSelected,
     onUploaded,

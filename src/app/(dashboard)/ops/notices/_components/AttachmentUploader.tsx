@@ -12,8 +12,8 @@ import {
   MAX_ATTACHMENT_LABEL,
   ATTACHMENT_TOO_LARGE_MESSAGE,
 } from '@/lib/schemas/notice';
-import { uploadNoticeAttachmentDirect } from '@/lib/utils/upload-notice-attachment';
-import { UploadProgress } from '@/components/notices/UploadProgress';
+import { uploadNoticeAttachmentDirect } from './upload-notice-attachment';
+import { UploadProgress } from './UploadProgress';
 import type { NoticeAttachment } from '@/types/database';
 
 interface ProgressState {
