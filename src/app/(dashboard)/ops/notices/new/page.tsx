@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { PageHeader } from '@/components/ui/page-header';
-import { NoticeForm } from '@/components/notices/NoticeForm';
+import { NoticeForm } from '../_components/NoticeForm';
 import { isOpsManager } from '@/lib/constants/status';
 
 export const metadata = {

@@ -9,9 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldError } from '@/components/ui/field-error';
-import { AttachmentUploader } from '@/components/notices/AttachmentUploader';
+import { AttachmentUploader } from './AttachmentUploader';
 import { AttachmentList } from '@/components/notices/AttachmentList';
-import { UploadProgress } from '@/components/notices/UploadProgress';
+import { UploadProgress } from './UploadProgress';
 import { formatBytes } from '@/lib/utils/format-bytes';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 import {
@@ -19,7 +19,7 @@ import {
   updateNoticeAction,
   deleteNoticeAction,
 } from '@/app/(dashboard)/ops/notices/actions';
-import { uploadNoticeAttachmentDirect } from '@/lib/utils/upload-notice-attachment';
+import { uploadNoticeAttachmentDirect } from './upload-notice-attachment';
 import { getAttachmentDownloadUrl } from '@/app/(dashboard)/notices/actions';
 import type { NoticeAttachment } from '@/types/database';
 

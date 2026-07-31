@@ -10,7 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // 클라이언트 helper (Storage 직접 업로드)
 const mockUploadNoticeAttachmentDirect = vi.fn();
 
-vi.mock('@/lib/utils/upload-notice-attachment', () => ({
+vi.mock('./upload-notice-attachment', () => ({
   uploadNoticeAttachmentDirect: (...args: unknown[]) => mockUploadNoticeAttachmentDirect(...args),
 }));
 
