@@ -62,7 +62,7 @@
 | #015 | **P3** ★★    | 라우팅        | 컨설턴트 > 프로젝트 > 로드맵·PBL           | 트랙이 맞지 않는 주소로 진입 시 사유 안내 없이 강제 이동 (**양방향** — 범위 정정)  | 🟢 RESOLVED                |
 | #016 | **P2** ★★★   | DB 성능       | 헤더 > 알림 벨                             | 누적 알림 많을 때 type 필터링 인덱스 부재로 지연                                   | 🟢 RESOLVED                |
 | #017 | **P2** ★★★   | DB 성능       | 운영관리 > 감사로그                        | 액터·대상 필터 + 시간 정렬 복합 인덱스 부재                                        | 🟢 RESOLVED                |
-| #019 | **P2** ★★★   | 메시지        | 메시지 (네트워크 불안정)                   | Realtime 채널 중복 재시도 — MessageIcon + MessagesClient 각각 재시도               | 🔴 OPEN                    |
+| #019 | **P2** ★★★   | 메시지        | 헤더 > 메시지 (네트워크 불안정)            | 연결이 끊겼다 붙을 때 좌측 대화 목록이 갱신되지 않음 (**결함 위치 정정**)          | 🟢 RESOLVED                |
 | #020 | **P3** ★★    | 다운로드      | 컨설턴트 > 프로젝트 > 로드맵 > 다운로드    | DRAFT 상태에서도 PDF/XLSX/HWPX 다운로드 활성 (FINAL 가드 미적용)                   | ⚪ 결함 아님 (의도된 동작) |
 
 > 보안 잠재 위험은 §9, 테스트 사각지대는 §10 부록.
@@ -469,6 +469,17 @@
 - **해결 방향:** "메시지 화면과 헤더 아이콘이 같은 실시간 연결을 공유하도록 정리해 불필요한 재시도를 줄입니다."
 - **기술 근거:**
   - 파일: `src/app/(dashboard)/dashboard/messages/_components/MessagesClient.tsx:280-334`, `src/components/MessageIcon.tsx:68-137`
+- **상태 변경:** 🔴 OPEN → 🟢 RESOLVED (2026-07-31) — 단, **위 현상·해결 방향은 실측과 달랐다.** 정정 내용은 아래와 같다.
+
+  ⚠️ **"중복 재시도로 복구가 느려진다"는 근거가 성립하지 않는다.** `MessagesClient` 의 두 채널은 하는 일이 다르고(`messages:${convId}` = 열어 둔 스레드 append · `messages:all` = 좌측 목록 갱신), supabase-js 는 채널이 여러 개여도 **WebSocket 하나를 공유**한다. 따라서 "연결을 하나로 합쳐 재시도를 절반으로" 는 사용자 체감을 개선하지 못한다. 문서가 지시한 `useMessageRealtime` 훅 통합은 **채택하지 않았다**.
+
+  ✅ **실제 결함은 폴백 폴링의 신호에 있었다 — 두 구간에서 좌측 대화 목록이 멈춘다.**
+  1. 폴백 폴링이 `realtimeActiveRef`(대화 채널 상태) 하나로 skip 을 판단하는데, 그 폴링이 **목록 갱신까지 겸했다** → 목록 채널만 끊기면 실시간도 폴백도 목록을 갱신하지 않는다(다른 대화의 새 메시지가 좌측에 안 뜬다).
+  2. 그 폴링은 `selectedConvId` 가 있어야 등록된다 → **대화를 하나도 열지 않고 목록만 보고 있으면 폴백이 아예 없다.**
+
+  🔧 **수정:** `realtimeActiveRef` 를 `threadRealtimeActiveRef` / `listRealtimeActiveRef` 로 분리하고, 목록 갱신 폴백을 **대화 선택과 무관한 별도 interval** 로 뺐다(`MessagesClient.tsx`). `MessageIcon`·`NotificationBell` 은 무변경.
+
+  ⚠️ **안전망이 "1건"이 아니라 사실상 0건이었다** — 테스트 mock 이 `on()`·`subscribe()` 콜백을 버려(`mockReturnThis()`) SUBSCRIBED/CHANNEL_ERROR 경로가 한 번도 실행되지 않았고, realtime 테스트의 마지막 단언이 `expect(true).toBe(true)` 였다. 폴링 쿼리 mock 도 `.limit()` 뒤의 `.gt()` 를 지원하지 않아 폴링을 돌리면 즉시 터졌다. `NotificationBell.test.tsx` 방식을 **채널 2개용으로 확장**해 모킹을 다시 만들고 특성화 6건 + 신규 5건을 추가했다(결함 주입 4종으로 감시력 확인).
 
 ---
 

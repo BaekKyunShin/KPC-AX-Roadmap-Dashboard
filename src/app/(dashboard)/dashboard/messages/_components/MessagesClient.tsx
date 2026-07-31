@@ -27,8 +27,11 @@ import {
   markAllConversationsRead,
 } from '../actions';
 
-/** Polling 간격: Realtime 실패 시에만 활성화되는 fallback (10초) */
+/** Polling 간격: 열어 둔 대화의 Realtime 이 실패했을 때만 활성화되는 fallback (10초) */
 const THREAD_POLL_MS = 10_000;
+
+/** Polling 간격: 대화 목록 갱신 Realtime 이 실패했을 때만 활성화되는 fallback (10초) */
+const LIST_POLL_MS = 10_000;
 
 /** markConversationRead 중복 호출 방지 쿨다운 (ms) */
 const MARK_READ_COOLDOWN_MS = 500;
@@ -87,8 +90,17 @@ export default function MessagesClient() {
   const messagesRef = useRef<Message[]>([]);
   const isLoadingMoreRef = useRef(false);
 
-  /** Realtime 구독 상태 — SUBSCRIBED 시 true, 에러 시 false */
-  const realtimeActiveRef = useRef(false);
+  /**
+   * Realtime 구독 상태 — 채널마다 따로 추적한다 (#019).
+   *
+   * ⚠️ 두 채널을 **하나의 플래그로 묶으면 안 된다.** 하는 일이 다르기 때문이다 —
+   * 대화 채널(`messages:${convId}`)은 열어 둔 스레드에 메시지를 붙이고,
+   * 목록 채널(`messages:all`)은 좌측 대화 목록을 갱신한다.
+   * 예전에는 대화 채널 상태 하나로 폴백 폴링 전체를 건너뛰어서,
+   * 목록 채널만 끊기면 **실시간도 폴백도 목록을 갱신하지 않는 구간**이 생겼다.
+   */
+  const threadRealtimeActiveRef = useRef(false);
+  const listRealtimeActiveRef = useRef(false);
   /** markConversationRead 중복 호출 방지 */
   const markingReadRef = useRef(false);
 
@@ -352,7 +364,7 @@ export default function MessagesClient() {
           }
         )
         .subscribe((status) => {
-          realtimeActiveRef.current = status === 'SUBSCRIBED';
+          threadRealtimeActiveRef.current = status === 'SUBSCRIBED';
           retryHandler(status);
         });
     }
@@ -361,7 +373,7 @@ export default function MessagesClient() {
 
     return () => {
       retryState.isMounted = false;
-      realtimeActiveRef.current = false;
+      threadRealtimeActiveRef.current = false;
       if (retryState.retryTimer) clearTimeout(retryState.retryTimer);
       if (channel) supabase.removeChannel(channel);
     };
@@ -387,6 +399,8 @@ export default function MessagesClient() {
         supabase.removeChannel(channel);
       }
 
+      const retryHandler = createRetryHandler(subscribeAll, retryState);
+
       channel = supabase
         .channel('messages:all')
         .on(
@@ -400,20 +414,24 @@ export default function MessagesClient() {
             refreshConversations();
           }
         )
-        .subscribe(createRetryHandler(subscribeAll, retryState));
+        .subscribe((status) => {
+          listRealtimeActiveRef.current = status === 'SUBSCRIBED';
+          retryHandler(status);
+        });
     }
 
     subscribeAll();
 
     return () => {
       retryState.isMounted = false;
+      listRealtimeActiveRef.current = false;
       if (retryState.retryTimer) clearTimeout(retryState.retryTimer);
       if (channel) supabase.removeChannel(channel);
     };
   }, []);
 
-  // Polling: Realtime 실패 시에만 활성화되는 fallback
-  // Realtime이 SUBSCRIBED 상태이면 polling을 스킵하여 불필요한 DB 쿼리 방지.
+  // Polling(스레드): 열어 둔 대화의 Realtime 이 실패했을 때만 활성화되는 fallback.
+  // 대화 채널이 SUBSCRIBED 이면 skip 하여 불필요한 DB 쿼리 방지.
   // Realtime이 SECURITY DEFINER RLS로 이벤트를 전달하지 못할 때 이 polling이 보장.
   useEffect(() => {
     if (!selectedConvId) return;
@@ -421,8 +439,9 @@ export default function MessagesClient() {
     const supabase = supabaseRef.current!;
 
     const poll = async () => {
-      // Realtime이 정상 작동 중이면 polling 스킵
-      if (realtimeActiveRef.current) return;
+      // 이 폴링이 담당하는 것은 **열어 둔 대화의 스레드**뿐이므로
+      // 대화 채널 상태만 본다 (목록 갱신은 아래 별도 폴백이 담당한다).
+      if (threadRealtimeActiveRef.current) return;
 
       // 현재 state의 마지막(최신) 메시지 이후의 새 메시지만 조회
       const newestCreatedAt = messagesRef.current[messagesRef.current.length - 1]?.created_at;
@@ -457,6 +476,22 @@ export default function MessagesClient() {
     const intervalId = setInterval(poll, THREAD_POLL_MS);
     return () => clearInterval(intervalId);
   }, [selectedConvId]);
+
+  // Polling(목록): 목록 채널(`messages:all`)이 끊긴 동안에만 좌측 목록을 다시 불러온다.
+  //
+  // 스레드 폴링과 **분리한 이유**(#019): 목록 갱신은 대화를 열지 않아도 필요하다.
+  // 예전에는 목록 갱신까지 스레드 폴링이 겸했는데, 그 폴링은
+  //   ① 대화를 선택해야만 등록되고     → 목록만 보고 있으면 폴백이 아예 없었다
+  //   ② 대화 채널 상태로 skip 을 판단해 → 목록 채널만 끊기면 폴백이 통째로 건너뛰어졌다
+  // 그 결과 "다른 대화에 온 새 메시지가 좌측 목록에 뜨지 않는" 구간이 생겼다.
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (listRealtimeActiveRef.current) return;
+      refreshConversations();
+    }, LIST_POLL_MS);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   const selectedConv = conversations.find((c) => c.id === selectedConvId);
 
