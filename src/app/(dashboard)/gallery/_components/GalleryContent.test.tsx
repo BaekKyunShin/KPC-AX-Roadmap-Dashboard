@@ -28,13 +28,13 @@ vi.mock('../actions', () => ({
   fetchGalleryItems: (...args: unknown[]) => mockFetchGalleryRoadmaps(...args),
 }));
 
-vi.mock('@/components/gallery/GalleryCard', () => ({
+vi.mock('./GalleryCard', () => ({
   GalleryCard: ({ item }: { item: { id: string; title: string } }) => (
     <div data-testid={`gallery-card-${item.id}`}>{item.title}</div>
   ),
 }));
 
-vi.mock('@/components/gallery/AdminFilters', () => ({
+vi.mock('./AdminFilters', () => ({
   AdminFilters: () => <div data-testid="admin-filters">관리자 필터</div>,
 }));
 

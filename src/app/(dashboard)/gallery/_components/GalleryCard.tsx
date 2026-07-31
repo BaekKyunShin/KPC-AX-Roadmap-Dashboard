@@ -2,18 +2,13 @@
 
 import Link from 'next/link';
 import { Factory, Building2 } from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
 import type { CompanySizeValue } from '@/lib/constants/company-size';
-import type { GalleryRoadmapItem } from '@/app/(dashboard)/gallery/actions';
-import { LikeButton } from './LikeButton';
+import type { GalleryRoadmapItem } from '../actions';
+import { LikeButton } from '@/components/gallery/LikeButton';
 import { TrackBadge } from '@/components/ui/TrackBadge';
 
 const AVATAR_COLORS = [
@@ -72,15 +67,11 @@ export function GalleryCard({ item }: GalleryCardProps) {
                 {formatCompanySize(item.companySize)}
               </Badge>
             </div>
-            <p className="text-xs text-gray-500">
-              {item.companyName}
-            </p>
+            <p className="text-xs text-gray-500">{item.companyName}</p>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-gray-600 line-clamp-2">
-            {item.diagnosisSummary}
-          </p>
+          <p className="text-sm text-gray-600 line-clamp-2">{item.diagnosisSummary}</p>
 
           {item.pblCourseName && (
             <div className="rounded-md bg-gray-50 px-3 py-2">
@@ -102,11 +93,7 @@ export function GalleryCard({ item }: GalleryCardProps) {
           {item.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {item.tags.map((tag) => (
-                <Badge
-                  key={tag}
-                  variant="secondary"
-                  className="text-xs px-2 py-0"
-                >
+                <Badge key={tag} variant="secondary" className="text-xs px-2 py-0">
                   {tag}
                 </Badge>
               ))}
@@ -124,9 +111,7 @@ export function GalleryCard({ item }: GalleryCardProps) {
                 >
                   {item.createdByName?.charAt(0) || '?'}
                 </div>
-                <span className="text-sm font-medium text-gray-700">
-                  {item.createdByName}
-                </span>
+                <span className="text-sm font-medium text-gray-700">{item.createdByName}</span>
               </div>
               <LikeButton
                 roadmapVersionId={item.id}

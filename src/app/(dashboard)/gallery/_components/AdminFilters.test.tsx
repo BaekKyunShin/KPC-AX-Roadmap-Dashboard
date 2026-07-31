@@ -28,7 +28,7 @@ vi.mock('next/navigation', () => routerMocks);
 
 // fetchConsultantOptions mock
 const mockFetchConsultantOptions = vi.fn();
-vi.mock('@/app/(dashboard)/gallery/actions', () => ({
+vi.mock('../actions', () => ({
   fetchConsultantOptions: (...args: unknown[]) => mockFetchConsultantOptions(...args),
 }));
 
@@ -75,31 +75,23 @@ vi.mock('@/components/ui/select', () => ({
   SelectContent: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="select-content">{children}</div>
   ),
-  SelectItem: ({
-    children,
-    value,
-  }: {
-    children: React.ReactNode;
-    value: string;
-  }) => <div data-testid={`select-item-${value}`}>{children}</div>,
+  SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => (
+    <div data-testid={`select-item-${value}`}>{children}</div>
+  ),
 }));
 
 // Badge mock
 vi.mock('@/components/ui/badge', () => ({
-  Badge: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    [key: string]: unknown;
-  }) => <span data-testid="badge" {...props}>{children}</span>,
+  Badge: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
+    <span data-testid="badge" {...props}>
+      {children}
+    </span>
+  ),
 }));
 
 // Card mock
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="card">{children}</div>
-  ),
+  Card: ({ children }: { children: React.ReactNode }) => <div data-testid="card">{children}</div>,
   CardContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div data-testid="card-content" className={className}>
       {children}
@@ -379,16 +371,17 @@ describe('AdminFilters', () => {
       await waitFor(() => expect(screen.getAllByTestId('select')).toHaveLength(3));
 
       // data-select-native select들 중 첫 번째(status용)에 change 이벤트 발생
-      const nativeSelects = document.querySelectorAll<HTMLSelectElement>('select[data-select-native]');
+      const nativeSelects = document.querySelectorAll<HTMLSelectElement>(
+        'select[data-select-native]'
+      );
       expect(nativeSelects.length).toBeGreaterThanOrEqual(1);
 
       fireEvent.change(nativeSelects[0], { target: { value: 'DRAFT' } });
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(
-          expect.stringContaining('status=DRAFT'),
-          { scroll: false },
-        );
+        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('status=DRAFT'), {
+          scroll: false,
+        });
       });
     });
 
@@ -396,7 +389,9 @@ describe('AdminFilters', () => {
       render(<AdminFilters />);
       await waitFor(() => expect(screen.getAllByTestId('select')).toHaveLength(3));
 
-      const nativeSelects = document.querySelectorAll<HTMLSelectElement>('select[data-select-native]');
+      const nativeSelects = document.querySelectorAll<HTMLSelectElement>(
+        'select[data-select-native]'
+      );
       // 먼저 DRAFT 설정
       fireEvent.change(nativeSelects[0], { target: { value: 'DRAFT' } });
       // 다시 all(DEFAULT)로 복귀 — updateParam에서 params.delete 분기
@@ -412,16 +407,17 @@ describe('AdminFilters', () => {
       render(<AdminFilters />);
       await waitFor(() => expect(screen.getAllByTestId('select')).toHaveLength(3));
 
-      const nativeSelects = document.querySelectorAll<HTMLSelectElement>('select[data-select-native]');
+      const nativeSelects = document.querySelectorAll<HTMLSelectElement>(
+        'select[data-select-native]'
+      );
       expect(nativeSelects.length).toBeGreaterThanOrEqual(2);
 
       fireEvent.change(nativeSelects[1], { target: { value: 'true' } });
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(
-          expect.stringContaining('isShared=true'),
-          { scroll: false },
-        );
+        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('isShared=true'), {
+          scroll: false,
+        });
       });
     });
 
@@ -433,16 +429,17 @@ describe('AdminFilters', () => {
       render(<AdminFilters />);
       await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument());
 
-      const nativeSelects = document.querySelectorAll<HTMLSelectElement>('select[data-select-native]');
+      const nativeSelects = document.querySelectorAll<HTMLSelectElement>(
+        'select[data-select-native]'
+      );
       expect(nativeSelects.length).toBeGreaterThanOrEqual(3);
 
       fireEvent.change(nativeSelects[2], { target: { value: 'c-123' } });
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(
-          expect.stringContaining('consultantId=c-123'),
-          { scroll: false },
-        );
+        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('consultantId=c-123'), {
+          scroll: false,
+        });
       });
     });
   });
@@ -452,7 +449,9 @@ describe('AdminFilters', () => {
       render(<AdminFilters />);
       await waitFor(() => expect(screen.getAllByTestId('select')).toHaveLength(3));
 
-      const nativeSelects = document.querySelectorAll<HTMLSelectElement>('select[data-select-native]');
+      const nativeSelects = document.querySelectorAll<HTMLSelectElement>(
+        'select[data-select-native]'
+      );
       fireEvent.change(nativeSelects[0], { target: { value: 'DRAFT' } });
 
       await waitFor(() => {
@@ -474,14 +473,15 @@ describe('AdminFilters', () => {
       render(<AdminFilters />);
       await waitFor(() => expect(screen.getAllByTestId('select')).toHaveLength(3));
 
-      const nativeSelects = document.querySelectorAll<HTMLSelectElement>('select[data-select-native]');
+      const nativeSelects = document.querySelectorAll<HTMLSelectElement>(
+        'select[data-select-native]'
+      );
       fireEvent.change(nativeSelects[1], { target: { value: 'false' } });
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(
-          expect.stringContaining('isShared=false'),
-          { scroll: false },
-        );
+        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('isShared=false'), {
+          scroll: false,
+        });
       });
     });
   });
@@ -620,10 +620,9 @@ describe('AdminFilters', () => {
       fireEvent.click(screen.getByLabelText('필터 초기화'));
       await waitFor(() => {
         // keyword가 남아 /gallery?keyword=test 형태로 push
-        expect(mockPush).toHaveBeenCalledWith(
-          expect.stringContaining('keyword=test'),
-          { scroll: false },
-        );
+        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('keyword=test'), {
+          scroll: false,
+        });
       });
     });
   });

@@ -2,12 +2,19 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { UseRoadmapDialog } from './UseRoadmapDialog';
-import type { EligibleProject } from '@/app/(dashboard)/gallery/actions';
+import type { EligibleProject } from '../../actions';
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 const mockPush = vi.fn();
-const mockRouter = { push: mockPush, refresh: vi.fn(), back: vi.fn(), prefetch: vi.fn(), forward: vi.fn(), replace: vi.fn() };
+const mockRouter = {
+  push: mockPush,
+  refresh: vi.fn(),
+  back: vi.fn(),
+  prefetch: vi.fn(),
+  forward: vi.fn(),
+  replace: vi.fn(),
+};
 
 vi.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
@@ -18,7 +25,7 @@ const mockCopyRoadmapToProject = vi.fn();
 const mockShowSuccessToast = vi.fn();
 const mockShowErrorToast = vi.fn();
 
-vi.mock('@/app/(dashboard)/gallery/actions', () => ({
+vi.mock('../../actions', () => ({
   fetchEligibleProjects: (...args: unknown[]) => mockFetchEligibleProjects(...args),
   copyRoadmapToProject: (...args: unknown[]) => mockCopyRoadmapToProject(...args),
 }));
@@ -67,9 +74,7 @@ describe('UseRoadmapDialog', () => {
     });
 
     it('isOpen이 true이면 다이얼로그가 렌더링된다', async () => {
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />);
       expect(screen.getByText('이 로드맵을 가져오시겠습니까?')).toBeInTheDocument();
       // useEffect 비동기 상태 업데이트 완료 대기
       await waitFor(() => {
@@ -80,9 +85,7 @@ describe('UseRoadmapDialog', () => {
     it('배경 오버레이 클릭 시 onClose가 호출된다', async () => {
       const onClose = vi.fn();
       const user = userEvent.setup();
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={onClose} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={onClose} roadmapVersionId="rv-1" />);
 
       // 배경 오버레이는 bg-black/50 클래스를 가진 div
       const overlay = document.querySelector('.bg-black\\/50');
@@ -95,9 +98,7 @@ describe('UseRoadmapDialog', () => {
     it('취소 버튼 클릭 시 onClose가 호출된다', async () => {
       const onClose = vi.fn();
       const user = userEvent.setup();
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={onClose} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={onClose} roadmapVersionId="rv-1" />);
 
       await waitFor(() => {
         expect(screen.getByText('취소')).toBeInTheDocument();
@@ -110,9 +111,7 @@ describe('UseRoadmapDialog', () => {
 
   describe('다이얼로그 내용', () => {
     it('설명 텍스트가 표시된다', async () => {
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />);
       expect(
         screen.getByText(/이 로드맵의 데이터가 선택한 프로젝트의 새 초안 버전으로 복사됩니다/)
       ).toBeInTheDocument();
@@ -122,9 +121,7 @@ describe('UseRoadmapDialog', () => {
     });
 
     it('경고 메시지가 표시된다', async () => {
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />);
       expect(
         screen.getByText('기존 초안 버전이 있으면 새 버전으로 추가됩니다.')
       ).toBeInTheDocument();
@@ -134,9 +131,7 @@ describe('UseRoadmapDialog', () => {
     });
 
     it('적용할 프로젝트 레이블이 표시된다', async () => {
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />);
       expect(screen.getByText('적용할 프로젝트')).toBeInTheDocument();
       await waitFor(() => {
         expect(mockFetchEligibleProjects).toHaveBeenCalled();
@@ -149,18 +144,14 @@ describe('UseRoadmapDialog', () => {
       // fetchEligibleProjects를 지연
       mockFetchEligibleProjects.mockReturnValue(new Promise(() => {}));
 
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />);
 
       const skeletons = screen.getAllByTestId('skeleton');
       expect(skeletons.length).toBe(3);
     });
 
     it('프로젝트 로딩 완료 후 셀렉트 박스가 표시된다', async () => {
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />);
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
@@ -173,21 +164,15 @@ describe('UseRoadmapDialog', () => {
         data: [],
       });
 
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />);
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/적용 가능한 프로젝트가 없습니다/)
-        ).toBeInTheDocument();
+        expect(screen.getByText(/적용 가능한 프로젝트가 없습니다/)).toBeInTheDocument();
       });
     });
 
     it('프로젝트 목록에 회사명과 상태 레이블이 표시된다', async () => {
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />);
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
@@ -205,9 +190,7 @@ describe('UseRoadmapDialog', () => {
 
   describe('복사 동작', () => {
     it('프로젝트를 선택하지 않으면 가져오기 버튼이 비활성화된다', async () => {
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />);
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
@@ -219,9 +202,7 @@ describe('UseRoadmapDialog', () => {
 
     it('프로젝트를 선택하면 가져오기 버튼이 활성화된다', async () => {
       const user = userEvent.setup();
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />);
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
@@ -235,9 +216,7 @@ describe('UseRoadmapDialog', () => {
 
     it('가져오기 버튼 클릭 시 copyRoadmapToProject가 호출된다', async () => {
       const user = userEvent.setup();
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-source" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-source" />);
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
@@ -261,9 +240,7 @@ describe('UseRoadmapDialog', () => {
         data: { newVersionId: 'new-v1', versionNumber: 3 },
       });
 
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={onClose} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={onClose} roadmapVersionId="rv-1" />);
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
@@ -273,9 +250,7 @@ describe('UseRoadmapDialog', () => {
       await user.click(screen.getByRole('button', { name: /가져오기/ }));
 
       await waitFor(() => {
-        expect(mockShowSuccessToast).toHaveBeenCalledWith(
-          '로드맵이 복사되었습니다. (버전 3)'
-        );
+        expect(mockShowSuccessToast).toHaveBeenCalledWith('로드맵이 복사되었습니다. (버전 3)');
       });
 
       expect(onClose).toHaveBeenCalled();
@@ -283,9 +258,7 @@ describe('UseRoadmapDialog', () => {
 
     it('복사 성공 시 해당 프로젝트 로드맵 페이지로 이동한다', async () => {
       const user = userEvent.setup();
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />);
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
@@ -306,9 +279,7 @@ describe('UseRoadmapDialog', () => {
       });
 
       const user = userEvent.setup();
-      render(
-        <UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />
-      );
+      render(<UseRoadmapDialog isOpen={true} onClose={vi.fn()} roadmapVersionId="rv-1" />);
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();

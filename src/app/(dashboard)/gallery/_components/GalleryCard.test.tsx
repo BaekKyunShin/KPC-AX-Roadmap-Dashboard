@@ -2,12 +2,16 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@/test/helpers/mock-next-link';
 import { GalleryCard } from './GalleryCard';
-import type { GalleryRoadmapItem } from '@/app/(dashboard)/gallery/actions';
+import type { GalleryRoadmapItem } from '../actions';
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
-vi.mock('./LikeButton', () => ({
-  LikeButton: ({ roadmapVersionId, initialLiked, initialCount }: {
+vi.mock('@/components/gallery/LikeButton', () => ({
+  LikeButton: ({
+    roadmapVersionId,
+    initialLiked,
+    initialCount,
+  }: {
     roadmapVersionId: string;
     initialLiked: boolean;
     initialCount: number;
@@ -172,12 +176,8 @@ describe('GalleryCard', () => {
     });
 
     it('같은 이름은 항상 같은 색상을 반환한다 (결정적)', () => {
-      const { container: c1 } = render(
-        <GalleryCard item={makeItem({ createdByName: 'Alice' })} />
-      );
-      const { container: c2 } = render(
-        <GalleryCard item={makeItem({ createdByName: 'Alice' })} />
-      );
+      const { container: c1 } = render(<GalleryCard item={makeItem({ createdByName: 'Alice' })} />);
+      const { container: c2 } = render(<GalleryCard item={makeItem({ createdByName: 'Alice' })} />);
 
       // 아바타 div의 class를 비교
       const avatar1 = c1.querySelector('.rounded-full.text-white');

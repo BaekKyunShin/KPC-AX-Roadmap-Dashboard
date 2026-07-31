@@ -5,11 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Loader2, AlertTriangle, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/Skeleton';
-import {
-  fetchEligibleProjects,
-  copyRoadmapToProject,
-} from '@/app/(dashboard)/gallery/actions';
-import type { EligibleProject } from '@/app/(dashboard)/gallery/actions';
+import { fetchEligibleProjects, copyRoadmapToProject } from '../../actions';
+import type { EligibleProject } from '../../actions';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
 
 interface UseRoadmapDialogProps {
@@ -24,19 +21,10 @@ const STATUS_LABEL: Record<string, string> = {
   FINALIZED: '확정됨',
 };
 
-export function UseRoadmapDialog({
-  isOpen,
-  onClose,
-  roadmapVersionId,
-}: UseRoadmapDialogProps) {
+export function UseRoadmapDialog({ isOpen, onClose, roadmapVersionId }: UseRoadmapDialogProps) {
   if (!isOpen) return null;
 
-  return (
-    <UseRoadmapDialogInner
-      onClose={onClose}
-      roadmapVersionId={roadmapVersionId}
-    />
-  );
+  return <UseRoadmapDialogInner onClose={onClose} roadmapVersionId={roadmapVersionId} />;
 }
 
 /** isOpen=true일 때만 마운트되는 내부 컴포넌트 */
@@ -62,7 +50,9 @@ function UseRoadmapDialogInner({
       }
       setIsLoadingProjects(false);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleCopy = () => {
@@ -75,9 +65,7 @@ function UseRoadmapDialogInner({
       });
 
       if (result.success) {
-        showSuccessToast(
-          `로드맵이 복사되었습니다. (버전 ${result.data.versionNumber})`
-        );
+        showSuccessToast(`로드맵이 복사되었습니다. (버전 ${result.data.versionNumber})`);
         onClose();
         router.push(`/consultant/projects/${selectedProjectId}/roadmap`);
       } else {
@@ -89,19 +77,14 @@ function UseRoadmapDialogInner({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* 배경 오버레이 */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
       {/* 다이얼로그 */}
       <div className="relative z-10 w-full max-w-md rounded-lg bg-white p-6 shadow-xl mx-4">
-        <h2 className="text-lg font-semibold text-gray-900">
-          이 로드맵을 가져오시겠습니까?
-        </h2>
+        <h2 className="text-lg font-semibold text-gray-900">이 로드맵을 가져오시겠습니까?</h2>
         <p className="mt-2 text-sm text-gray-600">
-          이 로드맵의 데이터가 선택한 프로젝트의 새 초안 버전으로 복사됩니다.
-          원본에는 영향 없습니다.
+          이 로드맵의 데이터가 선택한 프로젝트의 새 초안 버전으로 복사됩니다. 원본에는 영향
+          없습니다.
         </p>
 
         <div className="mt-4 space-y-3">
