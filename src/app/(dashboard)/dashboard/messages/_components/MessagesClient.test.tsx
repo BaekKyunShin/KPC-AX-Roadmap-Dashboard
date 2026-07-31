@@ -15,29 +15,100 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: mockGet }),
 }));
 
-// Supabase Realtime 모킹
+// =============================================================================
+// Supabase Realtime 모킹 — 채널 2개를 따로 조종할 수 있어야 한다
+// =============================================================================
+// `NotificationBell.test.tsx:48-80` 의 콜백 캡처 방식을 **채널 2개용으로 확장**했다.
+// MessagesClient 는 채널을 두 개 연다:
+//   - `messages:${convId}` — 열어 둔 대화의 새 메시지를 스레드에 붙인다
+//   - `messages:all`       — 좌측 대화 목록(프리뷰·안읽음)을 갱신한다
+// 둘은 하는 일이 다르므로 **한쪽만 끊긴 상황**을 재현할 수 있어야 하고,
+// 그러려면 채널명별로 콜백을 따로 붙잡아야 한다.
+//
+// ⚠️ 이전 모킹은 `on`/`subscribe` 가 `mockReturnThis()` 라 **콜백을 통째로 버렸다.**
+// 그래서 SUBSCRIBED·CHANNEL_ERROR 경로도 INSERT 수신도 한 번도 실행되지 않았고,
+// realtime 단언이 사실상 0건이었다(`expect(true).toBe(true)` 가 남아 있던 이유).
+
+/** 채널 하나가 캡처한 것들 */
+interface MockChannel {
+  /** `.on()` 이 받은 postgres_changes 설정 (event/schema/table/filter) */
+  config: unknown;
+  /** INSERT 이벤트 콜백 */
+  insert: ((payload: { new: Message }) => void) | null;
+  /** `.subscribe()` 가 받은 상태 콜백 */
+  status: ((status: string) => void) | null;
+}
+
+const mockChannels = new Map<string, MockChannel>();
+
+/** 채널명으로 캡처된 콜백을 꺼낸다 (미구독이면 원인이 드러나도록 throw) */
+function channelOf(name: string): MockChannel {
+  const found = mockChannels.get(name);
+  if (!found) {
+    const opened = [...mockChannels.keys()].join(', ') || '(없음)';
+    throw new Error(`채널 "${name}" 이 구독되지 않았다. 열린 채널: ${opened}`);
+  }
+  return found;
+}
+
 const mockGetUser = vi.fn();
 const mockRemoveChannel = vi.fn();
-const mockChannelOn = vi.fn();
-const mockChannelSubscribe = vi.fn();
+
+/** 폴백 폴링이 messages 테이블에서 읽어올 행 (테스트가 교체) */
+let mockPollRows: Message[] = [];
+/** `supabase.from(...)` 호출 자체를 세는 스파이 — "폴링이 돌았는가" 판정용 */
+const mockFrom = vi.fn();
+
+/**
+ * 폴링 쿼리 체인 mock.
+ *
+ * ⚠️ 컴포넌트는 `.limit()` **뒤에** 조건부로 `.gt()` 를 붙인다(`MessagesClient.tsx:437`).
+ * 이전 모킹은 `limit` 이 Promise 를 resolve 해 버려 `query.gt is not a function` 으로
+ * 즉시 터졌다 — 폴링을 실제로 돌리는 테스트가 하나도 없었다는 증거다.
+ * → 모든 단계가 자기 자신을 반환하고 **await 시점에** 결과를 내는 thenable 로 만든다.
+ */
+function createQueryBuilder() {
+  const builder = {
+    select: vi.fn(() => builder),
+    eq: vi.fn(() => builder),
+    order: vi.fn(() => builder),
+    limit: vi.fn(() => builder),
+    gt: vi.fn(() => builder),
+    then: (resolve: (value: { data: Message[]; error: null }) => unknown) =>
+      Promise.resolve({ data: mockPollRows, error: null }).then(resolve),
+  };
+  return builder;
+}
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
     auth: {
-      getUser: mockGetUser,
+      getUser: (...args: unknown[]) => mockGetUser(...args),
     },
-    channel: vi.fn(() => ({
-      on: mockChannelOn.mockReturnThis(),
-      subscribe: mockChannelSubscribe.mockReturnThis(),
-    })),
-    removeChannel: mockRemoveChannel,
-    from: vi.fn(() => ({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      gt: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-    })),
+    channel: (name: string) => {
+      const entry: MockChannel = { config: null, insert: null, status: null };
+      mockChannels.set(name, entry);
+      // 실제 supabase-js 와 동일하게 `.on()`·`.subscribe()` 가 채널을 반환해야
+      // 컴포넌트가 그 반환값을 removeChannel 에 넘겨 정리할 수 있다.
+      const channel = {
+        on: (_event: string, config: unknown, cb: (payload: { new: Message }) => void) => {
+          entry.config = config;
+          entry.insert = cb;
+          return {
+            subscribe: (statusCb: (status: string) => void) => {
+              entry.status = statusCb;
+              return channel;
+            },
+          };
+        },
+      };
+      return channel;
+    },
+    removeChannel: (...args: unknown[]) => mockRemoveChannel(...args),
+    from: (...args: unknown[]) => {
+      mockFrom(...args);
+      return createQueryBuilder();
+    },
   }),
 }));
 
@@ -46,17 +117,21 @@ const mockFetchConversations = vi.fn();
 const mockFetchMessages = vi.fn();
 const mockSendMessage = vi.fn();
 const mockMarkConversationRead = vi.fn();
+const mockMarkAllConversationsRead = vi.fn();
 
 vi.mock('../actions', () => ({
   fetchConversations: (...args: unknown[]) => mockFetchConversations(...args),
   fetchMessages: (...args: unknown[]) => mockFetchMessages(...args),
   sendMessage: (...args: unknown[]) => mockSendMessage(...args),
   markConversationRead: (...args: unknown[]) => mockMarkConversationRead(...args),
+  markAllConversationsRead: (...args: unknown[]) => mockMarkAllConversationsRead(...args),
 }));
 
 const mockShowErrorToast = vi.fn();
+const mockShowSuccessToast = vi.fn();
 vi.mock('@/lib/utils/toast', () => ({
   showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
+  showSuccessToast: (...args: unknown[]) => mockShowSuccessToast(...args),
 }));
 
 // 하위 컴포넌트 경량 mock
@@ -174,6 +249,7 @@ vi.mock('@/components/ui/EmptyState', () => ({
 
 import React from 'react';
 import MessagesClient from './MessagesClient';
+import { MAX_REALTIME_RETRIES, REALTIME_RETRY_MAX_MS } from '@/lib/constants/message';
 import type { ConversationWithPreview, Message } from '@/types/database';
 
 // =============================================================================
@@ -232,8 +308,9 @@ describe('MessagesClient', () => {
     mockFetchMessages.mockResolvedValue(successMsgResult([]));
     mockSendMessage.mockResolvedValue({ success: true as const, data: createMessage() });
     mockMarkConversationRead.mockResolvedValue({ success: true });
-    mockChannelOn.mockReturnThis();
-    mockChannelSubscribe.mockReturnThis();
+    mockMarkAllConversationsRead.mockResolvedValue({ success: true });
+    mockChannels.clear();
+    mockPollRows = [];
   });
 
   afterEach(() => {
@@ -576,23 +653,254 @@ describe('MessagesClient', () => {
 
   // ─── 폴링 fallback ──────────────────────────────────────────────────
 
-  describe('폴링 fallback', () => {
-    it('대화 선택 후 MessageThread가 표시되며 폴링 준비 상태가 된다', async () => {
-      const user = userEvent.setup();
-      const conv = createConversation({
-        id: 'c-poll',
-        other_user: { id: 'u1', name: '폴링유저', role: 'OPS_ADMIN' },
+  describe('Realtime · 폴백 폴링 (#019)', () => {
+    /** MessagesClient 의 THREAD_POLL_MS·LIST_POLL_MS 와 같은 값 */
+    const POLL_MS = 10_000;
+    const CONV_ID = 'c-rt';
+
+    function realtimeConversations() {
+      return [
+        createConversation({
+          id: CONV_ID,
+          other_user: { id: 'u1', name: '실시간유저', role: 'OPS_ADMIN' },
+        }),
+      ];
+    }
+
+    /**
+     * fake timer 하에서 시간을 진행시킨다.
+     * `waitFor` 는 내부적으로 타이머를 쓰기 때문에 fake timer 구간에서는 쓸 수 없다
+     * (`NotificationBell.test.tsx:1199` 와 같은 제약).
+     */
+    async function advance(ms: number) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(ms);
       });
-      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
+    }
+
+    /**
+     * 마운트 직후 초기화 체인(목록 조회 → 메시지 조회 → 읽음 처리)을 흘려보낸다.
+     * 타이머가 아니라 Promise 단계라 fake/real timer 어느 쪽에서도 동작해야 한다.
+     */
+    async function settle() {
+      for (let i = 0; i < 4; i++) {
+        await act(async () => {
+          await Promise.resolve();
+        });
+      }
+    }
+
+    async function withFakeTimers(body: () => Promise<void>) {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'] });
+      try {
+        await body();
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+
+    /**
+     * 대화가 자동 선택된 상태로 마운트한다.
+     * fake timer 와 userEvent 를 섞으면 클릭이 진행되지 않으므로 URL 파라미터로 선택한다.
+     */
+    async function mountWithSelectedConv() {
+      mockGet.mockReturnValue(CONV_ID);
+      mockFetchConversations.mockResolvedValue(successConvResult(realtimeConversations()));
       mockFetchMessages.mockResolvedValue(successMsgResult([]));
+      const view = render(<MessagesClient />);
+      await settle();
+      return view;
+    }
 
-      await renderAndWait();
+    // ── 특성화: 아래 6건은 수정 전후 모두 통과해야 한다 ──────────────────
 
-      await waitFor(() => expect(screen.getByText('폴링유저')).toBeInTheDocument());
-      await user.click(screen.getByText('폴링유저'));
+    it('구독 대상이 채널마다 다르다 — 대화 채널만 현재 대화로 필터링한다 (특성화)', async () => {
+      await withFakeTimers(async () => {
+        await mountWithSelectedConv();
 
-      // 대화 선택 후 MessageThread가 마운트됨 → 폴링 인터벌이 등록되는 상태
-      await waitFor(() => expect(screen.getByTestId('message-thread')).toBeInTheDocument());
+        expect(channelOf(`messages:${CONV_ID}`).config).toEqual({
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${CONV_ID}`,
+        });
+        // 목록 채널은 "다른 대화"의 메시지도 받아야 하므로 필터가 없다.
+        expect(channelOf('messages:all').config).toEqual({
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        });
+      });
+    });
+
+    it('두 채널이 모두 살아 있으면 폴백 폴링이 전혀 돌지 않는다 (특성화)', async () => {
+      await withFakeTimers(async () => {
+        await mountWithSelectedConv();
+
+        act(() => {
+          channelOf(`messages:${CONV_ID}`).status?.('SUBSCRIBED');
+          channelOf('messages:all').status?.('SUBSCRIBED');
+        });
+        mockFrom.mockClear();
+        mockFetchConversations.mockClear();
+
+        await advance(POLL_MS * 3);
+
+        // 실시간이 정상일 때 폴링까지 돌면 불필요한 DB 조회가 쌓인다.
+        expect(mockFrom).not.toHaveBeenCalled();
+        expect(mockFetchConversations).not.toHaveBeenCalled();
+      });
+    });
+
+    it('대화 채널이 끊기면 폴백 폴링이 새 메시지를 스레드에 붙인다 (특성화)', async () => {
+      await withFakeTimers(async () => {
+        await mountWithSelectedConv();
+
+        act(() => {
+          channelOf(`messages:${CONV_ID}`).status?.('CHANNEL_ERROR');
+          channelOf('messages:all').status?.('SUBSCRIBED');
+        });
+        mockPollRows = [
+          createMessage({ id: 'poll-msg', content: '폴링으로 받은 메시지', sender_id: 'u1' }),
+        ];
+
+        await advance(POLL_MS);
+
+        expect(screen.getByText('폴링으로 받은 메시지')).toBeInTheDocument();
+      });
+    });
+
+    it('대화 채널로 새 메시지가 오면 스레드에 붙고 읽음 처리된다 (특성화)', async () => {
+      await mountWithSelectedConv();
+      mockMarkConversationRead.mockClear();
+
+      await act(async () => {
+        channelOf(`messages:${CONV_ID}`).insert?.({
+          new: createMessage({ id: 'rt-1', content: '실시간 도착', sender_id: 'u1' }),
+        });
+        await Promise.resolve();
+      });
+
+      expect(screen.getByText('실시간 도착')).toBeInTheDocument();
+      await waitFor(() => expect(mockMarkConversationRead).toHaveBeenCalledWith(CONV_ID));
+    });
+
+    it('본인이 보낸 메시지 이벤트는 무시한다 (특성화)', async () => {
+      await mountWithSelectedConv();
+
+      await act(async () => {
+        channelOf(`messages:${CONV_ID}`).insert?.({
+          new: createMessage({ id: 'rt-mine', content: '내가 쓴 것', sender_id: 'me' }),
+        });
+        await Promise.resolve();
+      });
+
+      // 전송 시 이미 화면에 붙였으므로 이벤트로 또 붙이면 같은 말풍선이 두 번 뜬다.
+      expect(screen.queryByText('내가 쓴 것')).toBeNull();
+    });
+
+    it('목록 채널로 새 메시지가 오면 목록을 다시 불러온다 (특성화)', async () => {
+      await mountWithSelectedConv();
+      mockFetchConversations.mockClear();
+
+      await act(async () => {
+        channelOf('messages:all').insert?.({
+          new: createMessage({ id: 'rt-other', sender_id: 'u1' }),
+        });
+        await Promise.resolve();
+      });
+
+      await waitFor(() => expect(mockFetchConversations).toHaveBeenCalled());
+    });
+
+    // ── 신규: 목록 갱신이 끊기는 두 구간 (#019) ─────────────────────────
+
+    it('목록 채널만 끊기면 목록 갱신 폴백이 돈다', async () => {
+      await withFakeTimers(async () => {
+        await mountWithSelectedConv();
+
+        // 대화 채널은 살아 있고 목록 채널만 죽은 상태.
+        // 예전에는 "실시간이 살아 있다"를 대화 채널만 보고 판단해 폴백을 통째로 건너뛰었고,
+        // 그 결과 **다른 대화에 온 새 메시지가 좌측 목록에 영영 뜨지 않았다.**
+        act(() => {
+          channelOf(`messages:${CONV_ID}`).status?.('SUBSCRIBED');
+          channelOf('messages:all').status?.('CHANNEL_ERROR');
+        });
+        mockFetchConversations.mockClear();
+
+        await advance(POLL_MS);
+
+        expect(mockFetchConversations).toHaveBeenCalled();
+      });
+    });
+
+    it('대화를 하나도 열지 않은 상태에서도 목록 갱신 폴백이 돈다', async () => {
+      await withFakeTimers(async () => {
+        mockGet.mockReturnValue(null); // 자동 선택 없음 = 목록만 보고 있는 상태
+        mockFetchConversations.mockResolvedValue(successConvResult(realtimeConversations()));
+        render(<MessagesClient />);
+        await settle();
+
+        act(() => {
+          channelOf('messages:all').status?.('CHANNEL_ERROR');
+        });
+        mockFetchConversations.mockClear();
+
+        await advance(POLL_MS);
+
+        // 예전에는 폴링 자체가 "대화를 열었을 때"만 등록돼, 목록만 보고 있으면
+        // 연결이 끊긴 뒤 목록이 영원히 멈춰 있었다.
+        expect(mockFetchConversations).toHaveBeenCalled();
+      });
+    });
+
+    it('목록 채널이 살아나면 목록 갱신 폴백이 멈춘다', async () => {
+      await withFakeTimers(async () => {
+        mockGet.mockReturnValue(null);
+        mockFetchConversations.mockResolvedValue(successConvResult(realtimeConversations()));
+        render(<MessagesClient />);
+        await settle();
+
+        act(() => {
+          channelOf('messages:all').status?.('SUBSCRIBED');
+        });
+        mockFetchConversations.mockClear();
+
+        await advance(POLL_MS * 3);
+
+        // 폴백을 추가하면서 "정상일 때도 계속 조회"가 되면 그게 새 결함이다.
+        expect(mockFetchConversations).not.toHaveBeenCalled();
+      });
+    });
+
+    it('구독이 계속 실패하면 지수 백오프로 재구독하다가 소진되면 멈춘다 (특성화)', async () => {
+      await withFakeTimers(async () => {
+        await mountWithSelectedConv();
+        mockRemoveChannel.mockClear();
+
+        // 재구독은 옛 채널을 removeChannel 로 걷어내고 새로 연다 → 호출 수 = 재시도 수.
+        // MAX_REALTIME_RETRIES 를 넘겨 실패시켜도 그 횟수를 넘지 않아야 한다
+        // (무한 재시도는 연결이 끊긴 동안 브라우저를 계속 두드린다).
+        for (let i = 0; i < MAX_REALTIME_RETRIES + 1; i++) {
+          act(() => {
+            channelOf(`messages:${CONV_ID}`).status?.('CHANNEL_ERROR');
+          });
+          await advance(REALTIME_RETRY_MAX_MS);
+        }
+
+        expect(mockRemoveChannel).toHaveBeenCalledTimes(MAX_REALTIME_RETRIES);
+      });
+    });
+
+    it('unmount 하면 두 채널이 모두 정리된다 (특성화)', async () => {
+      await withFakeTimers(async () => {
+        const view = await mountWithSelectedConv();
+        mockRemoveChannel.mockClear();
+
+        view.unmount();
+
+        expect(mockRemoveChannel).toHaveBeenCalledTimes(2);
+      });
     });
   });
 
@@ -832,35 +1140,8 @@ describe('MessagesClient', () => {
     });
   });
 
-  // ─── createRetryHandler 분기 커버 ──────────────────────────────────────────
-
-  describe('createRetryHandler 분기', () => {
-    // subscribeCallback을 캡처하기 위해 별도 모킹이 필요하지 않음
-    // mockChannelSubscribe는 ReturnThis()로 동작하므로
-    // 대신 직접 createRetryHandler를 테스트
-
-    it('SUBSCRIBED 상태 시 retryCount가 0으로 초기화된다', async () => {
-      // createRetryHandler는 MessagesClient 내부에서 사용됨
-      // 대화 선택 후 구독이 설정되는 경로를 통해 간접 커버
-      const user = userEvent.setup();
-      const conv = createConversation({
-        id: 'c-retry',
-        other_user: { id: 'u1', name: '재시도유저', role: 'OPS_ADMIN' },
-      });
-      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
-      mockFetchMessages.mockResolvedValue(successMsgResult([]));
-
-      await renderAndWait();
-      await waitFor(() => expect(screen.getByText('재시도유저')).toBeInTheDocument());
-      await user.click(screen.getByText('재시도유저'));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('message-thread')).toBeInTheDocument();
-      });
-      // subscribe 콜백이 있다면 SUBSCRIBED 상태로 호출 → retryCount = 0
-      expect(true).toBe(true);
-    });
-  });
+  // 재시도(createRetryHandler) 특성화는 위 「Realtime · 폴백 폴링 (#019)」 블록으로 옮겼다.
+  // 여기 있던 테스트는 마지막 단언이 `expect(true).toBe(true)` 라 아무것도 지키지 못했다.
 
   // ─── handleLoadMore 분기 ───────────────────────────────────────────────────
 
