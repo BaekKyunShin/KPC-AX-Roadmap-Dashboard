@@ -50,6 +50,43 @@ const eslintConfig = defineConfig([
       'no-restricted-imports': 'off',
     },
   },
+  // 계층 경계: 공용 계층(src/components·src/hooks)은 app 라우트를 import 할 수 없다 (P7)
+  {
+    files: ['src/components/**/*.{ts,tsx}', 'src/hooks/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/app/**'],
+              message:
+                '공용 계층(src/components·src/hooks)은 app 라우트를 import 할 수 없습니다. 단일 라우트 전용 컴포넌트는 해당 라우트의 _components 로 옮기고, 여러 라우트가 공유하면 action 을 prop 으로 주입받게 하세요.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // 기존 위반 9파일 예외 — P7 단계 5(공유 컴포넌트 의존성 역전)가 진행되는 만큼 이 목록은 줄어든다.
+  // 신규 파일을 여기에 추가하지 말 것: 예외는 가드 도입 시점의 기존 부채 동결 목적이다.
+  // (components 하위 테스트의 vi.mock('@/app/...') 은 정적 import 규칙에 걸리지 않아 예외 불필요)
+  {
+    files: [
+      'src/components/MessageIcon.tsx',
+      'src/components/Navigation.tsx',
+      'src/components/NotificationBell.tsx',
+      'src/components/consultant/ProfileForm.tsx',
+      'src/components/consultant/ProfilePageClient.tsx',
+      'src/components/gallery/LikeButton.tsx',
+      'src/components/gallery/ShareToggle.tsx',
+      'src/components/notices/AttachmentList.tsx',
+      'src/hooks/useCommandPalette.ts',
+    ],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
