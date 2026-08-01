@@ -33,6 +33,7 @@ import type { ProjectStatus } from '@/types/database';
 
 import { ResultTabContentSkeleton } from '@/components/ui/Skeleton';
 import type { PBLResultEditPayload, ResultPBLInterviewSnapshot } from './types';
+import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 
 // 탭 본문 4종 코드 분할 — 한 번에 한 탭만 보이는데 전 탭 코드가 초기 청크에 들어 있었다.
 // `ssr: false` 는 쓰지 않는다 (첫 화면 탭이 서버 HTML 에서 빠져 스켈레톤이 번쩍인다).
@@ -52,7 +53,6 @@ const TabPBLTasks = dynamic(
 const TabPBLOps = dynamic(() => import('./TabPBLOps').then((m) => ({ default: m.TabPBLOps })), {
   loading: () => <ResultTabContentSkeleton />,
 });
-import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 
 /**
  * Task 2.11-a — PBL 결과 화면 role-aware 통합 Client.
