@@ -1,4 +1,4 @@
-import { MAX_SCALE } from '@/components/ops/self-assessment';
+import { MAX_SCALE } from '@/lib/constants/self-assessment';
 
 /**
  * 자가진단 점수 계산 (5점 척도 고정)
@@ -24,24 +24,16 @@ export function calculateScores(
     dimensionScores[question.dimension].max += MAX_SCALE * question.weight;
   }
 
-  const totalScore = Object.values(dimensionScores).reduce(
-    (sum, d) => sum + d.score,
-    0
-  );
-  const maxPossibleScore = Object.values(dimensionScores).reduce(
-    (sum, d) => sum + d.max,
-    0
-  );
+  const totalScore = Object.values(dimensionScores).reduce((sum, d) => sum + d.score, 0);
+  const maxPossibleScore = Object.values(dimensionScores).reduce((sum, d) => sum + d.max, 0);
 
   return {
     total_score: totalScore,
     max_possible_score: maxPossibleScore,
-    dimension_scores: Object.entries(dimensionScores).map(
-      ([dimension, { score, max }]) => ({
-        dimension,
-        score,
-        max_score: max,
-      })
-    ),
+    dimension_scores: Object.entries(dimensionScores).map(([dimension, { score, max }]) => ({
+      dimension,
+      score,
+      max_score: max,
+    })),
   };
 }
