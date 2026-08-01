@@ -19,13 +19,13 @@ const THRESHOLDS = {
 } as const;
 
 /**
- * 결과 화면 JS 예산 (bytes).
+ * 결과 화면 임계 경로 JS 예산 (bytes).
  *
  * 탭 코드 분할(#164)의 성과를 CI 로 고정하기 위한 게이트.
  * 분할 전에는 로드맵·PBL·갤러리 결과 화면이 어떤 예산에도 잡히지 않았다.
- * 값은 첫 CI 실측을 보고 확정한다(아래 TODO).
+ * 값은 첫 CI 실측을 보고 확정한다(아래 TODO). 측정 방식은 하단 describe 주석 참조.
  */
-// TODO(2026-08-01): 첫 CI 런의 `[컨설턴트/로드맵 결과] JS 총 크기` 로그를 보고 실측 +10% 로 확정할 것.
+// TODO(2026-08-01): 첫 CI 런의 `[컨설턴트/로드맵 결과] 임계 경로 JS` 로그를 보고 실측 +10% 로 확정할 것.
 const RESULT_PAGE_JS_MAX_BYTES = 819_200;
 
 /**
@@ -215,44 +215,70 @@ test.describe('인증 페이지 성능 측정 (컨설턴트)', () => {
 });
 
 /**
- * 결과 화면 JS 번들 예산.
+ * 결과 화면 **임계 경로(critical path)** JS 예산.
  *
  * `bundle-budget.perf.spec.ts` 는 공개 페이지(`/`, `/login`)만 재기 때문에
  * 탭 코드 분할(#164)이 줄인 화면은 어떤 예산에도 걸리지 않았다. 여기서 막는다.
- * 초기 진입 시점(Ⅰ 개요 탭만 렌더)의 JS 를 재므로, 나머지 탭이 다시 초기 청크로
- * 합쳐지면 이 게이트가 깨진다.
+ *
+ * ⚠️ **"페이지가 받은 JS 총량"을 재면 안 된다.** 분할 후에도 유휴 시점 프리페치가
+ * 나머지 탭을 결국 받아오므로 총량은 분할 전후가 같고, 그런 게이트는 분할이
+ * 풀려도 통과한다(= 공허한 단언).
+ *
+ * 대신 **서버가 내려준 HTML 에 `<script src>` 로 박힌 파일**만 잰다. 이건 빌드가
+ * 결정하는 값이라 실행 간 변동이 없고, 하이드레이션 전에 반드시 받아야 하는
+ * 진짜 임계 경로다. 비활성 탭이 초기 청크로 다시 합쳐지면 여기서 즉시 잡힌다.
  */
-test.describe('결과 화면 JS 번들 예산 (컨설턴트)', () => {
-  test(`로드맵 결과 화면 초기 JS 가 ${Math.round(RESULT_PAGE_JS_MAX_BYTES / 1024)}KB 미만이어야 한다`, async ({
+test.describe('결과 화면 임계 경로 JS 예산 (컨설턴트)', () => {
+  test(`로드맵 결과 화면 임계 경로 JS 가 ${Math.round(RESULT_PAGE_JS_MAX_BYTES / 1024)}KB 미만이어야 한다`, async ({
     consultantPage,
   }) => {
-    // 유휴 시점 프리페치가 나머지 탭 청크를 받아오기 전의 "초기 진입" 상태를 재야 하므로
-    // networkidle 대신 domcontentloaded 로 멈춘다.
-    await consultantPage.goto(ROADMAP_RESULT_PATH, { waitUntil: 'domcontentloaded' });
+    const response = await consultantPage.goto(ROADMAP_RESULT_PATH, {
+      waitUntil: 'domcontentloaded',
+    });
+    const html = (await response?.text()) ?? '';
 
-    // 결과 화면이 실제로 렌더됐는지 먼저 확인 — 리다이렉트·빈 상태를 재고 통과하는 것을 막는다.
+    // 결과 화면이 실제로 렌더됐는지 확인 — 리다이렉트·빈 상태를 재고 통과하는 것을 막는다.
     await expect(consultantPage.getByRole('tab', { name: 'Ⅰ. 개요' })).toBeVisible({
       timeout: 15_000,
     });
 
-    const totalBytes = await consultantPage.evaluate(() =>
-      (performance.getEntriesByType('resource') as PerformanceResourceTiming[])
+    // 초기 HTML 의 <script src="..."> 목록 (빌드 결정적)
+    const criticalPaths = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)]
+      .map((m) => m[1])
+      .filter((src) => /\.(m?js|cjs)$/.test(src.split('?')[0]));
+
+    expect(criticalPaths.length, '초기 HTML 에서 script 태그를 찾지 못했습니다').toBeGreaterThan(0);
+
+    const { totalBytes, matched } = await consultantPage.evaluate((paths: string[]) => {
+      const wanted = new Set(paths.map((p) => p.split('?')[0]));
+      const entries = (performance.getEntriesByType('resource') as PerformanceResourceTiming[])
         .filter((r) => {
           try {
-            return /\.(m?js|cjs)$/.test(new URL(r.name).pathname);
+            return wanted.has(new URL(r.name).pathname);
           } catch {
             return false;
           }
         })
-        .reduce((sum, r) => sum + r.transferSize, 0)
+        .filter((r) => r.transferSize > 0);
+      return {
+        totalBytes: entries.reduce((sum, r) => sum + r.transferSize, 0),
+        matched: entries.length,
+      };
+    }, criticalPaths);
+
+    console.log(
+      `[컨설턴트/로드맵 결과] 임계 경로 JS: ${(totalBytes / 1024).toFixed(1)}KB ` +
+        `(HTML script ${criticalPaths.length}개 중 ${matched}개 측정)`
     );
 
-    console.log(`[컨설턴트/로드맵 결과] JS 총 크기: ${(totalBytes / 1024).toFixed(1)}KB`);
+    // 캐시 히트 등으로 transferSize 가 0 이면 합계가 과소 집계돼 게이트가 공허해진다.
+    expect(matched, '초기 HTML 의 script 중 실제로 측정된 것이 없습니다').toBeGreaterThan(0);
+
     expect(
       totalBytes,
-      `로드맵 결과 화면 JS(${(totalBytes / 1024).toFixed(1)}KB)가 예산(${Math.round(
+      `로드맵 결과 화면 임계 경로 JS(${(totalBytes / 1024).toFixed(1)}KB)가 예산(${Math.round(
         RESULT_PAGE_JS_MAX_BYTES / 1024
-      )}KB)을 초과합니다`
+      )}KB)을 초과합니다. 비활성 탭이 초기 청크로 합쳐지지 않았는지 확인하세요.`
     ).toBeLessThan(RESULT_PAGE_JS_MAX_BYTES);
   });
 });
