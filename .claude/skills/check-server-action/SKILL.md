@@ -15,8 +15,8 @@ $ARGUMENTS Server Action 파일을 검사하세요.
 
 아래 5단계를 모두 따르는지 확인:
 
-1. **세션 확인** - `createClient()` (`@/lib/supabase/server`) 후 `supabase.auth.getUser()` 호출
-2. **역할 권한 검사** - users 테이블에서 role 조회 후 허용 역할 체크 (아래 3가지 패턴)
+1. **세션 확인** - 표준은 `requireAuth`/`requireAuthWithRole`(`@/lib/actions/auth-helpers`)로 1·2단계를 일괄 처리 — 내부에서 `getCachedUser()`/`getCachedProfile()`을 써 추가 DB 조회가 없다. `createClient()` 후 `supabase.auth.getUser()` 직접 호출은 (auth) 인증 액션·export 액션 등 예외부에만 남아 있다
+2. **역할 권한 검사** - `requireAuthWithRole(allowedRoles)`는 역할과 함께 `status === 'ACTIVE'`까지 검사한다 (아래 3가지 패턴)
 3. **Zod 입력 검증** - `src/lib/schemas/`의 스키마로 `.safeParse()` 호출
 4. **비즈니스 로직** - admin 클라이언트(`createAdminClient()`, `@/lib/supabase/admin`)로 DB 작업
    - 중요 변경 작업 시 감사로그(`createAuditLog`, `@/lib/services/audit`) 권장
@@ -42,16 +42,17 @@ if (!currentUser || !isOpsManager(currentUser.role)) {
   return { success: false, error: '권한이 없습니다.' };
 }
 
-// 패턴 B: 컨설턴트 전용
-if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
+// 패턴 B: 컨설턴트 전용 — requireAuth 구조분해로 얻은 role 사용
+// (requireAuthWithRole(['CONSULTANT_APPROVED'], { roleError: ... }) 한 줄로도 동일)
+if (role !== 'CONSULTANT_APPROVED') {
   return { success: false, error: '컨설턴트만 접근 가능합니다.' };
 }
 // 단순 역할 게이트가 아니라 배정 검증까지 필요하면 아래 requireConsultantProjectAccess로 이어진다
 
 // 패턴 C: 복합 (컨설턴트 + 관리자 모두 허용)
-if (profile.role === 'CONSULTANT_APPROVED') {
+if (role === 'CONSULTANT_APPROVED') {
   // 컨설턴트 로직 (프로젝트 배정 검증 포함)
-} else if (!isOpsManager(profile.role)) {
+} else if (!isOpsManager(role)) {
   return { success: false, error: '권한이 없습니다.' };
 }
 ```
@@ -88,20 +89,26 @@ if (!canAccessProjectArtifact(role, project.assigned_consultant_id, user.id)) {
 
 ### 표준 인가 헬퍼 한눈표
 
-| 헬퍼                                                                         | 위치                         | 반환형                                                 | 결과 검사 관용구                                       |
-| ---------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------ | ------------------------------------------------------ |
-| `OPS_MANAGER_ROLES`                                                          | `@/lib/constants/status`     | `readonly UserRole[]` (`['OPS_ADMIN','SYSTEM_ADMIN']`) | — (배열 상수)                                          |
-| `isOpsManager(role)`                                                         | `@/lib/constants/status`     | `boolean`                                              | `isOpsManager(role)` (인자는 non-null `UserRole`)      |
-| `requireAuthWithRole(allowedRoles, options?)`                                | `@/lib/actions/auth-helpers` | `RoleSuccess \| AuthFailure`                           | `if ('error' in auth) return …`                        |
-| `requireConsultantProjectAccess(supabase, userId, projectId, errorMessage?)` | `@/lib/actions/auth-helpers` | `true \| AuthFailure`                                  | `if (accessCheck !== true) return …`                   |
-| `requireConsultantRoadmapAccess(supabase, userId, roadmapId)`                | `@/lib/actions/auth-helpers` | `{ projectId } \| AuthFailure`                         | `if ('error' in access) return …` → `access.projectId` |
-| `canAccessProjectArtifact(role, assignedConsultantId, userId)`               | `@/lib/actions/auth-helpers` | `boolean` (순수, DB 조회 없음)                         | `if (!canAccessProjectArtifact(...)) return …`         |
+| 헬퍼                                                                                   | 위치                         | 반환형                                                 | 결과 검사 관용구                                                 |
+| -------------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------- |
+| `OPS_MANAGER_ROLES`                                                                    | `@/lib/constants/status`     | `readonly UserRole[]` (`['OPS_ADMIN','SYSTEM_ADMIN']`) | — (배열 상수)                                                    |
+| `isOpsManager(role)`                                                                   | `@/lib/constants/status`     | `boolean`                                              | `isOpsManager(role)` (인자는 non-null `UserRole`)                |
+| `requireAuth(authError?)`                                                              | `@/lib/actions/auth-helpers` | `AuthSuccess \| AuthFailure`                           | `if ('error' in auth) return …` (role은 `UserRole \| null`)      |
+| `requireAuthWithRole(allowedRoles, options?)`                                          | `@/lib/actions/auth-helpers` | `RoleSuccess \| AuthFailure`                           | `if ('error' in auth) return …` (`status === 'ACTIVE'`까지 검사) |
+| `requireConsultantProjectAccess(supabase, userId, projectId, errorMessage?, options?)` | `@/lib/actions/auth-helpers` | `true \| AuthFailure`                                  | `if (accessCheck !== true) return …`                             |
+| `requireConsultantRoadmapAccess(supabase, userId, roadmapId, options?)`                | `@/lib/actions/auth-helpers` | `{ projectId } \| AuthFailure`                         | `if ('error' in access) return …` → `access.projectId`           |
+| `canAccessProjectArtifact(role, assignedConsultantId, userId)`                         | `@/lib/actions/auth-helpers` | `boolean` (순수, DB 조회 없음)                         | `if (!canAccessProjectArtifact(...)) return …`                   |
+
+행정 종결(`projects.closed_at`) 게이트 — 차단 시 오류 메시지는 `PROJECT_CLOSED_ERROR`(`@/lib/actions/auth-helpers`). 두 헬퍼의 기본 동작이 **반대**이니 주의:
+
+- `requireConsultantRoadmapAccess`는 **기본 차단**(mutation 게이트웨이) — 열람·내보내기 경로만 `{ allowClosed: true }`로 명시 허용
+- `requireConsultantProjectAccess`는 **기본 미판정**(저수준·열람 호환) — mutation 호출부가 `{ blockClosed: true }`로 명시 차단
 
 ---
 
 ## 인증(auth) 함수 예외
 
-`(auth)/actions.ts`의 다음 함수들은 5단계 패턴의 예외:
+`(auth)/actions/` 디렉터리(`auth.ts`·`profile.ts`)의 다음 함수들은 5단계 패턴의 예외:
 
 | 함수                    | 예외 사항                                                  |
 | ----------------------- | ---------------------------------------------------------- |
@@ -116,7 +123,7 @@ if (!canAccessProjectArtifact(role, project.assigned_consultant_id, user.id)) {
 
 조회 함수는 변경 함수와 패턴이 다름:
 
-- **세션 확인** 필수 (`createClient` 사용, admin 클라이언트 불필요)
+- **세션 확인** 필수 (`requireAuth` 계열 권장, admin 클라이언트 불필요)
 - **역할 검사** 선택 (RLS가 데이터 접근 제한)
 - **Zod 검증** 선택 (쿼리 파라미터가 단순하면 생략 가능)
 - **감사로그** 불필요
@@ -136,8 +143,7 @@ if (!canAccessProjectArtifact(role, project.assigned_consultant_id, user.id)) {
 
 **기존 코드 참고:**
 
-- 다수의 기존 파일이 ActionResult를 로컬 재정의하여 사용 중
-- 점진적으로 공통 타입으로 마이그레이션 예정
+- ActionResult 로컬 재정의는 공통 타입으로 마이그레이션 완료(잔존 0건) — 새 로컬 재정의를 만들지 말 것
 
 ---
 
