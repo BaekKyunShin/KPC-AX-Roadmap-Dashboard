@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, Loader2, Plus } from 'lucide-react';
 
@@ -30,11 +31,27 @@ import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
 import { PBL_ELIGIBLE_STATUSES } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
 
-import { TabPBLOverview } from './TabPBLOverview';
-import { TabPBLAnalysis } from './TabPBLAnalysis';
-import { TabPBLTasks } from './TabPBLTasks';
-import { TabPBLOps } from './TabPBLOps';
+import { ResultTabContentSkeleton } from '@/components/ui/Skeleton';
 import type { PBLResultEditPayload, ResultPBLInterviewSnapshot } from './types';
+
+// 탭 본문 4종 코드 분할 — 한 번에 한 탭만 보이는데 전 탭 코드가 초기 청크에 들어 있었다.
+// `ssr: false` 는 쓰지 않는다 (첫 화면 탭이 서버 HTML 에서 빠져 스켈레톤이 번쩍인다).
+// 탭 전환이 지금처럼 즉시 이뤄지도록 마운트 직후 유휴 시점에 나머지를 프리페치한다(아래 useEffect).
+const TabPBLOverview = dynamic(
+  () => import('./TabPBLOverview').then((m) => ({ default: m.TabPBLOverview })),
+  { loading: () => <ResultTabContentSkeleton /> }
+);
+const TabPBLAnalysis = dynamic(
+  () => import('./TabPBLAnalysis').then((m) => ({ default: m.TabPBLAnalysis })),
+  { loading: () => <ResultTabContentSkeleton /> }
+);
+const TabPBLTasks = dynamic(
+  () => import('./TabPBLTasks').then((m) => ({ default: m.TabPBLTasks })),
+  { loading: () => <ResultTabContentSkeleton /> }
+);
+const TabPBLOps = dynamic(() => import('./TabPBLOps').then((m) => ({ default: m.TabPBLOps })), {
+  loading: () => <ResultTabContentSkeleton />,
+});
 import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 
 /**
@@ -169,6 +186,25 @@ export function PBLResultClient({
     });
     return () => cancelAnimationFrame(rafId);
   }, [isRegenerateRequested, router, pathname]);
+
+  // 첫 화면(Ⅰ. 개요)이 그려진 뒤 유휴 시점에 나머지 탭 청크를 미리 받아둔다.
+  // 초기 로딩은 가벼워지고 탭 전환·"전체 펼치기"는 종전처럼 즉시 이뤄진다 —
+  // 이미 로드된 모듈은 dynamic 이 서스펜드 없이 해결하므로 스켈레톤이 뜨지 않는다.
+  useEffect(() => {
+    const prefetch = () => {
+      void import('./TabPBLAnalysis');
+      void import('./TabPBLTasks');
+      void import('./TabPBLOps');
+    };
+
+    if (typeof window.requestIdleCallback !== 'function') {
+      const timeoutId = window.setTimeout(prefetch, 200);
+      return () => window.clearTimeout(timeoutId);
+    }
+
+    const handle = window.requestIdleCallback(prefetch, { timeout: 2000 });
+    return () => window.cancelIdleCallback(handle);
+  }, []);
 
   const capabilities = useMemo(() => ROLE_CAPABILITIES[role], [role]);
 
