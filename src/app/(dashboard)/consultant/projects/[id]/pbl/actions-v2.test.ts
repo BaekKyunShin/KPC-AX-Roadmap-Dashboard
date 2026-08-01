@@ -675,7 +675,7 @@ describe('editPBLV2', () => {
 // ============================================================================
 // editPBLV2 병합 특성화 — P4 리팩터 동작 보존 안전망
 // ----------------------------------------------------------------------------
-// trainingEnv(16필드)·problemDefinitionSheet(4필드) 인라인 병합부를 순수 헬퍼로
+// trainingEnv(15필드)·problemDefinitionSheet(4필드) 인라인 병합부를 순수 헬퍼로
 // 추출하기 전에 "현재 동작"을 박제한다. 기존 editPBLV2 테스트가 다루지 않는
 // 발산 케이스 — nullish 시맨틱(explicit undefined/null vs 키 부재 vs 빈 문자열),
 // nested 객체 통째교체 후 스키마 default 리셋, 하류 safeParse 의 구체 에러 메시지

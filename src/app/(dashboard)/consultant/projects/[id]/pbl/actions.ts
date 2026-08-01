@@ -1074,7 +1074,7 @@ export async function editPBLV2(
         ? { organization: patch.organization as PBLInterviewStrict['organization'] }
         : {}),
       // R8 PBL-자체-02 — Partial<PBLTrainingEnv> 를 기존 객체와 병합.
-      // 16 필드 default 는 스키마(.default()) 단일 출처 — 부분 병합 결과(Partial)는
+      // 15 필드 default 는 스키마(.default()) 단일 출처 — 부분 병합 결과(Partial)는
       // 아래 PBLInterviewSchema.partial().safeParse 가 누락 필드를 충전·검증한다.
       ...(patch.trainingEnv !== undefined
         ? {
