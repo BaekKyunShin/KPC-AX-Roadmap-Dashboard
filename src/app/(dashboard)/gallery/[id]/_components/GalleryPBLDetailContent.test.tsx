@@ -5,8 +5,6 @@ import { vi } from 'vitest';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 // 탭 본문 5종은 각각 자체 테스트가 있으므로 여기서는 "어느 탭이 렌더됐는지"만 본다.
-// 코드 분할(next/dynamic) 도입 후에도 이 mock 은 그대로 동작한다 —
-// vi.mock 이 모듈 해석을 가로채므로 dynamic import 도 같은 가짜를 받는다.
 
 vi.mock('@/components/gallery/LikeButton', () => ({
   LikeButton: ({ initialCount }: { initialCount: number }) => (

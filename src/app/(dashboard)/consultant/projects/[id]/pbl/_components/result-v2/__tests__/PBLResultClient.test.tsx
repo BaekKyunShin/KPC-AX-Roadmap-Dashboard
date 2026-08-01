@@ -473,8 +473,8 @@ describe('PBLResultClient — OPS role', () => {
         onDownload={vi.fn()}
       />
     );
-    // 탭 본문은 코드 분할(next/dynamic)돼 있어 첫 렌더가 스켈레톤이다.
     // 본문이 실제로 렌더된 뒤에 단언해야 "편집 불가"가 공허하게 참이 되지 않는다.
+    // (이 앵커가 없으면 탭 본문이 아예 없어도 아래 단언이 통과한다.)
     expect(await screen.findByText('Ⅰ. 훈련과정 개요')).toBeInTheDocument();
 
     // InlineEditField 는 readOnly 일 때 role="button"·tabIndex 를 부여하지 않는다
