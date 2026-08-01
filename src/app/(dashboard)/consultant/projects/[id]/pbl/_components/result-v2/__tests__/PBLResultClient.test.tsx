@@ -459,7 +459,7 @@ describe('PBLResultClient — OPS role', () => {
     expect(screen.queryByRole('button', { name: /새 버전 생성/ })).toBeNull();
   });
 
-  it('role="OPS" 일 때 DRAFT 상태에서도 InlineEditField 가 편집 가능 상태가 아니다 (readOnly)', () => {
+  it('role="OPS" 일 때 DRAFT 상태에서도 InlineEditField 가 편집 가능 상태가 아니다 (readOnly)', async () => {
     const { container } = render(
       <PBLResultClient
         role="OPS"
@@ -473,9 +473,34 @@ describe('PBLResultClient — OPS role', () => {
         onDownload={vi.fn()}
       />
     );
-    // InlineEditField 의 편집 아이콘(연필 버튼) 이 Ops 에는 전혀 없어야 함
-    const editButtons = container.querySelectorAll('button[aria-label*="편집"]');
-    expect(editButtons.length).toBe(0);
+    // 탭 본문은 코드 분할(next/dynamic)돼 있어 첫 렌더가 스켈레톤이다.
+    // 본문이 실제로 렌더된 뒤에 단언해야 "편집 불가"가 공허하게 참이 되지 않는다.
+    expect(await screen.findByText('Ⅰ. 훈련과정 개요')).toBeInTheDocument();
+
+    // InlineEditField 는 readOnly 일 때 role="button"·tabIndex 를 부여하지 않는다
+    // (InlineEditField.tsx:209-222). Ops 에는 편집 가능한 필드가 하나도 없어야 한다.
+    const editableFields = container.querySelectorAll('[data-saving-state][role="button"]');
+    expect(editableFields.length).toBe(0);
+  });
+
+  it('role="CONSULTANT" + DRAFT 에서는 InlineEditField 가 편집 가능하다 (위 readOnly 단언의 대조군)', async () => {
+    const { container } = render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />
+    );
+    expect(await screen.findByText('Ⅰ. 훈련과정 개요')).toBeInTheDocument();
+
+    const editableFields = container.querySelectorAll('[data-saving-state][role="button"]');
+    expect(editableFields.length).toBeGreaterThan(0);
   });
 
   it('role="OPS" 일 때 isGenerating=true 여도 LoadingOverlay 가 렌더되지 않는다', () => {
