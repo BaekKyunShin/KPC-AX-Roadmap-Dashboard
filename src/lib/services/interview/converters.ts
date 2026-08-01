@@ -596,7 +596,7 @@ function stripNullish<T extends object>(obj: T): Partial<T> {
 /**
  * PBL 훈련환경(trainingEnv) 부분 병합 — `current` 위에 `patch` 의 비-nullish 키만 덮는다.
  *
- * 16 필드의 하드코딩 기본값을 두지 않는다(스키마 `.default()` 와의 이중정의 제거).
+ * 15 필드의 하드코딩 기본값을 두지 않는다(스키마 `.default()` 와의 이중정의 제거).
  * 누락 필드의 default 충전·값 검증은 호출부의 `PBLInterviewSchema.partial().safeParse`
  * 가 단일 출처로 담당한다. nested 객체(aiInfraDetail·targetCharacteristics 등)는
  * 비재귀 통째 교체이며(deepMerge 아님), patch 가 키를 omit/undefined/null 로 두면
