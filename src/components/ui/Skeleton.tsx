@@ -846,27 +846,6 @@ export function CardSkeleton() {
   );
 }
 
-/**
- * 결과 화면(로드맵·PBL·갤러리) 탭 본문 스켈레톤.
- *
- * 탭 본문은 `next/dynamic` 으로 코드 분할돼 있다. 각 클라이언트가 마운트 직후
- * 유휴 시점에 나머지 탭 청크를 프리페치하므로 실사용에서는 거의 보이지 않고,
- * 프리페치가 끝나기 전에 탭을 누른 경우에만 잠깐 나타난다.
- */
-export function ResultTabContentSkeleton() {
-  return (
-    <div className="space-y-4" aria-hidden="true">
-      <SkeletonBar height="h-6" width="w-40" />
-      <div className="space-y-3">
-        <SkeletonBar height="h-4" width="w-full" />
-        <SkeletonBar height="h-4" width="w-11/12" />
-        <SkeletonBar height="h-4" width="w-4/5" />
-      </div>
-      <SkeletonBar height="h-40" width="w-full" />
-    </div>
-  );
-}
-
 /** 상세 페이지 스켈레톤 */
 export function DetailPageSkeleton() {
   return (

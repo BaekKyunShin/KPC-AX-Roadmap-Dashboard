@@ -1,10 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LikeButton } from '@/components/gallery/LikeButton';
-import { ResultTabContentSkeleton } from '@/components/ui/Skeleton';
+// ⚠️ 탭 본문을 `next/dynamic` 으로 코드 분할하지 말 것 — 근거는 RoadmapResultClient 상단 주석
+//    및 `docs/decisions/2026-08-01-result-tabs-no-code-split.md` (#164 시도 → #167 원복).
+import { PBLOverview } from '@/components/pbl/PBLOverview';
+import { PBLTrainingTargets } from '@/components/pbl/PBLTrainingTargets';
+import { PBLToolUsagePlan } from '@/components/pbl/PBLToolUsagePlan';
+import { PBLTrainingPlan } from '@/components/pbl/PBLTrainingPlan';
+import { PBLEvaluationPlan } from '@/components/pbl/PBLEvaluationPlan';
 import { Copy } from 'lucide-react';
 import type { PBLReportDetailView } from '../../actions';
 import type {
@@ -21,37 +26,6 @@ import type { AILevel, TrainingGoal } from '@/lib/schemas/interview-pbl';
 //   - 모든 PBL 컴포넌트 canEdit=false
 //   - onChange는 noop
 // ============================================================================
-
-// 탭 본문 5종 코드 분할 — 한 번에 한 탭만 보이는데 전 탭 코드가 초기 청크에 들어 있었다.
-// `ssr: false` 는 쓰지 않는다 (첫 화면 탭이 서버 HTML 에서 빠져 스켈레톤이 번쩍인다).
-// 탭 전환이 지금처럼 즉시 이뤄지도록 마운트 직후 유휴 시점에 나머지를 프리페치한다(아래 useEffect).
-const PBLOverview = dynamic(
-  () => import('@/components/pbl/PBLOverview').then((m) => ({ default: m.PBLOverview })),
-  { loading: () => <ResultTabContentSkeleton /> }
-);
-const PBLTrainingTargets = dynamic(
-  () =>
-    import('@/components/pbl/PBLTrainingTargets').then((m) => ({
-      default: m.PBLTrainingTargets,
-    })),
-  { loading: () => <ResultTabContentSkeleton /> }
-);
-const PBLToolUsagePlan = dynamic(
-  () => import('@/components/pbl/PBLToolUsagePlan').then((m) => ({ default: m.PBLToolUsagePlan })),
-  { loading: () => <ResultTabContentSkeleton /> }
-);
-// 타입은 `PBLTrainingPlanT` / `PBLEvaluationPlanT` 로 alias 돼 있어 컴포넌트명과 충돌하지 않는다.
-const PBLTrainingPlan = dynamic(
-  () => import('@/components/pbl/PBLTrainingPlan').then((m) => ({ default: m.PBLTrainingPlan })),
-  { loading: () => <ResultTabContentSkeleton /> }
-);
-const PBLEvaluationPlan = dynamic(
-  () =>
-    import('@/components/pbl/PBLEvaluationPlan').then((m) => ({
-      default: m.PBLEvaluationPlan,
-    })),
-  { loading: () => <ResultTabContentSkeleton /> }
-);
 
 const TAB_KEYS = [
   { key: 'overview', label: 'Ⅰ 개요' },
@@ -72,26 +46,6 @@ interface GalleryPBLDetailContentProps {
 
 export function GalleryPBLDetailContent({ detail, isConsultant }: GalleryPBLDetailContentProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
-
-  // 첫 화면(Ⅰ 개요)이 그려진 뒤 유휴 시점에 나머지 탭 청크를 미리 받아둔다.
-  // 초기 로딩은 가벼워지고 탭 전환은 종전처럼 즉시 이뤄진다 —
-  // 이미 로드된 모듈은 dynamic 이 서스펜드 없이 해결하므로 스켈레톤이 뜨지 않는다.
-  useEffect(() => {
-    const prefetch = () => {
-      void import('@/components/pbl/PBLTrainingTargets');
-      void import('@/components/pbl/PBLToolUsagePlan');
-      void import('@/components/pbl/PBLTrainingPlan');
-      void import('@/components/pbl/PBLEvaluationPlan');
-    };
-
-    if (typeof window.requestIdleCallback !== 'function') {
-      const timeoutId = window.setTimeout(prefetch, 200);
-      return () => window.clearTimeout(timeoutId);
-    }
-
-    const handle = window.requestIdleCallback(prefetch, { timeout: 2000 });
-    return () => window.cancelIdleCallback(handle);
-  }, []);
 
   // pbl_content JSONB → 구조화된 타입
   const content = (detail.pblContent ?? {}) as Partial<PBLContent> & {
