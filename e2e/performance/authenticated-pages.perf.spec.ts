@@ -2,15 +2,38 @@
 import { type Page } from '@playwright/test';
 import { test, expect } from '../fixtures/auth.fixture';
 
-/** 인증 페이지 성능 임계값 (서버 사이드 인증 처리로 공개 페이지보다 넉넉하게 설정) */
+/**
+ * 인증 페이지 성능 임계값.
+ *
+ * 2026-08-01 서울 리전 이전(#159·#160) 후 CI 실측 4런을 기준으로 조였다.
+ * 이전 값(LCP 6000 / TTFB 2000)은 실측의 20배라 어떤 회귀도 잡지 못했다.
+ * 완화할 때는 반드시 CI 로그의 실측값을 근거로 남길 것.
+ */
 const THRESHOLDS = {
-  /** LCP 최대 허용 시간 (ms) — CI 환경 반영 */
-  LCP_MAX_MS: 6000,
-  /** TTFB 최대 허용 시간 (ms) — 인증 처리 포함으로 공개 페이지보다 넉넉하게 (CI 환경 인증 처리 지연 반영) */
-  TTFB_MAX_MS: 2000,
-  /** CLS (Cumulative Layout Shift) 최대 허용값 — Google 권장 0.1 이하 */
-  CLS_MAX: 0.1,
+  /** LCP 최대 허용 시간 (ms) — 실측 최대 348ms 대비 약 4배 */
+  LCP_MAX_MS: 1500,
+  /** TTFB 최대 허용 시간 (ms) — 실측 최대 113ms(인증 처리 포함) 대비 약 7배 */
+  TTFB_MAX_MS: 800,
+  /** CLS 최대 허용값 — 실측 최대 0.0022 대비 20배 이상. Google 권장(0.1)보다 엄격 */
+  CLS_MAX: 0.05,
 } as const;
+
+/**
+ * 결과 화면 JS 예산 (bytes).
+ *
+ * 탭 코드 분할(#164)의 성과를 CI 로 고정하기 위한 게이트.
+ * 분할 전에는 로드맵·PBL·갤러리 결과 화면이 어떤 예산에도 잡히지 않았다.
+ * 값은 첫 CI 실측을 보고 확정한다(아래 TODO).
+ */
+// TODO(2026-08-01): 첫 CI 런의 `[컨설턴트/로드맵 결과] JS 총 크기` 로그를 보고 실측 +10% 로 확정할 것.
+const RESULT_PAGE_JS_MAX_BYTES = 819_200;
+
+/**
+ * 시드기업D 의 로드맵 결과 화면 경로.
+ * `supabase/seed.sql` 이 FINALIZED·ROADMAP 프로젝트(고정 UUID)와 FINAL 로드맵 버전을
+ * 시드 컨설턴트에게 배정해 두므로, 조건 분기·스킵 없이 결과 3탭이 렌더된다.
+ */
+const ROADMAP_RESULT_PATH = '/consultant/projects/dddddddd-dddd-dddd-dddd-dddddddddddd/roadmap';
 
 /** Navigation Timing API에서 TTFB를 계산합니다. */
 async function measureTTFB(page: Page): Promise<number> {
@@ -72,7 +95,9 @@ async function getLCP(page: Page): Promise<number> {
         if (!resolved) {
           resolved = true;
           observer.disconnect();
-          const fcp = performance.getEntriesByName('first-contentful-paint')[0] as PerformancePaintTiming | undefined;
+          const fcp = performance.getEntriesByName('first-contentful-paint')[0] as
+            | PerformancePaintTiming
+            | undefined;
           resolve(fcp ? fcp.startTime : -1);
         }
       }, 5000);
@@ -99,7 +124,7 @@ test.describe('인증 페이지 성능 측정 (운영관리자)', () => {
         console.log(`[운영관리자/${이름}] TTFB: ${ttfb.toFixed(1)}ms`);
         expect(
           ttfb,
-          `${이름} TTFB(${ttfb.toFixed(1)}ms)가 임계값(${THRESHOLDS.TTFB_MAX_MS}ms)을 초과합니다`,
+          `${이름} TTFB(${ttfb.toFixed(1)}ms)가 임계값(${THRESHOLDS.TTFB_MAX_MS}ms)을 초과합니다`
         ).toBeLessThan(THRESHOLDS.TTFB_MAX_MS);
       });
 
@@ -115,7 +140,7 @@ test.describe('인증 페이지 성능 측정 (운영관리자)', () => {
         }
         expect(
           lcp,
-          `${이름} LCP(${lcp.toFixed(1)}ms)가 임계값(${THRESHOLDS.LCP_MAX_MS}ms)을 초과합니다`,
+          `${이름} LCP(${lcp.toFixed(1)}ms)가 임계값(${THRESHOLDS.LCP_MAX_MS}ms)을 초과합니다`
         ).toBeLessThan(THRESHOLDS.LCP_MAX_MS);
       });
 
@@ -127,7 +152,7 @@ test.describe('인증 페이지 성능 측정 (운영관리자)', () => {
         console.log(`[운영관리자/${이름}] CLS: ${cls.toFixed(4)}`);
         expect(
           cls,
-          `${이름} CLS(${cls.toFixed(4)})가 임계값(${THRESHOLDS.CLS_MAX})을 초과합니다`,
+          `${이름} CLS(${cls.toFixed(4)})가 임계값(${THRESHOLDS.CLS_MAX})을 초과합니다`
         ).toBeLessThan(THRESHOLDS.CLS_MAX);
       });
     });
@@ -138,6 +163,9 @@ test.describe('인증 페이지 성능 측정 (운영관리자)', () => {
 test.describe('인증 페이지 성능 측정 (컨설턴트)', () => {
   const consultant_페이지_목록 = [
     { 경로: '/consultant/home', 이름: '컨설턴트 홈' },
+    // 탭 코드 분할(#164) 대상 화면. 시드기업D(FINALIZED·ROADMAP, 확정 로드맵 보유)는
+    // 고정 UUID 라 CI 에서 조건 없이 도달한다 (supabase/seed.sql).
+    { 경로: `${ROADMAP_RESULT_PATH}`, 이름: '로드맵 결과' },
   ] as const;
 
   for (const { 경로, 이름 } of consultant_페이지_목록) {
@@ -151,7 +179,7 @@ test.describe('인증 페이지 성능 측정 (컨설턴트)', () => {
         console.log(`[컨설턴트/${이름}] TTFB: ${ttfb.toFixed(1)}ms`);
         expect(
           ttfb,
-          `${이름} TTFB(${ttfb.toFixed(1)}ms)가 임계값(${THRESHOLDS.TTFB_MAX_MS}ms)을 초과합니다`,
+          `${이름} TTFB(${ttfb.toFixed(1)}ms)가 임계값(${THRESHOLDS.TTFB_MAX_MS}ms)을 초과합니다`
         ).toBeLessThan(THRESHOLDS.TTFB_MAX_MS);
       });
 
@@ -167,7 +195,7 @@ test.describe('인증 페이지 성능 측정 (컨설턴트)', () => {
         }
         expect(
           lcp,
-          `${이름} LCP(${lcp.toFixed(1)}ms)가 임계값(${THRESHOLDS.LCP_MAX_MS}ms)을 초과합니다`,
+          `${이름} LCP(${lcp.toFixed(1)}ms)가 임계값(${THRESHOLDS.LCP_MAX_MS}ms)을 초과합니다`
         ).toBeLessThan(THRESHOLDS.LCP_MAX_MS);
       });
 
@@ -179,9 +207,52 @@ test.describe('인증 페이지 성능 측정 (컨설턴트)', () => {
         console.log(`[컨설턴트/${이름}] CLS: ${cls.toFixed(4)}`);
         expect(
           cls,
-          `${이름} CLS(${cls.toFixed(4)})가 임계값(${THRESHOLDS.CLS_MAX})을 초과합니다`,
+          `${이름} CLS(${cls.toFixed(4)})가 임계값(${THRESHOLDS.CLS_MAX})을 초과합니다`
         ).toBeLessThan(THRESHOLDS.CLS_MAX);
       });
     });
   }
+});
+
+/**
+ * 결과 화면 JS 번들 예산.
+ *
+ * `bundle-budget.perf.spec.ts` 는 공개 페이지(`/`, `/login`)만 재기 때문에
+ * 탭 코드 분할(#164)이 줄인 화면은 어떤 예산에도 걸리지 않았다. 여기서 막는다.
+ * 초기 진입 시점(Ⅰ 개요 탭만 렌더)의 JS 를 재므로, 나머지 탭이 다시 초기 청크로
+ * 합쳐지면 이 게이트가 깨진다.
+ */
+test.describe('결과 화면 JS 번들 예산 (컨설턴트)', () => {
+  test(`로드맵 결과 화면 초기 JS 가 ${Math.round(RESULT_PAGE_JS_MAX_BYTES / 1024)}KB 미만이어야 한다`, async ({
+    consultantPage,
+  }) => {
+    // 유휴 시점 프리페치가 나머지 탭 청크를 받아오기 전의 "초기 진입" 상태를 재야 하므로
+    // networkidle 대신 domcontentloaded 로 멈춘다.
+    await consultantPage.goto(ROADMAP_RESULT_PATH, { waitUntil: 'domcontentloaded' });
+
+    // 결과 화면이 실제로 렌더됐는지 먼저 확인 — 리다이렉트·빈 상태를 재고 통과하는 것을 막는다.
+    await expect(consultantPage.getByRole('tab', { name: 'Ⅰ. 개요' })).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const totalBytes = await consultantPage.evaluate(() =>
+      (performance.getEntriesByType('resource') as PerformanceResourceTiming[])
+        .filter((r) => {
+          try {
+            return /\.(m?js|cjs)$/.test(new URL(r.name).pathname);
+          } catch {
+            return false;
+          }
+        })
+        .reduce((sum, r) => sum + r.transferSize, 0)
+    );
+
+    console.log(`[컨설턴트/로드맵 결과] JS 총 크기: ${(totalBytes / 1024).toFixed(1)}KB`);
+    expect(
+      totalBytes,
+      `로드맵 결과 화면 JS(${(totalBytes / 1024).toFixed(1)}KB)가 예산(${Math.round(
+        RESULT_PAGE_JS_MAX_BYTES / 1024
+      )}KB)을 초과합니다`
+    ).toBeLessThan(RESULT_PAGE_JS_MAX_BYTES);
+  });
 });

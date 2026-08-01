@@ -1,16 +1,22 @@
 // e2e/performance/public-pages.perf.spec.ts
 import { test, expect, type Page } from '@playwright/test';
 
-/** 공개 페이지 성능 임계값 */
+/**
+ * 공개 페이지 성능 임계값.
+ *
+ * 2026-08-01 서울 리전 이전(#159·#160) 후 CI 실측 4런을 기준으로 조였다.
+ * 완화할 때는 반드시 CI 로그의 실측값을 근거로 남길 것 —
+ * 근거 없는 완화는 회귀를 조용히 통과시킨다.
+ */
 const THRESHOLDS = {
-  /** LCP (Largest Contentful Paint) 최대 허용 시간 (ms) */
-  LCP_MAX_MS: 3500,
-  /** TTFB (Time To First Byte) 최대 허용 시간 (ms) */
-  TTFB_MAX_MS: 1000,
-  /** 페이지당 JS 리소스 전체 transferSize 합계 최대값 (bytes) — 800KB — Next.js + Supabase + GSAP + Recharts 스택 반영 */
-  JS_BUNDLE_MAX_BYTES: 819_200,
-  /** CLS (Cumulative Layout Shift) 최대 허용값 — Google 권장 0.1 이하 */
-  CLS_MAX: 0.1,
+  /** LCP 최대 허용 시간 (ms) — 실측 최대 576ms(랜딩, GSAP 애니메이션 포함) 대비 약 3배 */
+  LCP_MAX_MS: 1800,
+  /** TTFB 최대 허용 시간 (ms) — 실측 최대 28ms 대비 10배 */
+  TTFB_MAX_MS: 300,
+  /** 페이지당 JS transferSize 합계 최대값 (bytes) — 540KB. 실측 503.6KB(랜딩) 대비 +7% */
+  JS_BUNDLE_MAX_BYTES: 552_960,
+  /** CLS 최대 허용값 — 실측 최대 0.0172(랜딩) 대비 약 3배. Google 권장(0.1)보다 엄격 */
+  CLS_MAX: 0.05,
 } as const;
 
 /** Navigation Timing API에서 TTFB를 계산합니다. */
@@ -54,7 +60,9 @@ async function getLCP(page: Page): Promise<number> {
           resolved = true;
           observer.disconnect();
           // 타임아웃 시 FCP로 대체
-          const fcp = performance.getEntriesByName('first-contentful-paint')[0] as PerformancePaintTiming | undefined;
+          const fcp = performance.getEntriesByName('first-contentful-paint')[0] as
+            | PerformancePaintTiming
+            | undefined;
           resolve(fcp ? fcp.startTime : -1);
         }
       }, 5000);
@@ -115,7 +123,7 @@ test.describe('공개 페이지 성능 측정', () => {
         console.log(`[${이름}] TTFB: ${ttfb.toFixed(1)}ms`);
         expect(
           ttfb,
-          `${이름} TTFB(${ttfb.toFixed(1)}ms)가 임계값(${THRESHOLDS.TTFB_MAX_MS}ms)을 초과합니다`,
+          `${이름} TTFB(${ttfb.toFixed(1)}ms)가 임계값(${THRESHOLDS.TTFB_MAX_MS}ms)을 초과합니다`
         ).toBeLessThan(THRESHOLDS.TTFB_MAX_MS);
       });
 
@@ -132,11 +140,13 @@ test.describe('공개 페이지 성능 측정', () => {
         }
         expect(
           lcp,
-          `${이름} LCP(${lcp.toFixed(1)}ms)가 임계값(${THRESHOLDS.LCP_MAX_MS}ms)을 초과합니다`,
+          `${이름} LCP(${lcp.toFixed(1)}ms)가 임계값(${THRESHOLDS.LCP_MAX_MS}ms)을 초과합니다`
         ).toBeLessThan(THRESHOLDS.LCP_MAX_MS);
       });
 
-      test(`JS 번들 총 크기가 ${THRESHOLDS.JS_BUNDLE_MAX_BYTES / 1024}KB 미만이어야 한다`, async ({ page }) => {
+      test(`JS 번들 총 크기가 ${THRESHOLDS.JS_BUNDLE_MAX_BYTES / 1024}KB 미만이어야 한다`, async ({
+        page,
+      }) => {
         await page.goto(경로, { waitUntil: 'networkidle' });
 
         const jsBundleBytes = await measureJSBundleSize(page);
@@ -145,7 +155,7 @@ test.describe('공개 페이지 성능 측정', () => {
         console.log(`[${이름}] JS 번들 크기: ${jsBundleKB}KB`);
         expect(
           jsBundleBytes,
-          `${이름} JS 번들(${jsBundleKB}KB)이 예산(${THRESHOLDS.JS_BUNDLE_MAX_BYTES / 1024}KB)을 초과합니다`,
+          `${이름} JS 번들(${jsBundleKB}KB)이 예산(${THRESHOLDS.JS_BUNDLE_MAX_BYTES / 1024}KB)을 초과합니다`
         ).toBeLessThan(THRESHOLDS.JS_BUNDLE_MAX_BYTES);
       });
 
@@ -157,7 +167,7 @@ test.describe('공개 페이지 성능 측정', () => {
         console.log(`[${이름}] CLS: ${cls.toFixed(4)}`);
         expect(
           cls,
-          `${이름} CLS(${cls.toFixed(4)})가 임계값(${THRESHOLDS.CLS_MAX})을 초과합니다`,
+          `${이름} CLS(${cls.toFixed(4)})가 임계값(${THRESHOLDS.CLS_MAX})을 초과합니다`
         ).toBeLessThan(THRESHOLDS.CLS_MAX);
       });
     });
