@@ -23,7 +23,7 @@ const eslintConfig = defineConfig([
       'no-console': 'off',
     },
   },
-  // 계층 경계: 기반 계층(src/lib)은 상위 계층(app 라우트)을 import 할 수 없다 (P7)
+  // 계층 경계: 기반 계층(src/lib)은 상위 계층(app 라우트·components·hooks)을 import 할 수 없다 (P7)
   {
     files: ['src/lib/**/*.{ts,tsx}'],
     rules: {
@@ -35,6 +35,11 @@ const eslintConfig = defineConfig([
               group: ['@/app/**'],
               message:
                 '기반 계층(src/lib)은 app 라우트를 import 할 수 없습니다. 라우트 전용 코드는 해당 라우트의 _components 로 옮기고, 공용 로직은 lib 안에서 해결하세요.',
+            },
+            {
+              group: ['@/components/**', '@/hooks/**'],
+              message:
+                '기반 계층(src/lib)은 공용 UI 계층(components·hooks)을 import 할 수 없습니다. 공유 상수·유틸은 src/lib 으로 내리세요.',
             },
           ],
         },
