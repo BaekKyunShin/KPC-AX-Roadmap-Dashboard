@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["bom1"],
   "functions": {
     "api/hwpx/*.py": {
       "runtime": "@vercel/python@6.31.0"
