@@ -161,6 +161,22 @@ IMPORTANT: Superpowers 플러그인 설치됨. 작업 전 관련 superpowers 스
 
 ## 문서
 
-`docs/` — `ARCHITECTURE.md`(다이어그램·데이터 흐름) · `RLS.md`(RLS 정책) · `DECISIONS.md`(ADR) · `CONSULTANT_PROFILE_SPEC.md` · `PERFORMANCE_BUDGET.md` · `PROJECT_OUTLINE.md`(초기 기획, 아카이브) · `references/`(HWPX 템플릿·로컬 개발) · `plans/` `reports/` `decisions/` `testing/`
+`docs/` — `ARCHITECTURE.md`(다이어그램·데이터 흐름) · `RLS.md`(RLS 정책) · `CONSULTANT_PROFILE_SPEC.md` · `PERFORMANCE_BUDGET.md` · `PROJECT_OUTLINE.md`(초기 기획, 아카이브) · `references/`(HWPX 템플릿·로컬 개발) · `plans/` `reports/` `testing/` · **결정 기록 2종은 아래 참조**
 
 **네이밍:** 상시 참조는 `UPPER_SNAKE_CASE.md`, 시점 기반 기획·설계는 `YYYY-MM-DD-kebab-case.md`.
+
+### 결정 기록(ADR) — 두 곳이 공존하니 구분할 것
+
+| 위치                             | 성격                                               | 쓰는 경우                                                                                     |
+| -------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `docs/DECISIONS.md`              | 번호순 누적 **카탈로그** (ADR-001~031, 건당 ~19줄) | 한 문단으로 요약되는 단순 결정. **결정·이유·재검토 조건**만 남기면 충분할 때                  |
+| `docs/decisions/YYYY-MM-DD-*.md` | 파일 1개 = 결정 1건 **심층 기록** (건당 50~120줄)  | 대안 비교·검증 결과·후속 작업·운영 교훈까지 남겨야 할 때. **2026-04 이후 신규 결정의 기본값** |
+
+**판단 기준:** 「나중에 이 결정을 되짚을 사람이 _왜 그렇게 했나_ 만 알면 되는가(→ `DECISIONS.md`), _어떻게 했고 무엇을 조심해야 하나_ 까지 알아야 하는가(→ `decisions/`)」.
+
+**규칙:**
+
+- 같은 결정을 양쪽에 중복 기재하지 않는다 — 한쪽만 정본. 기존 두 체계는 서로 참조하지 않으며 대응 항목도 없다
+- `decisions/` 문서는 `# 제목` → `**Date:**` / `**Status:**` → `Context` · `Decision` · `Alternatives` · `Consequences`(Pros/Cons) · `Verification` · `Follow-ups` 순서를 따른다 (기존 3건과 동일)
+- `DECISIONS.md` 에 추가할 때는 마지막 번호 다음을 쓴다 (현재 최신 ADR-031)
+- **ADR 작성 자체는 자동 규칙이 아니다.** 되돌리기 어렵거나 나중에 "왜 이렇게 했지?"가 나올 결정(인프라·스키마·외부 의존성·보안 경계)일 때 쓰고, 애매하면 사용자에게 필요 여부를 물을 것

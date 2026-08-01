@@ -581,12 +581,12 @@ http://localhost:3000/demo
 | --------------------------------------------------------------- | ----------------------------------------- |
 | [ARCHITECTURE.md](./docs/ARCHITECTURE.md)                       | 시스템 아키텍처 다이어그램 및 데이터 흐름 |
 | [RLS.md](./docs/RLS.md)                                         | Row-Level Security 정책 상세              |
-| [DECISIONS.md](./docs/DECISIONS.md)                             | 아키텍처 결정 기록 (ADR)                  |
+| [DECISIONS.md](./docs/DECISIONS.md)                             | 결정 기록 — 번호순 요약 카탈로그 (ADR)    |
 | [CONSULTANT_PROFILE_SPEC.md](./docs/CONSULTANT_PROFILE_SPEC.md) | 컨설턴트 프로필 필드 명세                 |
 | [PERFORMANCE_BUDGET.md](./docs/PERFORMANCE_BUDGET.md)           | 성능 예산·측정 기준                       |
 | [PROJECT_OUTLINE.md](./docs/PROJECT_OUTLINE.md)                 | 초기 기획서 (아카이브)                    |
 | [plans/](./docs/plans/)                                         | 기능 설계 및 리팩토링 계획 문서           |
-| [decisions/](./docs/decisions/)                                 | 날짜별 아키텍처 결정 기록                 |
+| [decisions/](./docs/decisions/)                                 | 결정 기록 — 날짜별 심층 문서 (신규 기본)  |
 | [references/](./docs/references/)                               | 참조 문서 (HWPX 양식·성능 패턴 등)        |
 | [reports/](./docs/reports/)                                     | 감사·리뷰 보고서                          |
 | [testing/](./docs/testing/)                                     | 테스트 계획, 결과                         |
