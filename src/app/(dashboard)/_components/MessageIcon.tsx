@@ -76,7 +76,9 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
 
       // 인증 세션이 로드될 때까지 대기 — 이것이 핵심
       // Realtime 구독 전에 auth.uid()가 유효해야 RLS 정책 통과
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!isMounted) return;
       if (!user) return;
 
@@ -105,7 +107,7 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
               if (!isMounted) return;
               setUnreadCount(count);
             }, 500);
-          },
+          }
         )
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
@@ -114,7 +116,10 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             if (retryCount < MAX_REALTIME_RETRIES) {
               retryCount++;
-              const delay = Math.min(REALTIME_RETRY_BASE_MS * 2 ** retryCount, REALTIME_RETRY_MAX_MS);
+              const delay = Math.min(
+                REALTIME_RETRY_BASE_MS * 2 ** retryCount,
+                REALTIME_RETRY_MAX_MS
+              );
               retryTimer = setTimeout(() => subscribe(), delay);
             } else {
               // 재시도 소진 → polling fallback 활성화
@@ -133,7 +138,7 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
       stopFallbackPolling();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
   }, []);
 
   // 대화 읽음 처리 시 즉시 뱃지 갱신 (MessagesClient에서 dispatch)
@@ -157,10 +162,7 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
     };
   }, []);
 
-  const badgeText =
-    unreadCount > MESSAGE_BADGE_MAX
-      ? `${MESSAGE_BADGE_MAX}+`
-      : `${unreadCount}`;
+  const badgeText = unreadCount > MESSAGE_BADGE_MAX ? `${MESSAGE_BADGE_MAX}+` : `${unreadCount}`;
 
   return (
     <Link

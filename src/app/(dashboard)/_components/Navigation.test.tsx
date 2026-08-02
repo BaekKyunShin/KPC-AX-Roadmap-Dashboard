@@ -49,7 +49,7 @@ vi.mock('@/app/(auth)/actions', () => ({
 
 // Child components that need mocking
 const mockSetOpen = vi.fn();
-vi.mock('@/hooks/useCommandPalette', () => ({
+vi.mock('./useCommandPalette', () => ({
   useCommandPalette: () => ({
     open: false,
     setOpen: mockSetOpen,
@@ -70,7 +70,7 @@ vi.mock('@/hooks/useRecentVisits', () => ({
   }),
 }));
 
-vi.mock('@/components/NotificationBell', () => ({
+vi.mock('./NotificationBell', () => ({
   default: ({ initialUnreadCount, userRole }: { initialUnreadCount: number; userRole: string }) => (
     <div data-testid="notification-bell" data-unread={initialUnreadCount} data-role={userRole}>
       NotificationBell
@@ -78,7 +78,7 @@ vi.mock('@/components/NotificationBell', () => ({
   ),
 }));
 
-vi.mock('@/components/MessageIcon', () => ({
+vi.mock('./MessageIcon', () => ({
   default: ({ initialUnreadCount }: { initialUnreadCount: number }) => (
     <div data-testid="message-icon" data-unread={initialUnreadCount}>
       MessageIcon
@@ -613,9 +613,9 @@ describe('Navigation', () => {
   describe('로고', () => {
     it('로고가 홈 링크로 렌더링된다', () => {
       renderNavigation();
-      const logoLink = screen.getAllByRole('link').find((link) =>
-        link.getAttribute('href') === '/'
-      );
+      const logoLink = screen
+        .getAllByRole('link')
+        .find((link) => link.getAttribute('href') === '/');
       expect(logoLink).toBeTruthy();
     });
   });
@@ -651,9 +651,9 @@ describe('Navigation', () => {
       renderNavigation({ user: createUser({ role: 'OPS_ADMIN' }) });
       // 워크스페이스 드롭다운 열기
       await user.click(screen.getByText('워크스페이스'));
-      const dropdownLinks = screen.getAllByRole('link').filter(
-        (link) => link.getAttribute('href')?.startsWith('/ops/')
-      );
+      const dropdownLinks = screen
+        .getAllByRole('link')
+        .filter((link) => link.getAttribute('href')?.startsWith('/ops/'));
       expect(dropdownLinks.length).toBeGreaterThan(0);
       dropdownLinks.forEach((link) => {
         expect(link).toHaveAttribute('data-prefetch', 'true');
@@ -665,12 +665,16 @@ describe('Navigation', () => {
       renderNavigation({ user: createUser({ role: 'CONSULTANT_APPROVED' }) });
       await user.click(screen.getByLabelText('메뉴 열기'));
       const mobileMenu = screen.getByTestId('mobile-menu');
-      const mobileNavLinks = within(mobileMenu).getAllByRole('link').filter(
-        (link) => {
+      const mobileNavLinks = within(mobileMenu)
+        .getAllByRole('link')
+        .filter((link) => {
           const href = link.getAttribute('href');
-          return href?.startsWith('/consultant/') || href?.startsWith('/gallery') || href?.startsWith('/test-roadmap');
-        }
-      );
+          return (
+            href?.startsWith('/consultant/') ||
+            href?.startsWith('/gallery') ||
+            href?.startsWith('/test-roadmap')
+          );
+        });
       expect(mobileNavLinks.length).toBeGreaterThan(0);
       mobileNavLinks.forEach((link) => {
         expect(link).toHaveAttribute('data-prefetch', 'true');

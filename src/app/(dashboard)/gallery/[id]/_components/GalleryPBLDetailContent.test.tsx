@@ -6,7 +6,7 @@ import { vi } from 'vitest';
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 // 탭 본문 5종은 각각 자체 테스트가 있으므로 여기서는 "어느 탭이 렌더됐는지"만 본다.
 
-vi.mock('@/components/gallery/LikeButton', () => ({
+vi.mock('../../_components/LikeButton', () => ({
   LikeButton: ({ initialCount }: { initialCount: number }) => (
     <button data-testid="like-button">좋아요 {initialCount}</button>
   ),

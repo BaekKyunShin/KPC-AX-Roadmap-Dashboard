@@ -10,7 +10,7 @@ vi.mock('@/components/roadmap/CoursesList', () => ({
   ),
 }));
 
-vi.mock('@/components/gallery/LikeButton', () => ({
+vi.mock('../../_components/LikeButton', () => ({
   LikeButton: ({
     roadmapVersionId,
     initialLiked,

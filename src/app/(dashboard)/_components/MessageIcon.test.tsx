@@ -22,7 +22,7 @@ vi.mock('@/lib/supabase/client', () => ({
         (
           _event: string,
           _filter: unknown,
-          cb: (payload: { new: { sender_id: string } }) => void,
+          cb: (payload: { new: { sender_id: string } }) => void
         ) => {
           postgresCallback = cb;
           return {
@@ -30,7 +30,7 @@ vi.mock('@/lib/supabase/client', () => ({
               subscribeCallback = cb;
             }),
           };
-        },
+        }
       ),
     })),
     removeChannel: mockRemoveChannel,
@@ -206,10 +206,14 @@ describe('MessageIcon', () => {
   describe('Realtime 구독 성공 (SUBSCRIBED) — stopFallbackPolling 경로', () => {
     it('SUBSCRIBED 상태 시 정상 렌더링 유지', async () => {
       render(<MessageIcon initialUnreadCount={0} />);
-      await act(async () => { await Promise.resolve(); });
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       if (subscribeCallback) {
-        act(() => { subscribeCallback?.('SUBSCRIBED'); });
+        act(() => {
+          subscribeCallback?.('SUBSCRIBED');
+        });
       }
 
       expect(screen.getByRole('link')).toBeInTheDocument();
@@ -220,11 +224,15 @@ describe('MessageIcon', () => {
     it('CHANNEL_ERROR 발생 시 retryCount < MAX_REALTIME_RETRIES이면 재시도 스케줄링', async () => {
       vi.useFakeTimers();
       render(<MessageIcon initialUnreadCount={0} />);
-      await act(async () => { await Promise.resolve(); });
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       // CHANNEL_ERROR → retryCount=1 → setTimeout으로 재시도
       if (subscribeCallback) {
-        act(() => { subscribeCallback?.('CHANNEL_ERROR'); });
+        act(() => {
+          subscribeCallback?.('CHANNEL_ERROR');
+        });
       }
 
       // retryTimer가 설정된 상태 — 에러 없이 처리됨
@@ -235,10 +243,14 @@ describe('MessageIcon', () => {
     it('TIMED_OUT 발생 시 재시도 스케줄링', async () => {
       vi.useFakeTimers();
       render(<MessageIcon initialUnreadCount={0} />);
-      await act(async () => { await Promise.resolve(); });
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       if (subscribeCallback) {
-        act(() => { subscribeCallback?.('TIMED_OUT'); });
+        act(() => {
+          subscribeCallback?.('TIMED_OUT');
+        });
       }
 
       expect(screen.getByRole('link')).toBeInTheDocument();
@@ -249,7 +261,9 @@ describe('MessageIcon', () => {
   describe('postgres_changes 콜백 — 메시지 수신 분기', () => {
     it('내가 보낸 메시지 수신 시 fetchUnreadCount를 호출하지 않는다', async () => {
       render(<MessageIcon initialUnreadCount={0} />);
-      await act(async () => { await Promise.resolve(); });
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       if (postgresCallback) {
         await act(async () => {
@@ -266,7 +280,9 @@ describe('MessageIcon', () => {
       vi.useFakeTimers();
       mockFetchUnreadCount.mockResolvedValue(1);
       render(<MessageIcon initialUnreadCount={0} />);
-      await act(async () => { await Promise.resolve(); });
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       if (postgresCallback) {
         act(() => {
@@ -293,7 +309,9 @@ describe('MessageIcon', () => {
     it('user=null이면 Realtime 구독이 실행되지 않는다', async () => {
       mockGetUser = vi.fn().mockResolvedValue({ data: { user: null } });
       render(<MessageIcon initialUnreadCount={0} />);
-      await act(async () => { await Promise.resolve(); });
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       // user가 없으면 channelRef에 구독이 설정되지 않음
       expect(subscribeCallback).toBeNull();
@@ -308,7 +326,9 @@ describe('MessageIcon', () => {
 
     it('언마운트 시 채널 제거가 에러 없이 처리된다', async () => {
       const { unmount } = render(<MessageIcon initialUnreadCount={0} />);
-      await act(async () => { await Promise.resolve(); });
+      await act(async () => {
+        await Promise.resolve();
+      });
       expect(() => unmount()).not.toThrow();
     });
   });

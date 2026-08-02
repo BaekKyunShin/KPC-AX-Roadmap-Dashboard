@@ -24,19 +24,14 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/ui/logo';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import NotificationBell from '@/components/NotificationBell';
-import MessageIcon from '@/components/MessageIcon';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import NotificationBell from './NotificationBell';
+import MessageIcon from './MessageIcon';
 import dynamic from 'next/dynamic';
-const CommandPalette = dynamic(
-  () => import('@/components/command-palette/CommandPalette'),
-  { ssr: false }
-);
-import { useCommandPalette } from '@/hooks/useCommandPalette';
+const CommandPalette = dynamic(() => import('@/components/command-palette/CommandPalette'), {
+  ssr: false,
+});
+import { useCommandPalette } from './useCommandPalette';
 import { useRecentVisits } from '@/hooks/useRecentVisits';
 import {
   CONSULTANT_NAV_ITEMS,
@@ -93,9 +88,7 @@ function NavGroupDropdown({
         )}
       >
         {group.label}
-        <ChevronDown
-          className={cn('h-3.5 w-3.5 transition-transform', isOpen && 'rotate-180')}
-        />
+        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', isOpen && 'rotate-180')} />
       </button>
 
       {isOpen && (
@@ -112,9 +105,7 @@ function NavGroupDropdown({
                 onClick={onNavigate}
                 className={cn(
                   'flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors',
-                  isActive
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-100'
+                  isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -158,9 +149,7 @@ function MobileNavGroup({
         )}
       >
         <span>{group.label}</span>
-        <ChevronDown
-          className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')}
-        />
+        <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
       </button>
 
       {isOpen && (
@@ -200,7 +189,11 @@ function MobileNavGroup({
 // Component
 // =============================================================================
 
-export default function Navigation({ user, unreadCount = 0, unreadMessageCount = 0 }: NavigationProps) {
+export default function Navigation({
+  user,
+  unreadCount = 0,
+  unreadMessageCount = 0,
+}: NavigationProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -321,9 +314,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                     key={group.label}
                     group={group}
                     isOpen={openGroupIndex === index}
-                    onToggle={() =>
-                      setOpenGroupIndex(openGroupIndex === index ? null : index)
-                    }
+                    onToggle={() => setOpenGroupIndex(openGroupIndex === index ? null : index)}
                     pathname={pathname}
                     onNavigate={() => setOpenGroupIndex(null)}
                   />
@@ -333,15 +324,17 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
 
             {/* Desktop Navigation — 관리자: 드롭다운 3그룹 */}
             {isOpsAdmin && (
-              <div className="hidden md:flex items-center gap-1" data-testid="desktop-nav" ref={navGroupRef}>
+              <div
+                className="hidden md:flex items-center gap-1"
+                data-testid="desktop-nav"
+                ref={navGroupRef}
+              >
                 {ADMIN_NAV_GROUPS.map((group, index) => (
                   <NavGroupDropdown
                     key={group.label}
                     group={group}
                     isOpen={openGroupIndex === index}
-                    onToggle={() =>
-                      setOpenGroupIndex(openGroupIndex === index ? null : index)
-                    }
+                    onToggle={() => setOpenGroupIndex(openGroupIndex === index ? null : index)}
                     pathname={pathname}
                     onNavigate={() => setOpenGroupIndex(null)}
                   />
@@ -425,12 +418,20 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                   <span className="text-xs text-muted-foreground">{user.email}</span>
                 </div>
                 {renderRoleBadge()}
-                <ChevronDown className={cn('h-4 w-4 text-gray-500 transition-transform', isUserMenuOpen && 'rotate-180')} />
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 text-gray-500 transition-transform',
+                    isUserMenuOpen && 'rotate-180'
+                  )}
+                />
               </button>
 
               {/* Dropdown Menu */}
               {isUserMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-lg border bg-white shadow-lg py-1 z-50" data-testid="user-dropdown-menu">
+                <div
+                  className="absolute right-0 mt-2 w-56 rounded-lg border bg-white shadow-lg py-1 z-50"
+                  data-testid="user-dropdown-menu"
+                >
                   <div className="px-4 py-3 border-b">
                     <p className="text-sm font-medium text-gray-900">{user.name}</p>
                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>
@@ -582,9 +583,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                     key={group.label}
                     group={group}
                     isOpen={openMobileGroup === index}
-                    onToggle={() =>
-                      setOpenMobileGroup(openMobileGroup === index ? null : index)
-                    }
+                    onToggle={() => setOpenMobileGroup(openMobileGroup === index ? null : index)}
                     pathname={pathname}
                     onNavigate={() => setIsMobileMenuOpen(false)}
                   />
@@ -599,9 +598,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                   key={group.label}
                   group={group}
                   isOpen={openMobileGroup === index}
-                  onToggle={() =>
-                    setOpenMobileGroup(openMobileGroup === index ? null : index)
-                  }
+                  onToggle={() => setOpenMobileGroup(openMobileGroup === index ? null : index)}
                   pathname={pathname}
                   onNavigate={() => setIsMobileMenuOpen(false)}
                 />
@@ -681,9 +678,11 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
 /** 로그아웃 버튼 (pending 상태 피드백 포함) */
 function LogoutSubmitButton({ variant }: { variant: 'ghost' | 'outline' }) {
   const { pending } = useFormStatus();
-  const icon = pending
-    ? <Loader2 className="h-4 w-4 animate-spin" />
-    : <LogOut className="h-4 w-4" />;
+  const icon = pending ? (
+    <Loader2 className="h-4 w-4 animate-spin" />
+  ) : (
+    <LogOut className="h-4 w-4" />
+  );
   const label = pending ? '로그아웃 중...' : '로그아웃';
 
   if (variant === 'outline') {

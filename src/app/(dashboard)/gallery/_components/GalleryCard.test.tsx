@@ -6,7 +6,7 @@ import type { GalleryRoadmapItem } from '../actions';
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
-vi.mock('@/components/gallery/LikeButton', () => ({
+vi.mock('./LikeButton', () => ({
   LikeButton: ({
     roadmapVersionId,
     initialLiked,
