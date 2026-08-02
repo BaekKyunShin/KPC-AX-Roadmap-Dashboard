@@ -7,13 +7,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // 모킹
 // =============================================================================
 
-// Server Actions
-const mockDeleteAttachmentAction = vi.fn();
-
-vi.mock('@/app/(dashboard)/ops/notices/actions', () => ({
-  deleteAttachmentAction: (...args: unknown[]) => mockDeleteAttachmentAction(...args),
-}));
-
 // 토스트
 const mockShowSuccessToast = vi.fn();
 const mockShowErrorToast = vi.fn();
@@ -63,6 +56,8 @@ function makeAttachment(overrides: Partial<NoticeAttachment> = {}): NoticeAttach
 describe('AttachmentList', () => {
   const mockOnDownload = vi.fn();
   const mockOnDeleted = vi.fn();
+  // P7 단계 5: 삭제 Server Action 도 onDownload 와 동일하게 prop 으로 주입한다.
+  const mockOnDelete = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -73,16 +68,14 @@ describe('AttachmentList', () => {
   // ---------------------------------------------------------------------------
   describe('빈 상태', () => {
     it('attachments가 빈 배열이면 "첨부 파일이 없습니다." 메시지가 표시된다', () => {
-      render(
-        <AttachmentList attachments={[]} onDownload={mockOnDownload} />,
-      );
+      render(<AttachmentList attachments={[]} onDownload={mockOnDownload} />);
       expect(screen.getByText('첨부 파일이 없습니다.')).toBeInTheDocument();
     });
 
     it('attachments가 undefined이면 빈 상태 메시지가 표시된다', () => {
       render(
         // @ts-expect-error: 의도적 잘못된 값 테스트
-        <AttachmentList attachments={undefined} onDownload={mockOnDownload} />,
+        <AttachmentList attachments={undefined} onDownload={mockOnDownload} />
       );
       expect(screen.getByText('첨부 파일이 없습니다.')).toBeInTheDocument();
     });
@@ -94,56 +87,44 @@ describe('AttachmentList', () => {
   describe('렌더링', () => {
     it('data-testid="attachment-list" ul 요소가 렌더링된다', () => {
       const attachments = [makeAttachment()];
-      render(
-        <AttachmentList attachments={attachments} onDownload={mockOnDownload} />,
-      );
+      render(<AttachmentList attachments={attachments} onDownload={mockOnDownload} />);
       expect(screen.getByTestId('attachment-list')).toBeInTheDocument();
     });
 
     it('파일 이름이 표시된다', () => {
       const attachments = [makeAttachment({ file_name: 'document.pdf' })];
-      render(
-        <AttachmentList attachments={attachments} onDownload={mockOnDownload} />,
-      );
+      render(<AttachmentList attachments={attachments} onDownload={mockOnDownload} />);
       expect(screen.getByText('document.pdf')).toBeInTheDocument();
     });
 
     it('파일 크기가 KB 단위로 표시된다', () => {
       const attachments = [makeAttachment({ file_size: 1024 * 50 })]; // 50KB
-      render(
-        <AttachmentList attachments={attachments} onDownload={mockOnDownload} />,
-      );
+      render(<AttachmentList attachments={attachments} onDownload={mockOnDownload} />);
       expect(screen.getByText('50.0 KB')).toBeInTheDocument();
     });
 
     it('파일 크기가 MB 단위로 표시된다', () => {
       const attachments = [makeAttachment({ file_size: 1024 * 1024 * 2.5 })]; // 2.5MB
-      render(
-        <AttachmentList attachments={attachments} onDownload={mockOnDownload} />,
-      );
+      render(<AttachmentList attachments={attachments} onDownload={mockOnDownload} />);
       expect(screen.getByText('2.5 MB')).toBeInTheDocument();
     });
 
     it('파일 크기가 B 단위로 표시된다', () => {
       const attachments = [makeAttachment({ file_size: 512 })];
-      render(
-        <AttachmentList attachments={attachments} onDownload={mockOnDownload} />,
-      );
+      render(<AttachmentList attachments={attachments} onDownload={mockOnDownload} />);
       expect(screen.getByText('512 B')).toBeInTheDocument();
     });
 
     it('다운로드 버튼이 렌더링된다', () => {
       const attachments = [makeAttachment()];
-      render(
-        <AttachmentList attachments={attachments} onDownload={mockOnDownload} />,
-      );
+      render(<AttachmentList attachments={attachments} onDownload={mockOnDownload} />);
       expect(screen.getByRole('button', { name: /다운로드/ })).toBeInTheDocument();
     });
 
     it('editable=false이면 삭제 버튼이 표시되지 않는다', () => {
       const attachments = [makeAttachment()];
       render(
-        <AttachmentList attachments={attachments} onDownload={mockOnDownload} editable={false} />,
+        <AttachmentList attachments={attachments} onDownload={mockOnDownload} editable={false} />
       );
       expect(screen.queryByLabelText(/삭제/)).not.toBeInTheDocument();
     });
@@ -155,8 +136,9 @@ describe('AttachmentList', () => {
           attachments={attachments}
           onDownload={mockOnDownload}
           editable={true}
+          onDelete={mockOnDelete}
           onDeleted={mockOnDeleted}
-        />,
+        />
       );
       expect(screen.getByLabelText('file.pdf 삭제')).toBeInTheDocument();
     });
@@ -166,9 +148,7 @@ describe('AttachmentList', () => {
         makeAttachment({ id: 'a-1', file_name: 'file1.pdf' }),
         makeAttachment({ id: 'a-2', file_name: 'file2.docx' }),
       ];
-      render(
-        <AttachmentList attachments={attachments} onDownload={mockOnDownload} />,
-      );
+      render(<AttachmentList attachments={attachments} onDownload={mockOnDownload} />);
       expect(screen.getByText('file1.pdf')).toBeInTheDocument();
       expect(screen.getByText('file2.docx')).toBeInTheDocument();
     });
@@ -183,8 +163,9 @@ describe('AttachmentList', () => {
       mockOnDownload.mockResolvedValue('https://example.com/download');
 
       // document.createElement('a').click 모킹
-      const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation(
-        (tagName: string) => {
+      const createElementSpy = vi
+        .spyOn(document, 'createElement')
+        .mockImplementation((tagName: string) => {
           if (tagName === 'a') {
             return {
               href: '',
@@ -195,13 +176,10 @@ describe('AttachmentList', () => {
             } as unknown as HTMLAnchorElement;
           }
           return document.createElementNS('http://www.w3.org/1999/xhtml', tagName) as HTMLElement;
-        }
-      );
+        });
 
       const attachments = [makeAttachment({ storage_path: 'notices/n1/file.pdf' })];
-      render(
-        <AttachmentList attachments={attachments} onDownload={mockOnDownload} />,
-      );
+      render(<AttachmentList attachments={attachments} onDownload={mockOnDownload} />);
 
       await user.click(screen.getByRole('button', { name: /다운로드/ }));
 
@@ -217,9 +195,7 @@ describe('AttachmentList', () => {
       mockOnDownload.mockResolvedValue(null);
 
       const attachments = [makeAttachment()];
-      render(
-        <AttachmentList attachments={attachments} onDownload={mockOnDownload} />,
-      );
+      render(<AttachmentList attachments={attachments} onDownload={mockOnDownload} />);
 
       await user.click(screen.getByRole('button', { name: /다운로드/ }));
 
@@ -233,9 +209,7 @@ describe('AttachmentList', () => {
       mockOnDownload.mockRejectedValue(new Error('네트워크 오류'));
 
       const attachments = [makeAttachment()];
-      render(
-        <AttachmentList attachments={attachments} onDownload={mockOnDownload} />,
-      );
+      render(<AttachmentList attachments={attachments} onDownload={mockOnDownload} />);
 
       await user.click(screen.getByRole('button', { name: /다운로드/ }));
 
@@ -258,25 +232,22 @@ describe('AttachmentList', () => {
           attachments={attachments}
           onDownload={mockOnDownload}
           editable={true}
+          onDelete={mockOnDelete}
           onDeleted={mockOnDeleted}
-        />,
+        />
       );
 
       // 다이얼로그가 열리기 전에는 제목이 노출되지 않는다
-      expect(
-        screen.queryByText('첨부 파일을 삭제하시겠습니까?'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText('첨부 파일을 삭제하시겠습니까?')).not.toBeInTheDocument();
 
       // 트리거(휴지통 아이콘 버튼) 클릭
       await user.click(screen.getByLabelText('file.pdf 삭제'));
 
       // 다이얼로그 제목이 노출된다
-      expect(
-        await screen.findByText('첨부 파일을 삭제하시겠습니까?'),
-      ).toBeInTheDocument();
+      expect(await screen.findByText('첨부 파일을 삭제하시겠습니까?')).toBeInTheDocument();
     });
 
-    it('다이얼로그 취소 시 deleteAttachmentAction이 호출되지 않는다', async () => {
+    it('다이얼로그 취소 시 onDelete가 호출되지 않는다', async () => {
       const user = userEvent.setup();
 
       const attachments = [makeAttachment({ file_name: 'file.pdf' })];
@@ -285,8 +256,9 @@ describe('AttachmentList', () => {
           attachments={attachments}
           onDownload={mockOnDownload}
           editable={true}
+          onDelete={mockOnDelete}
           onDeleted={mockOnDeleted}
-        />,
+        />
       );
 
       // 트리거 클릭 → 다이얼로그 오픈
@@ -296,12 +268,12 @@ describe('AttachmentList', () => {
       const cancelButton = await screen.findByRole('button', { name: '취소' });
       await user.click(cancelButton);
 
-      expect(mockDeleteAttachmentAction).not.toHaveBeenCalled();
+      expect(mockOnDelete).not.toHaveBeenCalled();
     });
 
-    it('다이얼로그 "삭제" 확인 후 deleteAttachmentAction(att.id)가 호출된다', async () => {
+    it('다이얼로그 "삭제" 확인 후 onDelete(att.id)가 호출된다', async () => {
       const user = userEvent.setup();
-      mockDeleteAttachmentAction.mockResolvedValue({ success: true });
+      mockOnDelete.mockResolvedValue({ success: true });
 
       const attachments = [makeAttachment({ id: 'att-123', file_name: 'file.pdf' })];
       render(
@@ -309,8 +281,9 @@ describe('AttachmentList', () => {
           attachments={attachments}
           onDownload={mockOnDownload}
           editable={true}
+          onDelete={mockOnDelete}
           onDeleted={mockOnDeleted}
-        />,
+        />
       );
 
       // 트리거 클릭 → 다이얼로그 오픈
@@ -325,13 +298,13 @@ describe('AttachmentList', () => {
       });
 
       await waitFor(() => {
-        expect(mockDeleteAttachmentAction).toHaveBeenCalledWith('att-123');
+        expect(mockOnDelete).toHaveBeenCalledWith('att-123');
       });
     });
 
     it('삭제 성공 시 성공 토스트와 onDeleted(id)가 호출된다', async () => {
       const user = userEvent.setup();
-      mockDeleteAttachmentAction.mockResolvedValue({ success: true });
+      mockOnDelete.mockResolvedValue({ success: true });
 
       const attachments = [makeAttachment({ id: 'att-123', file_name: 'file.pdf' })];
       render(
@@ -339,8 +312,9 @@ describe('AttachmentList', () => {
           attachments={attachments}
           onDownload={mockOnDownload}
           editable={true}
+          onDelete={mockOnDelete}
           onDeleted={mockOnDeleted}
-        />,
+        />
       );
 
       await act(async () => {
@@ -360,7 +334,7 @@ describe('AttachmentList', () => {
 
     it('삭제 실패 시 에러 토스트가 호출된다', async () => {
       const user = userEvent.setup();
-      mockDeleteAttachmentAction.mockResolvedValue({ success: false, error: '삭제 불가' });
+      mockOnDelete.mockResolvedValue({ success: false, error: '삭제 불가' });
 
       const attachments = [makeAttachment({ id: 'att-123', file_name: 'file.pdf' })];
       render(
@@ -368,8 +342,9 @@ describe('AttachmentList', () => {
           attachments={attachments}
           onDownload={mockOnDownload}
           editable={true}
+          onDelete={mockOnDelete}
           onDeleted={mockOnDeleted}
-        />,
+        />
       );
 
       await act(async () => {

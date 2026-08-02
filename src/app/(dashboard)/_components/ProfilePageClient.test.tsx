@@ -1,12 +1,16 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 const mockFetchConsultantProfile = vi.fn();
+const mockSaveConsultantProfile = vi.fn();
+const mockUpdateConsultantProfile = vi.fn();
 
 vi.mock('@/app/(auth)/actions', () => ({
   fetchConsultantProfile: (...args: unknown[]) => mockFetchConsultantProfile(...args),
+  saveConsultantProfile: (...args: unknown[]) => mockSaveConsultantProfile(...args),
+  updateConsultantProfile: (...args: unknown[]) => mockUpdateConsultantProfile(...args),
 }));
 
 vi.mock('@/components/consultant/ProfileForm', () => ({
@@ -15,11 +19,16 @@ vi.mock('@/components/consultant/ProfileForm', () => ({
     backUrl: string;
     successRedirectUrl: string;
     backLabel: string;
+    submitAction: (formData: FormData) => Promise<unknown>;
   }) => (
     <div data-testid="profile-form">
       <span data-testid="back-url">{props.backUrl}</span>
       <span data-testid="success-redirect-url">{props.successRedirectUrl}</span>
       <span data-testid="back-label">{props.backLabel}</span>
+      {/* 주입된 submitAction 이 모드별 올바른 액션인지 검증하기 위한 트리거 */}
+      <button data-testid="invoke-submit-action" onClick={() => props.submitAction(new FormData())}>
+        invoke
+      </button>
     </div>
   ),
 }));
@@ -106,6 +115,42 @@ describe('ProfilePageClient', () => {
       await waitFor(() => {
         expect(screen.getByTestId('back-label')).toHaveTextContent('돌아가기');
       });
+    });
+
+    it('프로필이 없으면(신규) saveConsultantProfile 을 submitAction 으로 주입한다', async () => {
+      mockFetchConsultantProfile.mockResolvedValue({
+        success: true,
+        data: { profile: null },
+      });
+
+      render(<ProfilePageClient {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-form')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('invoke-submit-action'));
+
+      expect(mockSaveConsultantProfile).toHaveBeenCalledTimes(1);
+      expect(mockUpdateConsultantProfile).not.toHaveBeenCalled();
+    });
+
+    it('프로필이 있으면(수정) updateConsultantProfile 을 submitAction 으로 주입한다', async () => {
+      mockFetchConsultantProfile.mockResolvedValue({
+        success: true,
+        data: { profile: { id: 'profile-1', user_id: 'user-1' } },
+      });
+
+      render(<ProfilePageClient {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-form')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('invoke-submit-action'));
+
+      expect(mockUpdateConsultantProfile).toHaveBeenCalledTimes(1);
+      expect(mockSaveConsultantProfile).not.toHaveBeenCalled();
     });
   });
 

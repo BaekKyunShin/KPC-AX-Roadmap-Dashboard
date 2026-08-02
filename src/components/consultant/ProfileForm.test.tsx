@@ -14,12 +14,8 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace, back: vi.fn(), refresh: vi.fn() }),
 }));
 
-const mockSaveConsultantProfile = vi.fn();
-const mockUpdateConsultantProfile = vi.fn();
-vi.mock('@/app/(auth)/actions', () => ({
-  saveConsultantProfile: (...args: unknown[]) => mockSaveConsultantProfile(...args),
-  updateConsultantProfile: (...args: unknown[]) => mockUpdateConsultantProfile(...args),
-}));
+// P7 단계 5: ProfileForm 은 액션을 직접 import 하지 않고 submitAction prop 으로 주입받는다.
+const mockSubmitAction = vi.fn();
 
 vi.mock('@/lib/utils', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('@/lib/utils');
@@ -48,9 +44,12 @@ function makeProfile(overrides: Partial<ConsultantProfile> = {}): ConsultantProf
     coaching_methods: ['PBL', 'WORKSHOP'],
     skill_tags: ['프롬프트 엔지니어링', '워크플로우 설계'],
     years_of_experience: 5,
-    representative_experience: '삼성전자 품질관리팀 5년 근무. AI 기반 불량 예측 시스템 구축 경험이 다수 있으며 제조업에 특화되어 있습니다.',
-    portfolio: 'AI 활용 업무자동화 워크숍 (16시간) 다수 진행. 중소기업 AI 도입 컨설팅 3건 수행 완료.',
-    strengths_constraints: '제조업 품질관리 분야에 강점이 있습니다. 비전공자 대상 실습 중심 교육에 특히 강점이 있으며 경험이 풍부합니다.',
+    representative_experience:
+      '삼성전자 품질관리팀 5년 근무. AI 기반 불량 예측 시스템 구축 경험이 다수 있으며 제조업에 특화되어 있습니다.',
+    portfolio:
+      'AI 활용 업무자동화 워크숍 (16시간) 다수 진행. 중소기업 AI 도입 컨설팅 3건 수행 완료.',
+    strengths_constraints:
+      '제조업 품질관리 분야에 강점이 있습니다. 비전공자 대상 실습 중심 교육에 특히 강점이 있으며 경험이 풍부합니다.',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
     ...overrides,
@@ -108,6 +107,7 @@ const defaultProps = {
   profile: null,
   backUrl: '/consultant/profile',
   successRedirectUrl: '/consultant/home',
+  submitAction: mockSubmitAction,
 };
 
 // =============================================================================
@@ -323,8 +323,12 @@ describe('ProfileForm', () => {
       expect(screen.getByText('생산/제조')).toHaveClass('bg-indigo-600');
       expect(screen.getByText('품질관리')).toHaveClass('bg-indigo-600');
       // teaching_levels: ['BEGINNER', 'INTERMEDIATE'] - title 속성으로 구분
-      expect(getTeachingLevelBadge('AI 개념 이해, 비사용자 대상 기초 교육')).toHaveClass('bg-emerald-600');
-      expect(getTeachingLevelBadge('AI 도구 활용, 현업 적용, 프롬프트 설계')).toHaveClass('bg-emerald-600');
+      expect(getTeachingLevelBadge('AI 개념 이해, 비사용자 대상 기초 교육')).toHaveClass(
+        'bg-emerald-600'
+      );
+      expect(getTeachingLevelBadge('AI 도구 활용, 현업 적용, 프롬프트 설계')).toHaveClass(
+        'bg-emerald-600'
+      );
     });
 
     it('모든 필수 선택 항목을 선택하면 미선택 안내가 사라진다', async () => {
@@ -431,7 +435,9 @@ describe('ProfileForm', () => {
       await user.click(screen.getByRole('button', { name: /프로필 등록/ }));
 
       await waitFor(() => {
-        expect(screen.getByText('강의/컨설팅 포트폴리오를 최소 50자 이상 작성하세요.')).toBeInTheDocument();
+        expect(
+          screen.getByText('강의/컨설팅 포트폴리오를 최소 50자 이상 작성하세요.')
+        ).toBeInTheDocument();
       });
     });
 
@@ -475,8 +481,30 @@ describe('ProfileForm', () => {
         expect(errors.length).toBeGreaterThanOrEqual(1);
       });
 
-      expect(mockSaveConsultantProfile).not.toHaveBeenCalled();
-      expect(mockUpdateConsultantProfile).not.toHaveBeenCalled();
+      expect(mockSubmitAction).not.toHaveBeenCalled();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 특성화: submitAction 주입 경로 (#004 옵션 C — register/page.tsx 가 사용)
+  // ---------------------------------------------------------------------------
+  describe('특성화 - submitAction 주입 경로', () => {
+    it('submitAction 오버라이드 시 그것만 FormData로 호출된다', async () => {
+      const user = userEvent.setup();
+      const submitAction = vi.fn().mockResolvedValue({ success: true });
+
+      render(<ProfileForm {...defaultProps} submitAction={submitAction} />);
+
+      await selectAllRequiredBadges(user);
+      await fillAllRequiredTextFields(user);
+
+      await user.click(screen.getByRole('button', { name: /프로필 등록/ }));
+
+      await waitFor(() => {
+        expect(submitAction).toHaveBeenCalledTimes(1);
+      });
+      expect(submitAction).toHaveBeenCalledWith(expect.any(FormData));
+      expect(mockSubmitAction).not.toHaveBeenCalled();
     });
   });
 
@@ -484,9 +512,9 @@ describe('ProfileForm', () => {
   // 제출 (생성 모드)
   // ---------------------------------------------------------------------------
   describe('제출 - 생성 모드', () => {
-    it('유효한 데이터로 제출 시 saveConsultantProfile을 호출한다', async () => {
+    it('유효한 데이터로 제출 시 주입된 submitAction을 호출한다', async () => {
       const user = userEvent.setup();
-      mockSaveConsultantProfile.mockResolvedValue({ success: true });
+      mockSubmitAction.mockResolvedValue({ success: true });
 
       render(<ProfileForm {...defaultProps} />);
 
@@ -496,15 +524,17 @@ describe('ProfileForm', () => {
       await user.click(screen.getByRole('button', { name: /프로필 등록/ }));
 
       await waitFor(() => {
-        expect(mockSaveConsultantProfile).toHaveBeenCalledTimes(1);
+        expect(mockSubmitAction).toHaveBeenCalledTimes(1);
       });
     });
 
     it('제출 중 로딩 상태를 표시한다', async () => {
       const user = userEvent.setup();
       let resolveAction!: (value: { success: boolean }) => void;
-      mockSaveConsultantProfile.mockReturnValue(
-        new Promise((r) => { resolveAction = r; })
+      mockSubmitAction.mockReturnValue(
+        new Promise((r) => {
+          resolveAction = r;
+        })
       );
 
       render(<ProfileForm {...defaultProps} />);
@@ -524,7 +554,7 @@ describe('ProfileForm', () => {
 
     it('저장 성공 시 성공 메시지를 표시한다', async () => {
       const user = userEvent.setup();
-      mockSaveConsultantProfile.mockResolvedValue({ success: true });
+      mockSubmitAction.mockResolvedValue({ success: true });
 
       render(<ProfileForm {...defaultProps} />);
 
@@ -540,7 +570,7 @@ describe('ProfileForm', () => {
 
     it('저장 성공 시 successRedirectUrl로 이동한다', async () => {
       const user = userEvent.setup();
-      mockSaveConsultantProfile.mockResolvedValue({ success: true });
+      mockSubmitAction.mockResolvedValue({ success: true });
 
       render(<ProfileForm {...defaultProps} />);
 
@@ -556,7 +586,7 @@ describe('ProfileForm', () => {
 
     it('저장 실패 시 에러 메시지를 표시한다', async () => {
       const user = userEvent.setup();
-      mockSaveConsultantProfile.mockResolvedValue({
+      mockSubmitAction.mockResolvedValue({
         success: false,
         error: '서버에서 거부됨',
       });
@@ -575,7 +605,7 @@ describe('ProfileForm', () => {
 
     it('저장 실패 시 기본 에러 메시지를 표시한다', async () => {
       const user = userEvent.setup();
-      mockSaveConsultantProfile.mockResolvedValue({ success: false });
+      mockSubmitAction.mockResolvedValue({ success: false });
 
       render(<ProfileForm {...defaultProps} />);
 
@@ -594,24 +624,26 @@ describe('ProfileForm', () => {
   // 제출 - 수정 모드
   // ---------------------------------------------------------------------------
   describe('제출 - 수정 모드', () => {
-    it('프로필이 있으면 updateConsultantProfile을 호출한다', async () => {
+    it('프로필이 있으면(수정 모드) 주입된 submitAction을 호출한다', async () => {
       const user = userEvent.setup();
-      mockUpdateConsultantProfile.mockResolvedValue({ success: true });
+      mockSubmitAction.mockResolvedValue({ success: true });
 
       render(<ProfileForm {...defaultProps} profile={makeProfile()} />);
 
       await user.click(screen.getByRole('button', { name: /저장/ }));
 
       await waitFor(() => {
-        expect(mockUpdateConsultantProfile).toHaveBeenCalledTimes(1);
+        expect(mockSubmitAction).toHaveBeenCalledTimes(1);
       });
     });
 
     it('수정 중 "저장 중..." 상태를 표시한다', async () => {
       const user = userEvent.setup();
       let resolveAction!: (value: { success: boolean }) => void;
-      mockUpdateConsultantProfile.mockReturnValue(
-        new Promise((r) => { resolveAction = r; })
+      mockSubmitAction.mockReturnValue(
+        new Promise((r) => {
+          resolveAction = r;
+        })
       );
 
       render(<ProfileForm {...defaultProps} profile={makeProfile()} />);
@@ -627,7 +659,7 @@ describe('ProfileForm', () => {
 
     it('수정 성공 시 성공 메시지를 표시한다', async () => {
       const user = userEvent.setup();
-      mockUpdateConsultantProfile.mockResolvedValue({ success: true });
+      mockSubmitAction.mockResolvedValue({ success: true });
 
       render(<ProfileForm {...defaultProps} profile={makeProfile()} />);
 
@@ -640,7 +672,7 @@ describe('ProfileForm', () => {
 
     it('수정 실패 시 기본 에러 메시지를 표시한다', async () => {
       const user = userEvent.setup();
-      mockUpdateConsultantProfile.mockResolvedValue({ success: false });
+      mockSubmitAction.mockResolvedValue({ success: false });
 
       render(<ProfileForm {...defaultProps} profile={makeProfile()} />);
 
@@ -658,7 +690,7 @@ describe('ProfileForm', () => {
   describe('제출 - 회원가입 모드', () => {
     it('회원가입 모드 성공 시 가입 완료 메시지를 표시한다', async () => {
       const user = userEvent.setup();
-      mockSaveConsultantProfile.mockResolvedValue({ success: true });
+      mockSubmitAction.mockResolvedValue({ success: true });
 
       render(<ProfileForm {...defaultProps} variant="registration" />);
 
@@ -674,7 +706,7 @@ describe('ProfileForm', () => {
 
     it('회원가입 모드 성공 시 router.replace를 사용한다', async () => {
       const user = userEvent.setup();
-      mockSaveConsultantProfile.mockResolvedValue({ success: true });
+      mockSubmitAction.mockResolvedValue({ success: true });
 
       render(<ProfileForm {...defaultProps} variant="registration" />);
 
@@ -695,7 +727,7 @@ describe('ProfileForm', () => {
   describe('에러 상태', () => {
     it('서버 예외 발생 시 서버 오류 메시지를 표시한다', async () => {
       const user = userEvent.setup();
-      mockSaveConsultantProfile.mockRejectedValue(new Error('네트워크 오류'));
+      mockSubmitAction.mockRejectedValue(new Error('네트워크 오류'));
 
       render(<ProfileForm {...defaultProps} />);
 
@@ -705,13 +737,15 @@ describe('ProfileForm', () => {
       await user.click(screen.getByRole('button', { name: /프로필 등록/ }));
 
       await waitFor(() => {
-        expect(screen.getByText('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')).toBeInTheDocument();
+        expect(
+          screen.getByText('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+        ).toBeInTheDocument();
       });
     });
 
     it('서버 오류 후 폼 상태가 idle로 복원된다', async () => {
       const user = userEvent.setup();
-      mockSaveConsultantProfile.mockRejectedValue(new Error('네트워크 오류'));
+      mockSubmitAction.mockRejectedValue(new Error('네트워크 오류'));
 
       render(<ProfileForm {...defaultProps} />);
 
@@ -728,7 +762,7 @@ describe('ProfileForm', () => {
 
     it('실패 후 재제출이 가능하다', async () => {
       const user = userEvent.setup();
-      mockSaveConsultantProfile
+      mockSubmitAction
         .mockResolvedValueOnce({ success: false, error: '첫 번째 실패' })
         .mockResolvedValueOnce({ success: true });
 
@@ -797,9 +831,7 @@ describe('ProfileForm', () => {
     it('초기 상태(create 모드, 입력 없음)에서는 beforeunload 리스너가 등록되지 않는다', () => {
       const addSpy = vi.spyOn(window, 'addEventListener');
       render(<ProfileForm {...defaultProps} />);
-      expect(
-        addSpy.mock.calls.some((call) => call[0] === 'beforeunload'),
-      ).toBe(false);
+      expect(addSpy.mock.calls.some((call) => call[0] === 'beforeunload')).toBe(false);
     });
 
     it('텍스트 input 한 글자 입력 시 beforeunload 리스너가 등록된다', () => {
@@ -810,9 +842,7 @@ describe('ProfileForm', () => {
       // 폼의 onInput 핸들러로 isDirty=true 진입
       fireEvent.input(affiliationInput, { target: { value: 'KPC' } });
 
-      expect(
-        addSpy.mock.calls.some((call) => call[0] === 'beforeunload'),
-      ).toBe(true);
+      expect(addSpy.mock.calls.some((call) => call[0] === 'beforeunload')).toBe(true);
     });
 
     it('다중 선택 뱃지 클릭 시 beforeunload 리스너가 등록된다', async () => {
@@ -824,9 +854,7 @@ describe('ProfileForm', () => {
       await user.click(screen.getByText('제조업'));
 
       await waitFor(() => {
-        expect(
-          addSpy.mock.calls.some((call) => call[0] === 'beforeunload'),
-        ).toBe(true);
+        expect(addSpy.mock.calls.some((call) => call[0] === 'beforeunload')).toBe(true);
       });
     });
 
@@ -835,9 +863,7 @@ describe('ProfileForm', () => {
       const baseProfile = makeProfile();
       render(<ProfileForm {...defaultProps} profile={baseProfile} />);
 
-      expect(
-        addSpy.mock.calls.some((call) => call[0] === 'beforeunload'),
-      ).toBe(false);
+      expect(addSpy.mock.calls.some((call) => call[0] === 'beforeunload')).toBe(false);
     });
   });
 
@@ -853,7 +879,7 @@ describe('ProfileForm', () => {
           <a href="/dashboard/messages" data-testid="external-link">
             메시지로 이동
           </a>
-        </div>,
+        </div>
       );
     }
 
@@ -879,11 +905,9 @@ describe('ProfileForm', () => {
       // fireEvent.click 반환값: preventDefault 호출 시 false
       expect(wasNotCancelled).toBe(false);
       expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      expect(screen.getByText('변경사항이 저장되지 않을 수 있습니다')).toBeInTheDocument();
       expect(
-        screen.getByText('변경사항이 저장되지 않을 수 있습니다'),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다/),
+        screen.getByText(/이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다/)
       ).toBeInTheDocument();
     });
 

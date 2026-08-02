@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, Save, User } from 'lucide-react';
-import { updateConsultantProfile, saveConsultantProfile } from '@/app/(auth)/actions';
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import type { SimpleActionResult } from '@/lib/types/action-result';
 import { showErrorToast, showSuccessToast, scrollToElement, scrollToFirstError } from '@/lib/utils';
@@ -52,12 +51,11 @@ interface ProfileFormProps {
   /** Card 컴포넌트에 적용할 추가 클래스 */
   cardClassName?: string;
   /**
-   * 제출 액션 오버라이드 (#004 옵션 C).
-   * 기본값은 saveConsultantProfile (대시보드에서 처음 프로필 등록 시).
-   * 회원가입 모드에서는 부모(register/page.tsx) 가 step1 state 와 묶은
-   * atomic action 을 주입하여 Step2 시점에 한 번에 가입 처리.
+   * 제출 시 호출할 Server Action — 컴포넌트는 액션을 직접 import 하지 않는다 (P7 단계 5).
+   * - 프로필 화면(ProfilePageClient): 수정이면 updateConsultantProfile, 신규면 saveConsultantProfile 주입
+   * - 회원가입 모드: 부모(register/page.tsx)가 step1 state 와 묶은 atomic action 주입 (#004 옵션 C)
    */
-  submitAction?: (formData: FormData) => Promise<SimpleActionResult>;
+  submitAction: (formData: FormData) => Promise<SimpleActionResult>;
 }
 
 export default function ProfileForm({
@@ -106,7 +104,8 @@ export default function ProfileForm({
       const anchor = (e.target as HTMLElement | null)?.closest?.('a');
       if (!anchor) return;
       const href = anchor.getAttribute('href');
-      if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+      if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:'))
+        return;
       if (anchor.target === '_blank') return; // 새 탭은 beforeunload 가 처리
       if (anchor.closest('[data-profile-form-root="true"]')) return; // 폼 내부 anchor 제외
       e.preventDefault();
@@ -135,12 +134,30 @@ export default function ProfileForm({
   };
 
   // 다중 선택 6종 변경 감지 — setter 호출 시점에 isDirty=true 로 표시 (텍스트 input 은 form onInput 으로 처리)
-  const handleIndustriesChange = (next: string[]) => { setSelectedIndustries(next); setIsDirty(true); };
-  const handleSubIndustriesChange = (next: string[]) => { setSubIndustries(next); setIsDirty(true); };
-  const handleDomainsChange = (next: string[]) => { setSelectedDomains(next); setIsDirty(true); };
-  const handleLevelsChange = (next: string[]) => { setSelectedLevels(next); setIsDirty(true); };
-  const handleMethodsChange = (next: string[]) => { setSelectedMethods(next); setIsDirty(true); };
-  const handleTagsChange = (next: string[]) => { setSelectedTags(next); setIsDirty(true); };
+  const handleIndustriesChange = (next: string[]) => {
+    setSelectedIndustries(next);
+    setIsDirty(true);
+  };
+  const handleSubIndustriesChange = (next: string[]) => {
+    setSubIndustries(next);
+    setIsDirty(true);
+  };
+  const handleDomainsChange = (next: string[]) => {
+    setSelectedDomains(next);
+    setIsDirty(true);
+  };
+  const handleLevelsChange = (next: string[]) => {
+    setSelectedLevels(next);
+    setIsDirty(true);
+  };
+  const handleMethodsChange = (next: string[]) => {
+    setSelectedMethods(next);
+    setIsDirty(true);
+  };
+  const handleTagsChange = (next: string[]) => {
+    setSelectedTags(next);
+    setIsDirty(true);
+  };
 
   // 파생 상태
   const isRegistrationMode = variant === 'registration';
@@ -218,9 +235,7 @@ export default function ProfileForm({
     const formData = prepareFormData(form);
 
     try {
-      const result = profile
-        ? await updateConsultantProfile(formData)
-        : await (submitAction ?? saveConsultantProfile)(formData);
+      const result = await submitAction(formData);
 
       if (result.success) {
         setFormStatus('completed');
@@ -234,10 +249,7 @@ export default function ProfileForm({
             ? '프로필이 성공적으로 수정되었습니다.'
             : '프로필이 성공적으로 등록되었습니다.';
           setSuccess(successMessage);
-          showSuccessToast(
-            profile ? '프로필 수정 완료' : '프로필 등록 완료',
-            successMessage
-          );
+          showSuccessToast(profile ? '프로필 수정 완료' : '프로필 등록 완료', successMessage);
         }
 
         if (isRegistrationMode) {
@@ -250,8 +262,7 @@ export default function ProfileForm({
       }
 
       const errorMessage =
-        result.error ||
-        (profile ? '프로필 수정에 실패했습니다.' : '프로필 등록에 실패했습니다.');
+        result.error || (profile ? '프로필 수정에 실패했습니다.' : '프로필 등록에 실패했습니다.');
       setError(errorMessage);
 
       showErrorToast(profile ? '프로필 수정 실패' : '프로필 등록 실패', errorMessage);
@@ -354,7 +365,10 @@ export default function ProfileForm({
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
                   현재 소속된 회사 또는 기관명을 입력해주세요.
-                  <span className="text-muted-foreground/70"> (소속이 없는 경우 &apos;프리랜서&apos;로 입력)</span>
+                  <span className="text-muted-foreground/70">
+                    {' '}
+                    (소속이 없는 경우 &apos;프리랜서&apos;로 입력)
+                  </span>
                 </p>
               </div>
               <Input
@@ -390,7 +404,8 @@ export default function ProfileForm({
                   선호 세부 업종 <span className="text-muted-foreground">(선택)</span>
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
-                  더 구체적인 업종을 입력해주세요. 세부 업종을 추가하면 더 정확한 매칭이 가능합니다. (예: 반도체, 디스플레이, 자동차 부품, 식품 등)
+                  더 구체적인 업종을 입력해주세요. 세부 업종을 추가하면 더 정확한 매칭이 가능합니다.
+                  (예: 반도체, 디스플레이, 자동차 부품, 식품 등)
                 </p>
               </div>
               <TagInput
@@ -555,9 +570,7 @@ export default function ProfileForm({
             {/* 버튼 영역 */}
             <div className="space-y-3 pt-4">
               {!isSelectionsValid && formStatus === 'idle' && (
-                <p className="text-sm text-amber-600">
-                  필수 선택 항목 {unselectedCount}개 미선택
-                </p>
+                <p className="text-sm text-amber-600">필수 선택 항목 {unselectedCount}개 미선택</p>
               )}
               <div className="flex flex-wrap gap-3">
                 {/* 취소 버튼 - 회원가입 모드에서는 숨김 */}
