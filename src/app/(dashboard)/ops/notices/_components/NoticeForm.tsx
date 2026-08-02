@@ -18,6 +18,7 @@ import {
   createNoticeAction,
   updateNoticeAction,
   deleteNoticeAction,
+  deleteAttachmentAction,
 } from '@/app/(dashboard)/ops/notices/actions';
 import { uploadNoticeAttachmentDirect } from './upload-notice-attachment';
 import { getAttachmentDownloadUrl } from '@/app/(dashboard)/notices/actions';
@@ -300,6 +301,7 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
             attachments={attachments}
             editable
             onDownload={handleDownload}
+            onDelete={deleteAttachmentAction}
             onDeleted={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
           />
         </div>

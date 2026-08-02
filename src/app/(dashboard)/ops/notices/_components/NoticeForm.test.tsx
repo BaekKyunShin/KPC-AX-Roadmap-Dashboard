@@ -26,6 +26,7 @@ const mockCreateNoticeAction = vi.fn();
 const mockUpdateNoticeAction = vi.fn();
 const mockUploadAttachmentAction = vi.fn();
 const mockDeleteNoticeAction = vi.fn();
+const mockDeleteAttachmentAction = vi.fn();
 const mockGetAttachmentDownloadUrl = vi.fn();
 const mockUploadNoticeAttachmentDirect = vi.fn();
 
@@ -34,6 +35,7 @@ vi.mock('@/app/(dashboard)/ops/notices/actions', () => ({
   updateNoticeAction: (...args: unknown[]) => mockUpdateNoticeAction(...args),
   uploadAttachmentAction: (...args: unknown[]) => mockUploadAttachmentAction(...args),
   deleteNoticeAction: (...args: unknown[]) => mockDeleteNoticeAction(...args),
+  deleteAttachmentAction: (...args: unknown[]) => mockDeleteAttachmentAction(...args),
 }));
 
 // 클라이언트 helper (Storage 직접 업로드)

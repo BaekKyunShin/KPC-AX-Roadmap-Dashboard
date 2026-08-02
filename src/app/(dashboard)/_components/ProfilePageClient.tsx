@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchConsultantProfile } from '@/app/(auth)/actions';
+import {
+  fetchConsultantProfile,
+  saveConsultantProfile,
+  updateConsultantProfile,
+} from '@/app/(auth)/actions';
 import ProfileForm from '@/components/consultant/ProfileForm';
 import { ProfileFormSkeleton } from '@/components/ui/Skeleton';
 import type { ConsultantProfile } from '@/types/database';
@@ -61,6 +65,7 @@ export default function ProfilePageClient({
       backUrl={backUrl}
       successRedirectUrl={successRedirectUrl}
       backLabel={backLabel}
+      submitAction={profile ? updateConsultantProfile : saveConsultantProfile}
     />
   );
 }

@@ -5,18 +5,32 @@ import { Trash2, Download, Paperclip, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
-import { deleteAttachmentAction } from '@/app/(dashboard)/ops/notices/actions';
+import type { SimpleActionResult } from '@/lib/types/action-result';
 import type { NoticeAttachment } from '@/types/database';
 
-interface AttachmentListProps {
+interface AttachmentListBaseProps {
   attachments: NoticeAttachment[];
-  /** 관리자 편집 화면이면 true — 삭제 버튼 표시 */
-  editable?: boolean;
   /** 다운로드 URL을 조회하는 Server Action (서명 URL 생성) */
   onDownload: (storagePath: string) => Promise<string | null>;
   /** 삭제 성공 시 부모 상태 업데이트 */
   onDeleted?: (attachmentId: string) => void;
 }
+
+/**
+ * 삭제는 편집 화면에서만 가능하므로 editable=true 일 때만 onDelete 를 요구한다.
+ * onDownload 와 마찬가지로 Server Action 을 prop 으로 주입받는다 — 컴포넌트는
+ * 액션을 직접 import 하지 않는다 (P7 단계 5).
+ */
+type AttachmentListProps = AttachmentListBaseProps &
+  (
+    | {
+        /** 관리자 편집 화면 — 삭제 버튼 표시 */
+        editable: true;
+        /** 첨부를 삭제하는 Server Action */
+        onDelete: (attachmentId: string) => Promise<SimpleActionResult>;
+      }
+    | { editable?: false; onDelete?: undefined }
+  );
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -24,23 +38,16 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function AttachmentList({
-  attachments,
-  editable = false,
-  onDownload,
-  onDeleted,
-}: AttachmentListProps) {
+export function AttachmentList(props: AttachmentListProps) {
+  const { attachments, onDownload, onDeleted } = props;
+  const editable = props.editable ?? false;
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [confirmTarget, setConfirmTarget] = useState<NoticeAttachment | null>(
-    null,
-  );
+  const [confirmTarget, setConfirmTarget] = useState<NoticeAttachment | null>(null);
   const [isPending, startTransition] = useTransition();
 
   if (!attachments || attachments.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">첨부 파일이 없습니다.</p>
-    );
+    return <p className="text-sm text-muted-foreground">첨부 파일이 없습니다.</p>;
   }
 
   async function handleDownload(att: NoticeAttachment): Promise<void> {
@@ -69,11 +76,11 @@ export function AttachmentList({
   }
 
   function handleConfirmDelete() {
-    if (!confirmTarget) return;
+    if (!confirmTarget || !props.editable) return;
     const att = confirmTarget;
     setDeletingId(att.id);
     startTransition(async () => {
-      const result = await deleteAttachmentAction(att.id);
+      const result = await props.onDelete(att.id);
       if (result.success) {
         showSuccessToast('첨부가 삭제되었습니다.');
         onDeleted?.(att.id);
@@ -87,78 +94,72 @@ export function AttachmentList({
 
   return (
     <>
-    <ul className="divide-y divide-border rounded-md border" data-testid="attachment-list">
-      {attachments.map((att) => {
-        const deleting = deletingId === att.id && isPending;
-        const downloading = downloadingId === att.id;
-        return (
-          <li
-            key={att.id}
-            className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="flex min-w-0 items-center gap-2">
-              <Paperclip className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{att.file_name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatFileSize(att.file_size)}
-                </p>
+      <ul className="divide-y divide-border rounded-md border" data-testid="attachment-list">
+        {attachments.map((att) => {
+          const deleting = deletingId === att.id && isPending;
+          const downloading = downloadingId === att.id;
+          return (
+            <li
+              key={att.id}
+              className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <Paperclip className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{att.file_name}</p>
+                  <p className="text-xs text-muted-foreground">{formatFileSize(att.file_size)}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex flex-shrink-0 items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => handleDownload(att)}
-                disabled={downloading}
-                className="gap-1.5"
-              >
-                {downloading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Download className="h-3.5 w-3.5" />
-                )}
-                다운로드
-              </Button>
-              {editable && (
+              <div className="flex flex-shrink-0 items-center gap-2">
                 <Button
                   type="button"
                   size="sm"
-                  variant="ghost"
-                  onClick={() => setConfirmTarget(att)}
-                  disabled={deleting}
-                  className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  aria-label={`${att.file_name} 삭제`}
+                  variant="outline"
+                  onClick={() => handleDownload(att)}
+                  disabled={downloading}
+                  className="gap-1.5"
                 >
-                  {deleting ? (
+                  {downloading ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Download className="h-3.5 w-3.5" />
                   )}
+                  다운로드
                 </Button>
-              )}
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-    <ConfirmDialog
-      open={confirmTarget !== null}
-      onOpenChange={(open) => {
-        if (!open) setConfirmTarget(null);
-      }}
-      title="첨부 파일을 삭제하시겠습니까?"
-      description={
-        confirmTarget ? (
-          <span>&quot;{confirmTarget.file_name}&quot;</span>
-        ) : undefined
-      }
-      actionLabel="삭제"
-      variant="destructive"
-      loading={isPending}
-      onConfirm={handleConfirmDelete}
-    />
+                {editable && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setConfirmTarget(att)}
+                    disabled={deleting}
+                    className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    aria-label={`${att.file_name} 삭제`}
+                  >
+                    {deleting ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmTarget(null);
+        }}
+        title="첨부 파일을 삭제하시겠습니까?"
+        description={confirmTarget ? <span>&quot;{confirmTarget.file_name}&quot;</span> : undefined}
+        actionLabel="삭제"
+        variant="destructive"
+        loading={isPending}
+        onConfirm={handleConfirmDelete}
+      />
     </>
   );
 }
