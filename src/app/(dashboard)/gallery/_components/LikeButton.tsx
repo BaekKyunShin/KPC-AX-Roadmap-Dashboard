@@ -33,9 +33,10 @@ export function LikeButton({
     setCount((prev) => (liked ? prev - 1 : prev + 1));
 
     startTransition(async () => {
-      const result = track === 'PBL'
-        ? await togglePBLLike(roadmapVersionId)
-        : await toggleLike(roadmapVersionId);
+      const result =
+        track === 'PBL'
+          ? await togglePBLLike(roadmapVersionId)
+          : await toggleLike(roadmapVersionId);
       if (result.success) {
         setLiked(result.data.liked);
         setCount(result.data.count);
@@ -69,12 +70,8 @@ export function LikeButton({
         isPending && 'opacity-50 cursor-not-allowed'
       )}
     >
-      <Heart
-        className={cn('h-4 w-4', liked && 'fill-current')}
-      />
-      <span className="text-sm font-medium">
-        {count}
-      </span>
+      <Heart className={cn('h-4 w-4', liked && 'fill-current')} />
+      <span className="text-sm font-medium">{count}</span>
     </button>
   );
 }

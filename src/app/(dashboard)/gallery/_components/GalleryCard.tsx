@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
 import type { CompanySizeValue } from '@/lib/constants/company-size';
 import type { GalleryRoadmapItem } from '../actions';
-import { LikeButton } from '@/components/gallery/LikeButton';
+import { LikeButton } from './LikeButton';
 import { TrackBadge } from '@/components/ui/TrackBadge';
 
 const AVATAR_COLORS = [

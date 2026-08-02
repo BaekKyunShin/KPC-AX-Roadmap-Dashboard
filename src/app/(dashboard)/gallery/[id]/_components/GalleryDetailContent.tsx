@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CoursesList } from '@/components/roadmap/CoursesList';
-import { LikeButton } from '@/components/gallery/LikeButton';
+import { LikeButton } from '../../_components/LikeButton';
 import { UseRoadmapDialog } from './UseRoadmapDialog';
 import { ROADMAP_TABS, type RoadmapTabKey } from '@/types/roadmap-ui';
 import { fromRoadmapVersionColumns } from '@/lib/services/roadmap/roadmap-storage-mapper';

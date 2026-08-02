@@ -6,8 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockFetchConsultantProfile = vi.fn();
 
 vi.mock('@/app/(auth)/actions', () => ({
-  fetchConsultantProfile: (...args: unknown[]) =>
-    mockFetchConsultantProfile(...args),
+  fetchConsultantProfile: (...args: unknown[]) => mockFetchConsultantProfile(...args),
 }));
 
 vi.mock('@/components/consultant/ProfileForm', () => ({
@@ -76,12 +75,8 @@ describe('ProfilePageClient', () => {
         expect(screen.getByTestId('profile-form')).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('back-url')).toHaveTextContent(
-        '/consultant/home'
-      );
-      expect(screen.getByTestId('success-redirect-url')).toHaveTextContent(
-        '/consultant/home'
-      );
+      expect(screen.getByTestId('back-url')).toHaveTextContent('/consultant/home');
+      expect(screen.getByTestId('success-redirect-url')).toHaveTextContent('/consultant/home');
       expect(screen.getByTestId('back-label')).toHaveTextContent('홈으로');
     });
 
@@ -105,10 +100,7 @@ describe('ProfilePageClient', () => {
       });
 
       render(
-        <ProfilePageClient
-          backUrl="/consultant/home"
-          successRedirectUrl="/consultant/home"
-        />
+        <ProfilePageClient backUrl="/consultant/home" successRedirectUrl="/consultant/home" />
       );
 
       await waitFor(() => {
@@ -127,9 +119,7 @@ describe('ProfilePageClient', () => {
       render(<ProfilePageClient {...defaultProps} />);
 
       await waitFor(() => {
-        expect(
-          screen.getByText('프로필 조회 권한이 없습니다.')
-        ).toBeInTheDocument();
+        expect(screen.getByText('프로필 조회 권한이 없습니다.')).toBeInTheDocument();
       });
 
       // 스켈레톤과 ProfileForm은 표시되지 않아야 함
@@ -143,9 +133,7 @@ describe('ProfilePageClient', () => {
       render(<ProfilePageClient {...defaultProps} />);
 
       await waitFor(() => {
-        expect(
-          screen.getByText('프로필을 불러오는데 실패했습니다.')
-        ).toBeInTheDocument();
+        expect(screen.getByText('프로필을 불러오는데 실패했습니다.')).toBeInTheDocument();
       });
     });
   });

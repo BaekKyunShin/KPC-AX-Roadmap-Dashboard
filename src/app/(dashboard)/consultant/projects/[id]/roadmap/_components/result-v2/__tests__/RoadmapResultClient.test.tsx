@@ -20,7 +20,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // ShareToggle — Server Action 의존 모킹 (CONSULTANT FINAL 상태에서만 렌더되는 경로 검증용)
-vi.mock('@/components/gallery/ShareToggle', () => ({
+vi.mock('@/app/(dashboard)/consultant/projects/[id]/_components/ShareToggle', () => ({
   ShareToggle: ({ roadmapVersionId }: { roadmapVersionId: string }) => (
     <div data-testid="share-toggle" data-version-id={roadmapVersionId}>
       ShareToggle Mock

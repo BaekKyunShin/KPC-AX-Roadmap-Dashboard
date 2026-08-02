@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { LikeButton } from '@/components/gallery/LikeButton';
+import { LikeButton } from '../../_components/LikeButton';
 // ⚠️ 탭 본문을 `next/dynamic` 으로 코드 분할하지 말 것 — 근거는 RoadmapResultClient 상단 주석
 //    및 `docs/decisions/2026-08-01-result-tabs-no-code-split.md` (#164 시도 → #167 원복).
 import { PBLOverview } from '@/components/pbl/PBLOverview';

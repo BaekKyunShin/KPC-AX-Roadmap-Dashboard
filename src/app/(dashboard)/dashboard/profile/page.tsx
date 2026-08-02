@@ -1,10 +1,5 @@
-import ProfilePageClient from '@/components/consultant/ProfilePageClient';
+import ProfilePageClient from '../../_components/ProfilePageClient';
 
 export default function ProfilePage() {
-  return (
-    <ProfilePageClient
-      backUrl="/dashboard"
-      successRedirectUrl="/dashboard"
-    />
-  );
+  return <ProfilePageClient backUrl="/dashboard" successRedirectUrl="/dashboard" />;
 }

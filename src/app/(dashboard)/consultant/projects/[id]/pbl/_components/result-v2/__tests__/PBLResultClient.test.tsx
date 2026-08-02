@@ -22,7 +22,7 @@ vi.mock('next/navigation', () => ({
 // ShareToggle — Server Action 의존 모킹 (로드맵 테스트와 동일 패턴).
 // track 을 data 속성으로 노출해 **PBL 트랙으로 넘기는지**까지 단언한다.
 // 이게 없으면 PBL 화면이 로드맵 액션을 호출해도 테스트가 통과해 버린다.
-vi.mock('@/components/gallery/ShareToggle', () => ({
+vi.mock('@/app/(dashboard)/consultant/projects/[id]/_components/ShareToggle', () => ({
   ShareToggle: ({ roadmapVersionId, track }: { roadmapVersionId: string; track?: string }) => (
     <div data-testid="share-toggle" data-version-id={roadmapVersionId} data-track={track}>
       ShareToggle Mock

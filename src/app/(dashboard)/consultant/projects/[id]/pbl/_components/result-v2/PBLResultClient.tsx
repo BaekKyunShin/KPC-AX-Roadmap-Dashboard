@@ -24,7 +24,7 @@ import { DownloadButtonGroup, type DownloadType } from '@/components/result/Down
 import { ResultTabs, type ResultTabItem } from '@/components/result/ResultTabs';
 import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
 import RoadmapLoadingOverlay from '@/components/roadmap/RoadmapLoadingOverlay';
-import { ShareToggle } from '@/components/gallery/ShareToggle';
+import { ShareToggle } from '../../../_components/ShareToggle';
 import { ShareStatusBadge } from '@/components/gallery/ShareStatusBadge';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
 import { PBL_ELIGIBLE_STATUSES } from '@/lib/constants/status';

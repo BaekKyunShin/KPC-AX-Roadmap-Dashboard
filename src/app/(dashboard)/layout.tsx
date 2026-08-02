@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
-import Navigation from '@/components/Navigation';
+import Navigation from './_components/Navigation';
 import { FooterCredit } from '@/components/ui/FooterCredit';
 
 /**

@@ -58,7 +58,7 @@ export function useCommandPalette() {
       setDbResults(null);
       router.push(href);
     },
-    [router],
+    [router]
   );
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {

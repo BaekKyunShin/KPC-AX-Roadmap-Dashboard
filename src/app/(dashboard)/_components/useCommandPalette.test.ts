@@ -20,7 +20,7 @@ vi.mock('@/app/(dashboard)/search/actions', () => ({
 
 // useDebounce 모킹 — 디바운스 없이 즉시 반환
 vi.mock('@/hooks/useDebounce', () => ({
-  useDebounce: <T,>(value: T) => value,
+  useDebounce: <T>(value: T) => value,
 }));
 
 describe('useCommandPalette', () => {
@@ -261,7 +261,9 @@ describe('useCommandPalette', () => {
     mockUnifiedSearch.mockResolvedValue({
       success: true,
       data: {
-        projects: [{ id: 'p1', label: '테스트 기업', href: '/ops/projects/p1', category: 'project' }],
+        projects: [
+          { id: 'p1', label: '테스트 기업', href: '/ops/projects/p1', category: 'project' },
+        ],
         users: [],
         gallery: [],
       },

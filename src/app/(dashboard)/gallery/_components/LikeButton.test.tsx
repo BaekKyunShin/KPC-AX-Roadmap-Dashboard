@@ -32,24 +32,18 @@ describe('LikeButton', () => {
 
   describe('기본 렌더링', () => {
     it('좋아요 수가 표시된다', () => {
-      render(
-        <LikeButton roadmapVersionId="rv-1" initialLiked={false} initialCount={5} />
-      );
+      render(<LikeButton roadmapVersionId="rv-1" initialLiked={false} initialCount={5} />);
       expect(screen.getByText('5')).toBeInTheDocument();
     });
 
     it('초기 좋아요 상태가 false이면 버튼이 기본 스타일이다', () => {
-      render(
-        <LikeButton roadmapVersionId="rv-1" initialLiked={false} initialCount={0} />
-      );
+      render(<LikeButton roadmapVersionId="rv-1" initialLiked={false} initialCount={0} />);
       const btn = screen.getByRole('button');
       expect(btn.className).toContain('bg-gray-100');
     });
 
     it('초기 좋아요 상태가 true이면 버튼이 rose 스타일이다', () => {
-      render(
-        <LikeButton roadmapVersionId="rv-1" initialLiked={true} initialCount={3} />
-      );
+      render(<LikeButton roadmapVersionId="rv-1" initialLiked={true} initialCount={3} />);
       const btn = screen.getByRole('button');
       expect(btn.className).toContain('bg-rose-50');
     });
@@ -76,13 +70,13 @@ describe('LikeButton', () => {
       // 서버 응답을 지연시켜 낙관적 업데이트 확인
       let resolveToggle: (value: unknown) => void;
       mockToggleLike.mockReturnValue(
-        new Promise((resolve) => { resolveToggle = resolve; })
+        new Promise((resolve) => {
+          resolveToggle = resolve;
+        })
       );
 
       const user = userEvent.setup();
-      render(
-        <LikeButton roadmapVersionId="rv-1" initialLiked={false} initialCount={5} />
-      );
+      render(<LikeButton roadmapVersionId="rv-1" initialLiked={false} initialCount={5} />);
 
       expect(screen.getByText('5')).toBeInTheDocument();
 
@@ -100,13 +94,13 @@ describe('LikeButton', () => {
     it('좋아요 한 상태에서 클릭하면 카운트가 즉시 1 감소한다', async () => {
       let resolveToggle: (value: unknown) => void;
       mockToggleLike.mockReturnValue(
-        new Promise((resolve) => { resolveToggle = resolve; })
+        new Promise((resolve) => {
+          resolveToggle = resolve;
+        })
       );
 
       const user = userEvent.setup();
-      render(
-        <LikeButton roadmapVersionId="rv-1" initialLiked={true} initialCount={10} />
-      );
+      render(<LikeButton roadmapVersionId="rv-1" initialLiked={true} initialCount={10} />);
 
       expect(screen.getByText('10')).toBeInTheDocument();
 
@@ -129,9 +123,7 @@ describe('LikeButton', () => {
       });
 
       const user = userEvent.setup();
-      render(
-        <LikeButton roadmapVersionId="rv-1" initialLiked={false} initialCount={5} />
-      );
+      render(<LikeButton roadmapVersionId="rv-1" initialLiked={false} initialCount={5} />);
 
       await user.click(screen.getByRole('button'));
 
@@ -142,9 +134,7 @@ describe('LikeButton', () => {
 
     it('toggleLike에 roadmapVersionId가 전달된다', async () => {
       const user = userEvent.setup();
-      render(
-        <LikeButton roadmapVersionId="rv-99" initialLiked={false} initialCount={0} />
-      );
+      render(<LikeButton roadmapVersionId="rv-99" initialLiked={false} initialCount={0} />);
 
       await user.click(screen.getByRole('button'));
 
@@ -156,13 +146,13 @@ describe('LikeButton', () => {
     it('서버 응답 실패 시 원래 상태로 롤백된다', async () => {
       let resolveToggle: (value: unknown) => void;
       mockToggleLike.mockReturnValue(
-        new Promise((resolve) => { resolveToggle = resolve; })
+        new Promise((resolve) => {
+          resolveToggle = resolve;
+        })
       );
 
       const user = userEvent.setup();
-      render(
-        <LikeButton roadmapVersionId="rv-1" initialLiked={false} initialCount={5} />
-      );
+      render(<LikeButton roadmapVersionId="rv-1" initialLiked={false} initialCount={5} />);
 
       await user.click(screen.getByRole('button'));
 
@@ -183,13 +173,13 @@ describe('LikeButton', () => {
     it('좋아요 해제 실패 시 좋아요 상태로 롤백된다', async () => {
       let resolveToggle: (value: unknown) => void;
       mockToggleLike.mockReturnValue(
-        new Promise((resolve) => { resolveToggle = resolve; })
+        new Promise((resolve) => {
+          resolveToggle = resolve;
+        })
       );
 
       const user = userEvent.setup();
-      render(
-        <LikeButton roadmapVersionId="rv-1" initialLiked={true} initialCount={10} />
-      );
+      render(<LikeButton roadmapVersionId="rv-1" initialLiked={true} initialCount={10} />);
 
       await user.click(screen.getByRole('button'));
 
@@ -213,9 +203,7 @@ describe('LikeButton', () => {
       mockToggleLike.mockResolvedValue({ success: false, error: 'RLS denied' });
 
       const user = userEvent.setup();
-      render(
-        <LikeButton roadmapVersionId="rv-2" initialLiked={false} initialCount={5} />
-      );
+      render(<LikeButton roadmapVersionId="rv-2" initialLiked={false} initialCount={5} />);
 
       await user.click(screen.getByRole('button'));
 
@@ -230,9 +218,7 @@ describe('LikeButton', () => {
       mockToggleLike.mockResolvedValue({ success: true, data: { liked: true, count: 6 } });
 
       const user = userEvent.setup();
-      render(
-        <LikeButton roadmapVersionId="rv-3" initialLiked={false} initialCount={5} />
-      );
+      render(<LikeButton roadmapVersionId="rv-3" initialLiked={false} initialCount={5} />);
 
       await user.click(screen.getByRole('button'));
 
@@ -264,13 +250,13 @@ describe('LikeButton', () => {
     it('서버 응답 대기 중에는 버튼에 opacity-50 클래스가 적용된다', async () => {
       let resolveToggle: (value: unknown) => void;
       mockToggleLike.mockReturnValue(
-        new Promise((resolve) => { resolveToggle = resolve; })
+        new Promise((resolve) => {
+          resolveToggle = resolve;
+        })
       );
 
       const user = userEvent.setup();
-      render(
-        <LikeButton roadmapVersionId="rv-1" initialLiked={false} initialCount={0} />
-      );
+      render(<LikeButton roadmapVersionId="rv-1" initialLiked={false} initialCount={0} />);
 
       await user.click(screen.getByRole('button'));
 
