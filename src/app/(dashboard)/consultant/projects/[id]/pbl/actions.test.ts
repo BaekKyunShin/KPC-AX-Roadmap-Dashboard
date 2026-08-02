@@ -81,6 +81,10 @@ vi.mock('@/lib/services/pbl/pbl-generator', () => ({
 }));
 
 vi.mock('@/lib/services/pbl/pbl-crud', () => ({
+  // generatePBLAction 의 catch 가 instanceof 로 참조하므로 mock 에도 포함해야 한다
+  // (누락 시 "No export is defined on the mock" 런타임 에러).
+  PBLPersistError: class PBLPersistError extends Error {},
+  PBL_PERSIST_FAILED_MESSAGE: 'PBL 보고서 저장에 실패했습니다.',
   createDraftVersion: vi.fn().mockResolvedValue({ id: 'new-pbl-id', version_number: 1 }),
   deleteDraft: vi.fn().mockResolvedValue(undefined),
   finalizePBL: vi.fn().mockResolvedValue(undefined),
@@ -804,12 +808,11 @@ describe('generatePBLAction', () => {
     );
   });
 
-  // P6: 전이 update 가 실패해도 예외·로그 없이 success 를 반환해, PBL 초안은
-  // 저장됐는데 projects.status 는 INTERVIEWED 에 머무는 silent desync 가 발생했다.
-  it('status 전이 update 실패 시 로그를 남기되 생성은 성공으로 반환한다', async () => {
+  // P6 2차(원자화 RPC 전환) 대비 특성화 — 저장 호출 인자와 상태 전이 대상 값을
+  // 고정한다. 전환 후 경로가 바뀌어도 DB 로 넘어가는 값은 동일해야 한다.
+  it('DRAFT 저장 인자와 상태 전이(→PBL_DRAFTED)를 함께 수행한다', async () => {
     const { generatePBLContent } = await import('@/lib/services/pbl/pbl-generator');
     const { createDraftVersion } = await import('@/lib/services/pbl/pbl-crud');
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(createDraftVersion).mockResolvedValueOnce({
       id: 'draft-id',
       version_number: 1,
@@ -833,19 +836,65 @@ describe('generatePBLAction', () => {
       error: null,
     });
     adminMock.addResult({ data: { pbl_data: VALID_PBL_INTERVIEW_DATA }, error: null });
+    // consultantProfile
+    adminMock.addResult({ data: null, error: null });
+    // self_assessments
+    adminMock.addResult({ data: null, error: null });
+    // projects.update (상태 전이)
+    adminMock.addResult({ data: null, error: null });
+
+    await generatePBLAction(PROJECT_ID, '수정 요청');
+
+    expect(createDraftVersion).toHaveBeenCalledWith(
+      PROJECT_ID,
+      VALID_PBL_CONTENT,
+      USER_A_ID,
+      expect.stringContaining('테스트기업'),
+      '수정 요청',
+      expect.anything(), // 저장·전이가 같은 admin 클라이언트를 쓰도록 주입
+      'PBL_DRAFTED' // 저장과 같은 트랜잭션에서 반영할 목표 상태
+    );
+    // 분리된 projects.update 는 더 이상 호출되지 않는다 (원자화)
+    expect(adminMock.chainable.update).not.toHaveBeenCalled();
+  });
+
+  // P6 2차: 저장과 전이가 한 트랜잭션이라 "보고서는 저장됐는데 상태만 이전 단계"가
+  // 생기지 않는다. 저장 단계가 실패하면 아무것도 남지 않으므로 응답도 실패다.
+  it('저장·전이 실패 시 재생성 안내와 함께 실패를 반환한다 (부분 저장 없음)', async () => {
+    const { generatePBLContent } = await import('@/lib/services/pbl/pbl-generator');
+    const { createDraftVersion, PBLPersistError } = await import('@/lib/services/pbl/pbl-crud');
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(generatePBLContent).mockResolvedValueOnce({ content: VALID_PBL_CONTENT } as never);
+    vi.mocked(createDraftVersion).mockRejectedValueOnce(
+      new PBLPersistError(
+        'PBL 보고서 저장에 실패했습니다. 생성된 내용이 저장되지 않았으니 다시 생성해 주세요.'
+      )
+    );
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: {
+        id: PROJECT_ID,
+        status: 'INTERVIEWED',
+        track: 'PBL',
+        assigned_consultant_id: USER_A_ID,
+        company_name: '테스트기업',
+        is_test_mode: false,
+        industry: '제조업',
+        sub_industries: [],
+        company_size: 'medium',
+        customer_comment: null,
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: { pbl_data: VALID_PBL_INTERVIEW_DATA }, error: null });
     adminMock.addResult({ data: null, error: null });
     adminMock.addResult({ data: null, error: null });
-    // projects.update (상태 전이) — 실패 주입
-    adminMock.addResult({ data: null, error: { message: 'update failed' } });
 
     const result = await generatePBLAction(PROJECT_ID);
 
-    // 보고서는 이미 커밋됐으므로 응답을 실패로 되돌리지 않는다
-    expect(result.success).toBe(true);
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('status 전이 실패(INTERVIEWED→PBL_DRAFTED)'),
-      'update failed'
-    );
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('다시 생성');
     errorSpy.mockRestore();
   });
 

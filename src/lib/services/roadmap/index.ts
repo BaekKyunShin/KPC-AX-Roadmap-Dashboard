@@ -36,6 +36,7 @@ export {
   generateTestRoadmap,
   reviseTestRoadmap,
   RoadmapStorageError,
+  RoadmapPersistError,
 } from './roadmap-generator';
 export type { TestRoadmapInput } from './roadmap-generator';
 

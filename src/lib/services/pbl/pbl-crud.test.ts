@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createDraftVersion,
+  PBL_PERSIST_FAILED_MESSAGE,
   deleteDraft,
   finalizePBL,
   getLatestFinal,
@@ -145,60 +146,79 @@ describe('pbl-crud', () => {
   });
 
   describe('createDraftVersion', () => {
-    it('프로필 스냅샷을 채우고 version_number=prev+1로 저장한다', async () => {
-      const inserted = buildRow({ version_number: 3 });
-
-      // supabase.from(table).select(...).eq(...)... 체인
-      const insertSelectSingle = vi.fn().mockResolvedValue({ data: inserted, error: null });
-      const insertSelect = vi.fn().mockReturnValue({ single: insertSelectSingle });
-      const insert = vi.fn().mockReturnValue({ select: insertSelect });
-
-      const projectSingle = vi
-        .fn()
-        .mockResolvedValue({ data: { assigned_consultant_id: 'cons-1' }, error: null });
-      const profileSingle = vi.fn().mockResolvedValue({
-        data: { user_id: 'cons-1', expertise_domains: ['AI'] },
-        error: null,
+    /** P6 2차: 저장 + 상태 전이가 단일 RPC(save_pbl_draft)로 묶였다. */
+    function buildClient(opts: {
+      assignedConsultantId: string | null;
+      latestVersion: number | null;
+      rpcResult?: { data?: unknown; error?: { message: string } };
+      row: Record<string, unknown>;
+    }) {
+      const rpc = vi.fn().mockResolvedValue({
+        data:
+          opts.rpcResult?.data === undefined
+            ? { success: true, report: opts.row }
+            : opts.rpcResult.data,
+        error: opts.rpcResult?.error ?? null,
       });
-      const latestMaybeSingle = vi
-        .fn()
-        .mockResolvedValue({ data: { version_number: 2 }, error: null });
-
-      const fromCalls: string[] = [];
       const client = {
+        rpc,
         from: vi.fn((table: string) => {
-          fromCalls.push(table);
           if (table === 'projects') {
             return {
               select: () => ({
-                eq: () => ({ single: projectSingle }),
+                eq: () => ({
+                  single: vi.fn().mockResolvedValue({
+                    data: { assigned_consultant_id: opts.assignedConsultantId },
+                    error: null,
+                  }),
+                }),
               }),
             };
           }
           if (table === 'consultant_profiles') {
             return {
               select: () => ({
-                eq: () => ({ single: profileSingle }),
+                eq: () => ({
+                  single: vi.fn().mockResolvedValue({
+                    data: { user_id: 'cons-1', expertise_domains: ['AI'] },
+                    error: null,
+                  }),
+                }),
               }),
             };
           }
           if (table === 'pbl_reports') {
-            // SELECT for latest + INSERT
             return {
               select: () => ({
                 eq: () => ({
                   order: () => ({
-                    limit: () => ({ maybeSingle: latestMaybeSingle }),
+                    limit: () => ({
+                      maybeSingle: vi.fn().mockResolvedValue({
+                        data:
+                          opts.latestVersion === null
+                            ? null
+                            : { version_number: opts.latestVersion },
+                        error: null,
+                      }),
+                    }),
                   }),
                 }),
               }),
-              insert,
             };
           }
           throw new Error(`Unexpected from: ${table}`);
         }),
       };
+      return { client, rpc };
+    }
 
+    it('프로필 스냅샷을 채우고 version_number=prev+1로 저장한다', async () => {
+      const row = buildRow({ version_number: 3 });
+      const { client, rpc } = buildClient({
+        assignedConsultantId: 'cons-1',
+        latestVersion: 2,
+        row,
+      });
       vi.mocked(createAdminClient).mockReturnValue(client as never);
 
       const result = await createDraftVersion(
@@ -210,61 +230,80 @@ describe('pbl-crud', () => {
       );
 
       expect(result.version_number).toBe(3);
-      const insertPayload = insert.mock.calls[0]?.[0] as Record<string, unknown>;
-      expect(insertPayload.version_number).toBe(3);
-      expect(insertPayload.project_id).toBe('proj-1');
-      expect(insertPayload.status).toBe('DRAFT');
-      expect(insertPayload.consultant_profile_snapshot).toMatchObject({
-        user_id: 'cons-1',
-      });
+      const args = rpc.mock.calls[0][1] as Record<string, unknown>;
+      expect(rpc).toHaveBeenCalledWith('save_pbl_draft', expect.anything());
+      expect(args.p_version_number).toBe(3);
+      expect(args.p_project_id).toBe('proj-1');
+      expect(args.p_created_by).toBe('u-1');
+      expect(args.p_consultant_profile_snapshot).toMatchObject({ user_id: 'cons-1' });
     });
 
     it('컨설턴트 배정이 없으면 snapshot은 {}로 저장', async () => {
-      const inserted = buildRow();
-      const insert = vi
-        .fn()
-        .mockReturnValue({
-          select: () => ({ single: vi.fn().mockResolvedValue({ data: inserted, error: null }) }),
-        });
-
-      const client = {
-        from: vi.fn((table: string) => {
-          if (table === 'projects') {
-            return {
-              select: () => ({
-                eq: () => ({
-                  single: vi
-                    .fn()
-                    .mockResolvedValue({ data: { assigned_consultant_id: null }, error: null }),
-                }),
-              }),
-            };
-          }
-          if (table === 'pbl_reports') {
-            return {
-              select: () => ({
-                eq: () => ({
-                  order: () => ({
-                    limit: () => ({
-                      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-                    }),
-                  }),
-                }),
-              }),
-              insert,
-            };
-          }
-          throw new Error(`Unexpected from: ${table}`);
-        }),
-      };
-
+      const { client, rpc } = buildClient({
+        assignedConsultantId: null,
+        latestVersion: null,
+        row: buildRow(),
+      });
       vi.mocked(createAdminClient).mockReturnValue(client as never);
 
       await createDraftVersion('proj-1', minimalValidPBLContent(), 'u-1', '', null);
 
-      const payload = insert.mock.calls[0]?.[0] as Record<string, unknown>;
-      expect(payload.consultant_profile_snapshot).toEqual({});
-      expect(payload.version_number).toBe(1);
+      const args = rpc.mock.calls[0][1] as Record<string, unknown>;
+      expect(args.p_consultant_profile_snapshot).toEqual({});
+      expect(args.p_version_number).toBe(1);
+    });
+
+    it('전이 대상을 주면 저장 RPC 에 함께 전달한다', async () => {
+      const { client, rpc } = buildClient({
+        assignedConsultantId: null,
+        latestVersion: null,
+        row: buildRow(),
+      });
+      vi.mocked(createAdminClient).mockReturnValue(client as never);
+
+      await createDraftVersion(
+        'proj-1',
+        minimalValidPBLContent(),
+        'u-1',
+        '',
+        null,
+        undefined,
+        'PBL_DRAFTED'
+      );
+
+      expect((rpc.mock.calls[0][1] as Record<string, unknown>).p_transition_to_status).toBe(
+        'PBL_DRAFTED'
+      );
+    });
+
+    it('전이 대상을 주지 않으면 상태를 건드리지 않는다', async () => {
+      const { client, rpc } = buildClient({
+        assignedConsultantId: null,
+        latestVersion: null,
+        row: buildRow(),
+      });
+      vi.mocked(createAdminClient).mockReturnValue(client as never);
+
+      await createDraftVersion('proj-1', minimalValidPBLContent(), 'u-1', '', null);
+
+      expect((rpc.mock.calls[0][1] as Record<string, unknown>).p_transition_to_status).toBeNull();
+    });
+
+    it('RPC 실패 시 재생성 안내와 함께 throw (부분 저장 없음)', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { client } = buildClient({
+        assignedConsultantId: null,
+        latestVersion: null,
+        row: buildRow(),
+        rpcResult: { error: { message: 'db error' } },
+      });
+      vi.mocked(createAdminClient).mockReturnValue(client as never);
+
+      await expect(
+        createDraftVersion('proj-1', minimalValidPBLContent(), 'u-1', '', null)
+      ).rejects.toThrow(PBL_PERSIST_FAILED_MESSAGE);
+
+      errorSpy.mockRestore();
     });
   });
 

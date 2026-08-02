@@ -7,7 +7,7 @@ import {
   fetchMatchingData,
   filterValidRecommendations,
   saveRecommendations,
-  updateProjectStatusIfNeeded,
+  resolveMatchRecommendedTransition,
   validateLlmMatchingResponse,
   LEVEL_LABEL_MAP,
   LLM_LIMITS,
@@ -84,13 +84,12 @@ export async function generateLLMMatchingRecommendations(
     },
   }));
 
-  // 5. 추천 저장
-  await saveRecommendations(supabase, projectId, scoredCandidates);
-
-  // 6. 프로젝트 상태 업데이트
-  if (!preserveStatus) {
-    await updateProjectStatusIfNeeded(supabase, projectId);
-  }
+  // 5. 추천 저장 + 상태 전이 (단일 트랜잭션 RPC — 마이그 081)
+  //    재계산(preserveStatus=true)은 기존과 동일하게 상태를 건드리지 않는다.
+  const transitionToStatus = preserveStatus
+    ? null
+    : await resolveMatchRecommendedTransition(supabase, projectId);
+  await saveRecommendations(supabase, projectId, scoredCandidates, transitionToStatus);
 
   // 7. 감사로그
   await createAuditLog({

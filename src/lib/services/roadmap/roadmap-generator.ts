@@ -39,6 +39,27 @@ export class RoadmapStorageError extends Error {
   }
 }
 
+/**
+ * 로드맵 저장 + 상태 전이(원자적 RPC)가 실패해 **아무것도 저장되지 않은** 경우 throw.
+ * 스키마 검증 실패용 RoadmapStorageError 와 달리 재생성이 필요하다는 안내를 그대로
+ * 사용자에게 전달한다.
+ */
+export class RoadmapPersistError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'RoadmapPersistError';
+  }
+}
+
+/** 저장 실패 시 사용자에게 노출하는 안내 (재생성 필요를 명시) */
+export const ROADMAP_PERSIST_FAILED_MESSAGE =
+  '로드맵 저장에 실패했습니다. 생성된 내용이 저장되지 않았으니 다시 생성해 주세요.';
+
+/** save_roadmap_draft RPC 반환 타입 (판별 유니온) */
+type SaveRoadmapDraftRpcResult =
+  | { success: true; roadmap_id: string }
+  | { success: false; error: string };
+
 const VALID_LEVELS = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const;
 
 function coerceLevel(v: unknown, fallback: TrainingLevel = 'BEGINNER'): TrainingLevel {
@@ -323,59 +344,51 @@ export async function generateRoadmap(
   // 신규 구조를 legacy 컬럼에 매핑
   const cols = toRoadmapVersionColumns(sanitized);
 
-  // 로드맵 버전 저장
-  // free_tool_validated / time_limit_validated 컬럼은 Step 12에서 제거 예정. 현재는 true 고정.
-  const { data: newRoadmap, error: insertError } = await supabase
-    .from('roadmap_versions')
-    .insert({
-      project_id: projectId,
-      version_number: newVersionNumber,
-      status: 'DRAFT',
-      consultant_profile_snapshot: consultantSnapshot || {},
-      diagnosis_summary: cols.diagnosis_summary,
-      roadmap_matrix: cols.roadmap_matrix,
-      pbl_course: cols.pbl_course,
-      courses: cols.courses,
-      revision_prompt: revisionPrompt || null,
-      free_tool_validated: true,
-      time_limit_validated: true,
-      created_by: actorUserId,
-    })
-    .select('id')
-    .single();
+  // 로드맵 버전 저장 + 프로젝트 상태 전이 (단일 트랜잭션 RPC — 마이그 081)
+  // 예전에는 INSERT 와 status UPDATE 가 분리돼 있어, 전이만 실패하면 "로드맵은
+  // 저장됐는데 목록 상태는 이전 단계"인 desync 가 남았다. 원자화로 이를 차단한다.
+  // 전이 가능 여부 판정은 중앙 전이 규칙(validateStatusTransition)이 그대로 담당하고,
+  // RPC 는 전달받은 목표 상태만 적용한다(FINALIZED 역방향 전이 방지 포함).
+  // free_tool_validated / time_limit_validated 는 RPC 안에서 true 고정.
+  const transitionToStatus = validateStatusTransition(projectData.status, 'ROADMAP_DRAFTED')
+    ? 'ROADMAP_DRAFTED'
+    : null;
 
-  if (insertError || !newRoadmap) {
-    throw new Error(`로드맵 저장 실패: ${insertError?.message}`);
+  const { data: rpcData, error: rpcError } = await supabase.rpc('save_roadmap_draft', {
+    p_project_id: projectId,
+    p_version_number: newVersionNumber,
+    p_consultant_profile_snapshot: consultantSnapshot || {},
+    p_diagnosis_summary: cols.diagnosis_summary,
+    p_roadmap_matrix: cols.roadmap_matrix,
+    p_pbl_course: cols.pbl_course,
+    p_courses: cols.courses,
+    p_revision_prompt: revisionPrompt || null,
+    p_created_by: actorUserId,
+    p_transition_to_status: transitionToStatus,
+  });
+
+  const rpcResult = (rpcData ?? null) as SaveRoadmapDraftRpcResult | null;
+  if (rpcError || !rpcResult?.success) {
+    const detail =
+      rpcError?.message ?? (rpcResult && !rpcResult.success ? rpcResult.error : 'unknown');
+    console.error(`[generateRoadmap] 로드맵 저장 실패 project=${projectId}:`, detail);
+    throw new RoadmapPersistError(ROADMAP_PERSIST_FAILED_MESSAGE);
   }
+
+  const newRoadmapId = rpcResult.roadmap_id;
 
   // ISSUE-04: LLM 이 생성한 Ⅰ-3 요약(outcome_summary.main_content)을
   // interviews.company_details.roadmap_overview.roadmap_summary 에 역반영한다.
   // 다음 로드맵 재생성·Export 시 이 요약이 일관되게 재사용된다.
+  // (원자화 대상이 아니다 — 조건부 UPDATE 이고 실패해도 warn 만 남기며 응답에 영향 없음)
   await persistRoadmapSummaryToInterview(supabase, interview, result.outcome_summary.main_content);
-
-  // 프로젝트 상태 업데이트 (중앙 전이 검증 — FINALIZED 역방향 전이 방지 포함)
-  if (validateStatusTransition(projectData.status, 'ROADMAP_DRAFTED')) {
-    // 전이가 실패해도 로드맵은 이미 저장됐으므로 응답은 유지한다.
-    // 다만 로그가 없으면 "산출물은 있는데 상태는 이전 단계"인 desync 를
-    // 사후에도 추적할 수 없으므로 error 를 반드시 남긴다.
-    const { error: statusError } = await supabase
-      .from('projects')
-      .update({ status: 'ROADMAP_DRAFTED' })
-      .eq('id', projectId);
-    if (statusError) {
-      console.error(
-        `[generateRoadmap] status 전이 실패(${projectData.status}→ROADMAP_DRAFTED) project=${projectId}:`,
-        statusError.message
-      );
-    }
-  }
 
   // 감사로그
   await createAuditLog({
     actorUserId,
     action: 'ROADMAP_CREATE',
     targetType: 'roadmap',
-    targetId: newRoadmap.id,
+    targetId: newRoadmapId,
     meta: {
       project_id: projectId,
       version_number: newVersionNumber,
@@ -395,7 +408,7 @@ export async function generateRoadmap(
   }
 
   return {
-    roadmapId: newRoadmap.id,
+    roadmapId: newRoadmapId,
     result,
     validation,
   };

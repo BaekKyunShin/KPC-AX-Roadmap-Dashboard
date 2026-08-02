@@ -23,7 +23,7 @@ vi.mock('./matching-helpers', () => ({
   fetchMatchingData: vi.fn(),
   filterValidRecommendations: vi.fn(),
   saveRecommendations: vi.fn().mockResolvedValue(undefined),
-  updateProjectStatusIfNeeded: vi.fn().mockResolvedValue(undefined),
+  resolveMatchRecommendedTransition: vi.fn().mockResolvedValue('MATCH_RECOMMENDED'),
   // ISSUE-06: matching-llm.ts 는 callLLMForJSON 에 validator 로 이 함수를 전달.
   // 테스트에서는 callLLMForJSON 자체가 mock 이라 validator 는 호출되지 않음.
   validateLlmMatchingResponse: vi.fn((raw: unknown) => ({ success: true, data: raw })),
@@ -53,7 +53,7 @@ import {
   fetchMatchingData,
   filterValidRecommendations,
   saveRecommendations,
-  updateProjectStatusIfNeeded,
+  resolveMatchRecommendedTransition,
 } from './matching-helpers';
 import { checkAndRecordLLMUsage } from '../quota';
 
@@ -357,16 +357,30 @@ describe('generateLLMMatchingRecommendations', () => {
 
   // ─── preserveStatus 옵션 ─────────────────────────────────────────────────
 
-  it('preserveStatus=false(기본)이면 프로젝트 상태를 업데이트한다', async () => {
+  // P6 2차: 전이는 추천 저장과 같은 트랜잭션(RPC)에서 일어나므로,
+  // 목표 상태가 saveRecommendations 로 함께 전달되는지를 단언한다.
+  it('preserveStatus=false(기본)이면 전이 대상을 판정해 저장과 함께 전달한다', async () => {
     await generateLLMMatchingRecommendations('project-1', 'actor-1');
 
-    expect(updateProjectStatusIfNeeded).toHaveBeenCalledOnce();
+    expect(resolveMatchRecommendedTransition).toHaveBeenCalledOnce();
+    expect(saveRecommendations).toHaveBeenCalledWith(
+      expect.anything(),
+      'project-1',
+      expect.anything(),
+      'MATCH_RECOMMENDED'
+    );
   });
 
-  it('preserveStatus=true이면 프로젝트 상태 업데이트를 건너뛴다', async () => {
+  it('preserveStatus=true이면 전이 판정을 건너뛰고 저장만 한다', async () => {
     await generateLLMMatchingRecommendations('project-1', 'actor-1', { preserveStatus: true });
 
-    expect(updateProjectStatusIfNeeded).not.toHaveBeenCalled();
+    expect(resolveMatchRecommendedTransition).not.toHaveBeenCalled();
+    expect(saveRecommendations).toHaveBeenCalledWith(
+      expect.anything(),
+      'project-1',
+      expect.anything(),
+      null
+    );
   });
 
   // ─── 빈 추천 처리 ────────────────────────────────────────────────────────
@@ -397,7 +411,8 @@ describe('generateLLMMatchingRecommendations', () => {
     expect(saveRecommendations).toHaveBeenCalledWith(
       expect.anything(),
       'project-1',
-      expect.arrayContaining([expect.objectContaining({ userId: 'user-a', totalScore: 90 })])
+      expect.arrayContaining([expect.objectContaining({ userId: 'user-a', totalScore: 90 })]),
+      'MATCH_RECOMMENDED'
     );
   });
 

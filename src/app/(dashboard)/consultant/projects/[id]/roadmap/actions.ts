@@ -14,6 +14,7 @@ import {
 import { ROADMAP_ELIGIBLE_STATUSES, isOpsManager } from '@/lib/constants/status';
 import {
   generateRoadmap,
+  RoadmapPersistError,
   finalizeRoadmap,
   fetchRoadmapVersions as fetchRoadmapVersionsService,
   fetchRoadmapVersion as fetchRoadmapVersionService,
@@ -156,6 +157,11 @@ export async function createRoadmap(
     }
   } catch (error) {
     console.error('[createRoadmap Error]', error);
+    // 저장·상태 전이가 통째로 되돌려진 경우는 재생성이 필요하다는 안내를 그대로 전달한다
+    // (LLM 오류 문구로 뭉뚱그리면 사용자가 저장 여부를 오해한다).
+    if (error instanceof RoadmapPersistError) {
+      return { success: false, error: error.message };
+    }
     return {
       success: false,
       error: getLLMUserFriendlyError(error),

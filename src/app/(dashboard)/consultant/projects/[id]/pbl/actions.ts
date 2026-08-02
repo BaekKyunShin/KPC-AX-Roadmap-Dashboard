@@ -26,6 +26,7 @@ import { PBLInterviewSchema, PBLInterviewStrictSchema } from '@/lib/schemas/inte
 import type { PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
 import {
   createDraftVersion,
+  PBLPersistError,
   deleteDraft,
   finalizePBL,
   getPBLReport,
@@ -376,30 +377,23 @@ export async function generatePBLAction(
         selfAssessment,
       });
 
-      // DRAFT 저장
+      // DRAFT 저장 + 프로젝트 상태 전이 (단일 트랜잭션 RPC — 마이그 081)
+      // 전이 가능 여부 판정(INTERVIEWED → PBL_DRAFTED)은 여기 중앙 전이 규칙이 담당하고,
+      // 저장과 전이는 원자적으로 함께 반영된다. 클라이언트도 adminSupabase 로 통일한다
+      // (예전에는 저장이 pbl-crud 내부의 별도 admin 인스턴스에서 일어났다).
+      const transitionToStatus = validateStatusTransition(project.status, 'PBL_DRAFTED')
+        ? 'PBL_DRAFTED'
+        : null;
+
       const draft = await createDraftVersion(
         projectId,
         content,
         user.id,
         diagnosisSummary,
-        revisionPrompt ?? null
+        revisionPrompt ?? null,
+        adminSupabase,
+        transitionToStatus
       );
-
-      // 프로젝트 상태 전이 (INTERVIEWED → PBL_DRAFTED)
-      if (validateStatusTransition(project.status, 'PBL_DRAFTED')) {
-        // 전이가 실패해도 보고서는 이미 저장됐으므로 응답은 유지한다.
-        // 다만 로그가 없으면 desync 를 사후 추적할 수 없으므로 error 를 남긴다.
-        const { error: statusError } = await adminSupabase
-          .from('projects')
-          .update({ status: 'PBL_DRAFTED' })
-          .eq('id', projectId);
-        if (statusError) {
-          console.error(
-            `[generatePBLAction] status 전이 실패(${project.status}→PBL_DRAFTED) project=${projectId}:`,
-            statusError.message
-          );
-        }
-      }
 
       // 감사로그 + 활동 일지
       await createAuditLog({
@@ -431,7 +425,7 @@ export async function generatePBLAction(
     }
   } catch (error) {
     console.error('[generatePBLAction Error]', error);
-    if (error instanceof PBLGenerationError) {
+    if (error instanceof PBLGenerationError || error instanceof PBLPersistError) {
       return { success: false, error: error.message };
     }
     return {

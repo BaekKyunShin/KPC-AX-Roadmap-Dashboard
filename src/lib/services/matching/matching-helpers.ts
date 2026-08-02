@@ -49,14 +49,12 @@ export const llmMatchingResponseSchema = z.object({
       analysis: z.string(),
       strengths: z.array(z.string()).default([]),
       considerations: z.array(z.string()).default([]),
-    }),
+    })
   ),
 });
 
 /** callLLMForJSON validator 로 그대로 전달할 수 있는 어댑터 */
-export function validateLlmMatchingResponse(
-  raw: unknown,
-): LLMValidatorResult<LLMMatchingResponse> {
+export function validateLlmMatchingResponse(raw: unknown): LLMValidatorResult<LLMMatchingResponse> {
   const result = llmMatchingResponseSchema.safeParse(raw);
   if (result.success) {
     return { success: true, data: result.data };
@@ -133,7 +131,9 @@ export async function fetchMatchingData(
     .in('user_id', candidateIds);
 
   if (!profiles || profiles.length === 0) {
-    throw new Error('컨설턴트 프로필이 등록되지 않았습니다. 컨설턴트가 프로필을 먼저 작성해야 합니다.');
+    throw new Error(
+      '컨설턴트 프로필이 등록되지 않았습니다. 컨설턴트가 프로필을 먼저 작성해야 합니다.'
+    );
   }
 
   // 프로필 매핑
@@ -149,7 +149,9 @@ export async function fetchMatchingData(
     }));
 
   if (candidatesWithProfile.length === 0) {
-    throw new Error('컨설턴트 프로필이 등록되지 않았습니다. 컨설턴트가 프로필을 먼저 작성해야 합니다.');
+    throw new Error(
+      '컨설턴트 프로필이 등록되지 않았습니다. 컨설턴트가 프로필을 먼저 작성해야 합니다.'
+    );
   }
 
   return {
@@ -160,16 +162,27 @@ export async function fetchMatchingData(
   };
 }
 
-/** 추천 결과 저장 */
+/** save_matching_recommendations RPC 반환 타입 (판별 유니온) */
+type SaveMatchingRecommendationsRpcResult =
+  | { success: true; inserted_count: number }
+  | { success: false; error: string };
+
+/**
+ * 추천 결과 저장 + (필요 시) 상태 전이 — 단일 트랜잭션 RPC (마이그 081).
+ *
+ * 예전에는 기존 추천 DELETE → 신규 INSERT → status UPDATE 가 각각 별도 쿼리였다.
+ * 그래서 (1) INSERT 가 실패하면 기존 추천이 사라진 채로 남고 (2) status 전이만
+ * 실패하면 "추천은 저장됐는데 목록 상태는 그대로"인 desync 가 생겼다. 원자화로 둘 다 차단한다.
+ *
+ * @param transitionToStatus 전이할 목표 상태. null 이면 상태를 건드리지 않는다
+ *   (재계산 경로). 전이 가능 여부 판정은 resolveMatchRecommendedTransition 이 담당한다.
+ */
 export async function saveRecommendations(
   supabase: ReturnType<typeof createAdminClient>,
   projectId: string,
-  candidates: LLMCandidateScore[]
+  candidates: LLMCandidateScore[],
+  transitionToStatus: 'MATCH_RECOMMENDED' | null = null
 ) {
-  // 기존 추천 삭제
-  await supabase.from('matching_recommendations').delete().eq('project_id', projectId);
-
-  // 새 추천 저장
   const recommendations = candidates.map((candidate, index) => ({
     project_id: projectId,
     candidate_user_id: candidate.userId,
@@ -179,18 +192,28 @@ export async function saveRecommendations(
     rank: index + 1,
   }));
 
-  const { error } = await supabase.from('matching_recommendations').insert(recommendations);
+  const { data, error } = await supabase.rpc('save_matching_recommendations', {
+    p_project_id: projectId,
+    p_recommendations: recommendations,
+    p_transition_to_status: transitionToStatus,
+  });
 
-  if (error) {
-    throw new Error(`매칭 추천 저장 실패: ${error.message}`);
+  const result = (data ?? null) as SaveMatchingRecommendationsRpcResult | null;
+  if (error || !result?.success) {
+    const detail = error?.message ?? (result && !result.success ? result.error : 'unknown');
+    throw new Error(`매칭 추천 저장 실패: ${detail}`);
   }
 }
 
-/** 프로젝트 상태 업데이트 (필요 시) */
-export async function updateProjectStatusIfNeeded(
+/**
+ * 추천 저장과 함께 반영할 상태 전이를 판정한다 (전이 불가면 null).
+ * 전이 규칙의 단일 출처는 validateStatusTransition 이며, 실제 반영은
+ * saveRecommendations 의 RPC 안에서 추천 저장과 원자적으로 이루어진다.
+ */
+export async function resolveMatchRecommendedTransition(
   supabase: ReturnType<typeof createAdminClient>,
   projectId: string
-) {
+): Promise<'MATCH_RECOMMENDED' | null> {
   const { data: project } = await supabase
     .from('projects')
     .select('status')
@@ -198,17 +221,7 @@ export async function updateProjectStatusIfNeeded(
     .single();
 
   if (project?.status && validateStatusTransition(project.status, 'MATCH_RECOMMENDED')) {
-    // 전이가 실패해도 추천은 이미 저장됐으므로 throw 하지 않는다(호출부 응답 유지).
-    // 다만 로그가 없으면 desync 를 사후 추적할 수 없으므로 error 를 남긴다.
-    const { error: statusError } = await supabase
-      .from('projects')
-      .update({ status: 'MATCH_RECOMMENDED' })
-      .eq('id', projectId);
-    if (statusError) {
-      console.error(
-        `[updateProjectStatusIfNeeded] status 전이 실패(${project.status}→MATCH_RECOMMENDED) project=${projectId}:`,
-        statusError.message
-      );
-    }
+    return 'MATCH_RECOMMENDED';
   }
+  return null;
 }

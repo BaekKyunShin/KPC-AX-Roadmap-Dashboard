@@ -33,6 +33,9 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 
 vi.mock('@/lib/services/roadmap', () => ({
+  // createRoadmap 의 catch 가 instanceof 로 참조하므로 mock 에도 반드시 포함해야 한다
+  // (누락 시 "No export is defined on the mock" 런타임 에러).
+  RoadmapPersistError: class RoadmapPersistError extends Error {},
   updateRoadmapManually: vi.fn().mockResolvedValue({
     success: true,
     validation: { isValid: true, errors: [], warnings: [] },
