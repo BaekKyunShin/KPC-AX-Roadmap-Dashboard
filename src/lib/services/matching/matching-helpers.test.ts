@@ -3,7 +3,7 @@
  * - filterValidRecommendations: LLM 응답에서 유효한 후보만 필터링
  * - fetchMatchingData: 매칭에 필요한 데이터 조회
  * - saveRecommendations: 추천 결과 저장
- * - updateProjectStatusIfNeeded: 프로젝트 상태 업데이트
+ * - resolveMatchRecommendedTransition: 전이 대상 상태 판정
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -11,7 +11,7 @@ import {
   filterValidRecommendations,
   fetchMatchingData,
   saveRecommendations,
-  updateProjectStatusIfNeeded,
+  resolveMatchRecommendedTransition,
   llmMatchingResponseSchema,
   validateLlmMatchingResponse,
 } from './matching-helpers';
@@ -22,8 +22,20 @@ describe('filterValidRecommendations', () => {
 
   it('유효한 userId만 포함된 추천은 그대로 반환', () => {
     const recommendations: LLMMatchingResponse['recommendations'] = [
-      { userId: 'user-a', score: 90, analysis: '분석A', strengths: ['강점'], considerations: ['고려'] },
-      { userId: 'user-b', score: 80, analysis: '분석B', strengths: ['강점'], considerations: ['고려'] },
+      {
+        userId: 'user-a',
+        score: 90,
+        analysis: '분석A',
+        strengths: ['강점'],
+        considerations: ['고려'],
+      },
+      {
+        userId: 'user-b',
+        score: 80,
+        analysis: '분석B',
+        strengths: ['강점'],
+        considerations: ['고려'],
+      },
     ];
 
     const result = filterValidRecommendations(recommendations, validCandidateIds);
@@ -33,9 +45,27 @@ describe('filterValidRecommendations', () => {
 
   it('hallucinated userId는 필터링됨', () => {
     const recommendations: LLMMatchingResponse['recommendations'] = [
-      { userId: 'user-a', score: 90, analysis: '분석A', strengths: ['강점'], considerations: ['고려'] },
-      { userId: 'hallucinated-id', score: 85, analysis: '분석X', strengths: ['강점'], considerations: ['고려'] },
-      { userId: 'user-c', score: 70, analysis: '분석C', strengths: ['강점'], considerations: ['고려'] },
+      {
+        userId: 'user-a',
+        score: 90,
+        analysis: '분석A',
+        strengths: ['강점'],
+        considerations: ['고려'],
+      },
+      {
+        userId: 'hallucinated-id',
+        score: 85,
+        analysis: '분석X',
+        strengths: ['강점'],
+        considerations: ['고려'],
+      },
+      {
+        userId: 'user-c',
+        score: 70,
+        analysis: '분석C',
+        strengths: ['강점'],
+        considerations: ['고려'],
+      },
     ];
 
     const result = filterValidRecommendations(recommendations, validCandidateIds);
@@ -45,8 +75,20 @@ describe('filterValidRecommendations', () => {
 
   it('모든 userId가 hallucinated이면 빈 배열 반환', () => {
     const recommendations: LLMMatchingResponse['recommendations'] = [
-      { userId: 'fake-1', score: 90, analysis: '분석', strengths: ['강점'], considerations: ['고려'] },
-      { userId: 'fake-2', score: 80, analysis: '분석', strengths: ['강점'], considerations: ['고려'] },
+      {
+        userId: 'fake-1',
+        score: 90,
+        analysis: '분석',
+        strengths: ['강점'],
+        considerations: ['고려'],
+      },
+      {
+        userId: 'fake-2',
+        score: 80,
+        analysis: '분석',
+        strengths: ['강점'],
+        considerations: ['고려'],
+      },
     ];
 
     const result = filterValidRecommendations(recommendations, validCandidateIds);
@@ -165,7 +207,13 @@ describe('fetchMatchingData', () => {
     const supabase = createSequentialSupabase([
       { data: projectData },
       { data: { scores: assessmentScores } },
-      { data: [{ id: 'c-1', name: 'A' }, { id: 'c-2', name: 'B' }, { id: 'c-3', name: 'C' }] },
+      {
+        data: [
+          { id: 'c-1', name: 'A' },
+          { id: 'c-2', name: 'B' },
+          { id: 'c-3', name: 'C' },
+        ],
+      },
       { data: [{ user_id: 'c-1', specialty: 'AI' }] }, // c-2, c-3는 프로필 없음
     ]);
 
@@ -176,22 +224,19 @@ describe('fetchMatchingData', () => {
   });
 
   it('프로젝트 미존재(data:null) → 에러 throw', async () => {
-    const supabase = createSequentialSupabase([
-      { data: null },
-    ]);
+    const supabase = createSequentialSupabase([{ data: null }]);
 
-    await expect(fetchMatchingData(supabase as never, projectId))
-      .rejects.toThrow('프로젝트 정보를 찾을 수 없습니다');
+    await expect(fetchMatchingData(supabase as never, projectId)).rejects.toThrow(
+      '프로젝트 정보를 찾을 수 없습니다'
+    );
   });
 
   it('자가진단 미완료(data:null) → 에러 throw', async () => {
-    const supabase = createSequentialSupabase([
-      { data: projectData },
-      { data: null },
-    ]);
+    const supabase = createSequentialSupabase([{ data: projectData }, { data: null }]);
 
-    await expect(fetchMatchingData(supabase as never, projectId))
-      .rejects.toThrow('자가진단이 완료되지 않았습니다');
+    await expect(fetchMatchingData(supabase as never, projectId)).rejects.toThrow(
+      '자가진단이 완료되지 않았습니다'
+    );
   });
 
   it('활성 컨설턴트 빈 배열 → 에러 throw', async () => {
@@ -201,8 +246,9 @@ describe('fetchMatchingData', () => {
       { data: [] },
     ]);
 
-    await expect(fetchMatchingData(supabase as never, projectId))
-      .rejects.toThrow('활성화된 컨설턴트가 없습니다');
+    await expect(fetchMatchingData(supabase as never, projectId)).rejects.toThrow(
+      '활성화된 컨설턴트가 없습니다'
+    );
   });
 
   it('candidates null → 에러 throw', async () => {
@@ -212,8 +258,9 @@ describe('fetchMatchingData', () => {
       { data: null },
     ]);
 
-    await expect(fetchMatchingData(supabase as never, projectId))
-      .rejects.toThrow('활성화된 컨설턴트가 없습니다');
+    await expect(fetchMatchingData(supabase as never, projectId)).rejects.toThrow(
+      '활성화된 컨설턴트가 없습니다'
+    );
   });
 
   it('프로필 빈 배열 → 에러 throw', async () => {
@@ -224,8 +271,9 @@ describe('fetchMatchingData', () => {
       { data: [] },
     ]);
 
-    await expect(fetchMatchingData(supabase as never, projectId))
-      .rejects.toThrow('컨설턴트 프로필이 등록되지 않았습니다');
+    await expect(fetchMatchingData(supabase as never, projectId)).rejects.toThrow(
+      '컨설턴트 프로필이 등록되지 않았습니다'
+    );
   });
 
   it('profiles null → 에러 throw', async () => {
@@ -236,8 +284,9 @@ describe('fetchMatchingData', () => {
       { data: null },
     ]);
 
-    await expect(fetchMatchingData(supabase as never, projectId))
-      .rejects.toThrow('컨설턴트 프로필이 등록되지 않았습니다');
+    await expect(fetchMatchingData(supabase as never, projectId)).rejects.toThrow(
+      '컨설턴트 프로필이 등록되지 않았습니다'
+    );
   });
 
   it('profiles 있지만 candidates와 매칭되는 user_id 없으면 에러 throw', async () => {
@@ -248,8 +297,9 @@ describe('fetchMatchingData', () => {
       { data: [{ user_id: 'c-999', specialty: 'AI' }] }, // c-1과 매칭 안 됨
     ]);
 
-    await expect(fetchMatchingData(supabase as never, projectId))
-      .rejects.toThrow('컨설턴트 프로필이 등록되지 않았습니다');
+    await expect(fetchMatchingData(supabase as never, projectId)).rejects.toThrow(
+      '컨설턴트 프로필이 등록되지 않았습니다'
+    );
   });
 
   it('nameMap이 candidates의 id→name 매핑과 일치', async () => {
@@ -292,20 +342,33 @@ describe('saveRecommendations', () => {
       rationale: { analysis: `분석${i}`, strengths: ['강점'], considerations: ['고려'] },
     }));
 
+  /** P6 2차: 삭제·저장·상태 전이가 단일 RPC 로 묶였으므로 rpc 만 모킹한다. */
+  function createRpcSupabase(result: { data?: unknown; error?: { message: string } } = {}) {
+    return {
+      rpc: vi.fn().mockResolvedValue({
+        data: result.data === undefined ? { success: true, inserted_count: 0 } : result.data,
+        error: result.error ?? null,
+      }),
+    };
+  }
+
+  function rpcArgs(supabase: { rpc: ReturnType<typeof vi.fn> }) {
+    return supabase.rpc.mock.calls[0][1] as {
+      p_project_id: string;
+      p_recommendations: Record<string, unknown>[];
+      p_transition_to_status: string | null;
+    };
+  }
+
   it('candidates를 rank(index+1) 포함하여 올바르게 매핑', async () => {
     const candidates = makeCandidates(3);
-    const supabase = createSequentialSupabase([
-      { data: null }, // delete
-      { data: null },  // insert
-    ]);
+    const supabase = createRpcSupabase();
 
     await saveRecommendations(supabase as never, projectId, candidates);
 
-    const insertChain = supabase._chains()[1];
-    const insertCall = insertChain.insert.mock.calls[0][0];
-
-    expect(insertCall).toHaveLength(3);
-    insertCall.forEach((rec: Record<string, unknown>, idx: number) => {
+    const recs = rpcArgs(supabase).p_recommendations;
+    expect(recs).toHaveLength(3);
+    recs.forEach((rec, idx) => {
       expect(rec.project_id).toBe(projectId);
       expect(rec.candidate_user_id).toBe(`user-${idx}`);
       expect(rec.total_score).toBe(90 - idx * 10);
@@ -315,177 +378,110 @@ describe('saveRecommendations', () => {
     });
   });
 
-  it('insert 호출 시 올바른 필드 전달 검증', async () => {
-    const candidates = makeCandidates(1);
-    const supabase = createSequentialSupabase([
-      { data: null },
-      { data: null },
-    ]);
+  it('추천 항목의 필드 구성은 종전과 동일하다', async () => {
+    const supabase = createRpcSupabase();
 
-    await saveRecommendations(supabase as never, projectId, candidates);
+    await saveRecommendations(supabase as never, projectId, makeCandidates(1));
 
-    const insertChain = supabase._chains()[1];
-    const insertCall = insertChain.insert.mock.calls[0][0];
-    const rec = insertCall[0];
-
+    const rec = rpcArgs(supabase).p_recommendations[0];
     expect(Object.keys(rec).sort()).toEqual(
-      ['candidate_user_id', 'project_id', 'rank', 'rationale', 'score_breakdown', 'total_score'].sort()
+      [
+        'candidate_user_id',
+        'project_id',
+        'rank',
+        'rationale',
+        'score_breakdown',
+        'total_score',
+      ].sort()
     );
   });
 
-  it('insert 실패 시 에러 throw', async () => {
-    const candidates = makeCandidates(1);
-    const supabase = createSequentialSupabase([
-      { data: null },
-      { data: null, error: { message: 'DB 에러' } },
-    ]);
+  it('삭제·저장·상태 전이를 단일 RPC 로 요청한다', async () => {
+    const supabase = createRpcSupabase();
 
-    await expect(saveRecommendations(supabase as never, projectId, candidates))
-      .rejects.toThrow('매칭 추천 저장 실패: DB 에러');
+    await saveRecommendations(supabase as never, projectId, makeCandidates(2), 'MATCH_RECOMMENDED');
+
+    expect(supabase.rpc).toHaveBeenCalledTimes(1);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      'save_matching_recommendations',
+      expect.objectContaining({
+        p_project_id: projectId,
+        p_transition_to_status: 'MATCH_RECOMMENDED',
+      })
+    );
   });
 
-  it('delete 후 insert 순서 호출 확인', async () => {
-    const candidates = makeCandidates(2);
-    const supabase = createSequentialSupabase([
-      { data: null }, // delete
-      { data: null }, // insert
-    ]);
+  it('전이 대상을 주지 않으면 상태를 건드리지 않는다 (재계산 경로)', async () => {
+    const supabase = createRpcSupabase();
 
-    await saveRecommendations(supabase as never, projectId, candidates);
+    await saveRecommendations(supabase as never, projectId, makeCandidates(1));
 
-    // from() 2회 호출, 모두 matching_recommendations 테이블
-    expect(supabase.from).toHaveBeenCalledTimes(2);
-    expect(supabase.from).toHaveBeenNthCalledWith(1, 'matching_recommendations');
-    expect(supabase.from).toHaveBeenNthCalledWith(2, 'matching_recommendations');
-
-    // 첫 번째 체인에서 delete, 두 번째에서 insert 호출
-    const chains = supabase._chains();
-    expect(chains[0].delete).toHaveBeenCalled();
-    expect(chains[1].insert).toHaveBeenCalled();
+    expect(rpcArgs(supabase).p_transition_to_status).toBeNull();
   });
 
-  it('빈 candidates → 빈 배열 insert', async () => {
-    const supabase = createSequentialSupabase([
-      { data: null },
-      { data: null },
-    ]);
+  it('RPC 오류 시 에러 throw', async () => {
+    const supabase = createRpcSupabase({ error: { message: 'DB 에러' } });
+
+    await expect(
+      saveRecommendations(supabase as never, projectId, makeCandidates(1))
+    ).rejects.toThrow('매칭 추천 저장 실패: DB 에러');
+  });
+
+  it('RPC 가 success=false 를 반환하면 에러 throw (기존 추천도 보존됨)', async () => {
+    const supabase = createRpcSupabase({
+      data: { success: false, error: '프로젝트를 찾을 수 없습니다.' },
+    });
+
+    await expect(
+      saveRecommendations(supabase as never, projectId, makeCandidates(1))
+    ).rejects.toThrow('매칭 추천 저장 실패: 프로젝트를 찾을 수 없습니다.');
+  });
+
+  it('빈 candidates → 빈 배열 전달', async () => {
+    const supabase = createRpcSupabase();
 
     await saveRecommendations(supabase as never, projectId, []);
 
-    const insertChain = supabase._chains()[1];
-    expect(insertChain.insert).toHaveBeenCalledWith([]);
+    expect(rpcArgs(supabase).p_recommendations).toEqual([]);
   });
 });
 
-// ─── updateProjectStatusIfNeeded ───
+// ─── resolveMatchRecommendedTransition ───
+// P6 2차: 상태 전이는 추천 저장 RPC 안에서 함께 일어나므로 이 함수는 "전이 대상 판정"만
+// 담당한다. 어떤 상태에서 전이 가능한지의 규칙은 종전(updateProjectStatusIfNeeded)과 동일.
 
-describe('updateProjectStatusIfNeeded', () => {
+describe('resolveMatchRecommendedTransition', () => {
   const projectId = 'proj-1';
 
-  it('DIAGNOSED → MATCH_RECOMMENDED 전이 가능 시 update 실행', async () => {
-    const supabase = createSequentialSupabase([
-      { data: { status: 'DIAGNOSED' } },
-      { data: null }, // update
-    ]);
+  it.each([
+    { status: 'DIAGNOSED', expected: 'MATCH_RECOMMENDED' },
+    { status: 'NEW', expected: 'MATCH_RECOMMENDED' },
+    { status: 'FINALIZED', expected: null },
+    { status: 'ASSIGNED', expected: null },
+    { status: 'MATCH_RECOMMENDED', expected: null },
+  ])('$status → $expected', async ({ status, expected }) => {
+    const supabase = createSequentialSupabase([{ data: { status } }]);
 
-    await updateProjectStatusIfNeeded(supabase as never, projectId);
-
-    // from() 두 번 호출 (select + update)
-    expect(supabase.from).toHaveBeenCalledTimes(2);
-    const updateChain = supabase._chains()[1];
-    expect(updateChain.update).toHaveBeenCalledWith({ status: 'MATCH_RECOMMENDED' });
-  });
-
-  it('FINALIZED → MATCH_RECOMMENDED 전이 불가 시 update 스킵', async () => {
-    const supabase = createSequentialSupabase([
-      { data: { status: 'FINALIZED' } },
-    ]);
-
-    await updateProjectStatusIfNeeded(supabase as never, projectId);
-
-    // from() 한 번만 호출 (select만, update 없음)
-    expect(supabase.from).toHaveBeenCalledTimes(1);
-  });
-
-  it('project 조회 null → update 스킵', async () => {
-    const supabase = createSequentialSupabase([
-      { data: null },
-    ]);
-
-    await updateProjectStatusIfNeeded(supabase as never, projectId);
-
-    expect(supabase.from).toHaveBeenCalledTimes(1);
-  });
-
-  it('NEW → MATCH_RECOMMENDED 전이 가능 시 update 실행', async () => {
-    const supabase = createSequentialSupabase([
-      { data: { status: 'NEW' } },
-      { data: null },
-    ]);
-
-    await updateProjectStatusIfNeeded(supabase as never, projectId);
-
-    expect(supabase.from).toHaveBeenCalledTimes(2);
-    const updateChain = supabase._chains()[1];
-    expect(updateChain.update).toHaveBeenCalledWith({ status: 'MATCH_RECOMMENDED' });
-  });
-
-  it('ASSIGNED → MATCH_RECOMMENDED 전이 불가 시 update 스킵', async () => {
-    const supabase = createSequentialSupabase([
-      { data: { status: 'ASSIGNED' } },
-    ]);
-
-    await updateProjectStatusIfNeeded(supabase as never, projectId);
-
-    // ASSIGNED는 MATCH_RECOMMENDED로 전이 불가 → update 호출 안 함
-    expect(supabase.from).toHaveBeenCalledTimes(1);
-  });
-
-  it('MATCH_RECOMMENDED → MATCH_RECOMMENDED 동일 상태 전이 불가 시 update 스킵', async () => {
-    const supabase = createSequentialSupabase([
-      { data: { status: 'MATCH_RECOMMENDED' } },
-    ]);
-
-    await updateProjectStatusIfNeeded(supabase as never, projectId);
-
-    // 이미 MATCH_RECOMMENDED 상태이면 전이 불가 → update 호출 안 함
-    expect(supabase.from).toHaveBeenCalledTimes(1);
-  });
-
-  // P6: update error 를 확인하지 않아, 추천은 저장됐는데 상태는 DIAGNOSED 에
-  // 머무는 desync 가 로그 없이 발생했다.
-  // 호출부(matching-llm.ts)는 preserveStatus=false(최초 매칭)일 때만 이 함수를
-  // 부르므로, 재계산 경로에서 로그가 없는 것은 정상이다.
-  it('update 실패 시 로그를 남기되 예외를 던지지 않는다', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const supabase = createSequentialSupabase([
-      { data: { status: 'DIAGNOSED' } },
-      { data: null, error: { message: 'update failed' } },
-    ]);
-
-    // 추천은 이미 저장됐으므로 매칭 전체를 실패로 되돌리지 않는다
-    await expect(
-      updateProjectStatusIfNeeded(supabase as never, projectId)
-    ).resolves.toBeUndefined();
-
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('status 전이 실패(DIAGNOSED→MATCH_RECOMMENDED)'),
-      'update failed'
+    await expect(resolveMatchRecommendedTransition(supabase as never, projectId)).resolves.toBe(
+      expected
     );
-    errorSpy.mockRestore();
   });
 
-  it('update 성공 시에는 에러 로그를 남기지 않는다', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const supabase = createSequentialSupabase([
-      { data: { status: 'DIAGNOSED' } },
-      { data: null },
-    ]);
+  it('project 조회 null → 전이 없음', async () => {
+    const supabase = createSequentialSupabase([{ data: null }]);
 
-    await updateProjectStatusIfNeeded(supabase as never, projectId);
+    await expect(
+      resolveMatchRecommendedTransition(supabase as never, projectId)
+    ).resolves.toBeNull();
+  });
 
-    expect(errorSpy).not.toHaveBeenCalled();
-    errorSpy.mockRestore();
+  it('상태 조회만 하고 직접 update 하지 않는다 (전이는 저장 RPC 안에서 수행)', async () => {
+    const supabase = createSequentialSupabase([{ data: { status: 'DIAGNOSED' } }]);
+
+    await resolveMatchRecommendedTransition(supabase as never, projectId);
+
+    expect(supabase.from).toHaveBeenCalledTimes(1);
+    expect(supabase._chains()[0].update).not.toHaveBeenCalled();
   });
 });
 
@@ -494,7 +490,13 @@ describe('updateProjectStatusIfNeeded', () => {
 describe('filterValidRecommendations — 빈 validCandidateIds', () => {
   it('validCandidateIds가 빈 배열이면 모든 추천이 필터링된다', () => {
     const recommendations: LLMMatchingResponse['recommendations'] = [
-      { userId: 'user-a', score: 90, analysis: '분석A', strengths: ['강점'], considerations: ['고려'] },
+      {
+        userId: 'user-a',
+        score: 90,
+        analysis: '분석A',
+        strengths: ['강점'],
+        considerations: ['고려'],
+      },
     ];
 
     const result = filterValidRecommendations(recommendations, []);
@@ -517,9 +519,7 @@ describe('llmMatchingResponseSchema', () => {
 
   it('정상 응답은 검증 통과하며 strengths/considerations 기본값 적용', () => {
     const result = llmMatchingResponseSchema.safeParse({
-      recommendations: [
-        { userId: 'u1', score: 90, analysis: '분석' },
-      ],
+      recommendations: [{ userId: 'u1', score: 90, analysis: '분석' }],
     });
     expect(result.success).toBe(true);
     if (result.success) {

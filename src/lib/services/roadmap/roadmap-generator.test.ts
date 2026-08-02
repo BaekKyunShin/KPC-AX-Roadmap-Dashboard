@@ -40,6 +40,8 @@ import {
   generateTestRoadmap,
   reviseTestRoadmap,
   RoadmapStorageError,
+  RoadmapPersistError,
+  ROADMAP_PERSIST_FAILED_MESSAGE,
   fillMissingRoadmapFields,
 } from './roadmap-generator';
 import type { TestRoadmapInput } from './roadmap-generator';
@@ -203,10 +205,9 @@ function createConsultantProfilesChain(overrides: MockOverrides) {
   };
 }
 
-function createRoadmapVersionsChain(overrides: MockOverrides) {
+function createRoadmapVersionsChain(overrides: MockOverrides, insertFn: ReturnType<typeof vi.fn>) {
   const latestData =
     overrides.latestVersionData !== undefined ? overrides.latestVersionData : { version_number: 1 };
-  const insertRes = overrides.insertResult || { data: { id: 'roadmap-1' }, error: null };
   return {
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
@@ -220,17 +221,22 @@ function createRoadmapVersionsChain(overrides: MockOverrides) {
         }),
       }),
     }),
-    insert: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue(insertRes),
-      }),
-    }),
+    insert: insertFn,
   };
 }
 
 function createMockSupabase(projectStatus: string, overrides: MockOverrides = {}) {
   const updateFn = vi.fn().mockReturnValue({
     eq: vi.fn().mockResolvedValue({ data: null, error: overrides.projectUpdateError ?? null }),
+  });
+
+  // 저장 페이로드를 단언할 수 있도록 insert 핸들을 밖으로 노출한다
+  // (from('roadmap_versions') 이 호출될 때마다 새 vi.fn 이 생기면 인자 검증이 불가능).
+  const insertRes = overrides.insertResult || { data: { id: 'roadmap-1' }, error: null };
+  const roadmapInsertFn = vi.fn().mockReturnValue({
+    select: vi.fn().mockReturnValue({
+      single: vi.fn().mockResolvedValue(insertRes),
+    }),
   });
 
   const projectsChain = createProjectsChain(projectStatus, overrides, updateFn);
@@ -240,7 +246,7 @@ function createMockSupabase(projectStatus: string, overrides: MockOverrides = {}
     self_assessments: () => createSelfAssessmentsChain(overrides),
     interviews: () => createInterviewsChain(overrides),
     consultant_profiles: () => createConsultantProfilesChain(overrides),
-    roadmap_versions: () => createRoadmapVersionsChain(overrides),
+    roadmap_versions: () => createRoadmapVersionsChain(overrides, roadmapInsertFn),
   };
 
   const fallback = () => ({
@@ -249,19 +255,35 @@ function createMockSupabase(projectStatus: string, overrides: MockOverrides = {}
     }),
   });
 
+  // P6 2차: 로드맵 저장 + 상태 전이는 단일 RPC(save_roadmap_draft)로 수행된다.
+  // 저장 실패(insertResult.error)와 전이 실패(projectUpdateError)는 모두 RPC 오류로 나타난다.
+  const rpcFailure = overrides.insertResult?.error ?? overrides.projectUpdateError ?? null;
+  const rpcFn = vi.fn().mockResolvedValue(
+    rpcFailure
+      ? { data: null, error: { message: rpcFailure.message } }
+      : {
+          data: {
+            success: true,
+            roadmap_id: overrides.insertResult?.data?.id ?? 'roadmap-1',
+          },
+          error: null,
+        }
+  );
+
   const mockClient = {
     from: vi.fn((table: string) => (tableChains[table] || fallback)()),
+    rpc: rpcFn,
   };
 
-  return { mockClient, updateFn };
+  return { mockClient, updateFn, roadmapInsertFn, rpcFn };
 }
 
 function setupDefaultMocks(status = 'INTERVIEWED', overrides: MockOverrides = {}) {
   vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
   vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
-  const { mockClient, updateFn } = createMockSupabase(status, overrides);
+  const { mockClient, updateFn, roadmapInsertFn, rpcFn } = createMockSupabase(status, overrides);
   vi.mocked(createAdminClient).mockReturnValue(mockClient as never);
-  return { mockClient, updateFn };
+  return { mockClient, updateFn, roadmapInsertFn, rpcFn };
 }
 
 // ─── 테스트 입력 헬퍼 ────────────────────────────────────────────────────
@@ -303,6 +325,70 @@ function createTestInput(overrides: Partial<TestRoadmapInput> = {}): TestRoadmap
   };
 }
 
+// ─── 저장 페이로드 (특성화) ───────────────────────────────────────────────
+// P6 2차(원자화 RPC 전환)에서 저장 경로가 바뀌어도 DB 로 넘어가는 값 자체는
+// 동일해야 한다. 전환 전 현재 페이로드를 고정해 누락 필드를 잡는다.
+
+describe('generateRoadmap — 로드맵 저장 페이로드', () => {
+  afterEach(() => vi.clearAllMocks());
+
+  function rpcArgs(rpcFn: ReturnType<typeof vi.fn>) {
+    return rpcFn.mock.calls[0][1] as Record<string, unknown>;
+  }
+
+  it('프로젝트·버전·요약·작성자를 저장 RPC 로 전달한다', async () => {
+    const { rpcFn } = setupDefaultMocks('INTERVIEWED');
+
+    await generateRoadmap('project-1', 'user-1', '수정 요청');
+
+    expect(rpcFn).toHaveBeenCalledWith(
+      'save_roadmap_draft',
+      expect.objectContaining({
+        p_project_id: 'project-1',
+        p_version_number: 2,
+        p_diagnosis_summary: '테스트 진단 요약',
+        p_revision_prompt: '수정 요청',
+        p_created_by: 'user-1',
+      })
+    );
+    // status='DRAFT' 와 free_tool_validated/time_limit_validated=TRUE 는 RPC 안에서
+    // 고정되므로 여기서는 단언할 수 없다 — 마이그 081 의 로컬 실행 검증으로 커버한다.
+  });
+
+  it('revisionPrompt 가 없으면 revision_prompt 를 null 로 전달한다', async () => {
+    const { rpcFn } = setupDefaultMocks('INTERVIEWED');
+
+    await generateRoadmap('project-1', 'user-1');
+
+    expect(rpcArgs(rpcFn).p_revision_prompt).toBeNull();
+  });
+
+  it('LLM 결과를 매핑한 JSONB 컬럼(pbl_course·courses·roadmap_matrix)을 전달한다', async () => {
+    const { rpcFn } = setupDefaultMocks('INTERVIEWED');
+
+    await generateRoadmap('project-1', 'user-1');
+
+    const args = rpcArgs(rpcFn);
+    expect(args.p_courses).toHaveLength(ROADMAP_COURSE_SPEC_COUNT);
+    expect(args.p_pbl_course).toMatchObject({
+      setup_necessity: '수립 배경 복사본',
+      outcome_summary: MOCK_LLM_RESULT.outcome_summary,
+    });
+    expect(args.p_roadmap_matrix).toEqual([]);
+    expect(args.p_consultant_profile_snapshot).toBeDefined();
+  });
+
+  it('저장과 상태 전이를 한 번의 RPC 로 요청한다 (분리된 update 없음)', async () => {
+    const { rpcFn, updateFn, roadmapInsertFn } = setupDefaultMocks('INTERVIEWED');
+
+    await generateRoadmap('project-1', 'user-1');
+
+    expect(rpcFn).toHaveBeenCalledTimes(1);
+    expect(roadmapInsertFn).not.toHaveBeenCalled();
+    expect(updateFn).not.toHaveBeenCalled();
+  });
+});
+
 // ─── 상태 전이 ────────────────────────────────────────────────────────────
 
 describe('generateRoadmap — 프로젝트 상태 업데이트', () => {
@@ -313,7 +399,7 @@ describe('generateRoadmap — 프로젝트 상태 업데이트', () => {
     { status: 'ROADMAP_DRAFTED', shouldUpdate: true },
     { status: 'FINALIZED', shouldUpdate: false },
   ])('$status → update=$shouldUpdate', async ({ status, shouldUpdate }) => {
-    const { updateFn } = setupDefaultMocks(status);
+    const { rpcFn } = setupDefaultMocks(status);
     await generateRoadmap(
       'project-1',
       'user-1',
@@ -321,41 +407,39 @@ describe('generateRoadmap — 프로젝트 상태 업데이트', () => {
       false
     );
 
-    if (shouldUpdate) {
-      expect(updateFn).toHaveBeenCalledWith({ status: 'ROADMAP_DRAFTED' });
-    } else {
-      expect(updateFn).not.toHaveBeenCalled();
-    }
+    // 전이는 저장 RPC 안에서 함께 일어나므로 목표 상태 전달 여부로 판정한다.
+    const args = rpcFn.mock.calls[0][1] as Record<string, unknown>;
+    expect(args.p_transition_to_status).toBe(shouldUpdate ? 'ROADMAP_DRAFTED' : null);
   });
 
-  // P6: 전이 update 가 실패해도 예외·로그 없이 성공을 반환해, 로드맵은 저장됐는데
-  // projects.status 는 INTERVIEWED 에 머무는 silent desync 가 발생했다.
-  it('status 전이 update 실패 시 로그를 남기되 로드맵 생성은 성공으로 반환한다', async () => {
+  // P6 2차: 저장과 전이가 한 트랜잭션이라 "로드맵은 저장됐는데 상태만 이전 단계"가
+  // 원천적으로 생기지 않는다. 실패하면 아무것도 저장되지 않으므로 응답도 실패다.
+  it('저장·전이가 실패하면 재생성 안내와 함께 예외를 던진다 (부분 저장 없음)', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     setupDefaultMocks('INTERVIEWED', {
       projectUpdateError: { message: 'update failed' },
     });
 
-    const result = await generateRoadmap('project-1', 'user-1');
-
-    // 산출물은 이미 커밋됐으므로 응답을 실패로 되돌리지 않는다
-    expect(result.roadmapId).toBe('roadmap-1');
+    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow(RoadmapPersistError);
+    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow(
+      ROADMAP_PERSIST_FAILED_MESSAGE
+    );
 
     expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('status 전이 실패(INTERVIEWED→ROADMAP_DRAFTED)'),
+      expect.stringContaining('로드맵 저장 실패 project=project-1'),
       'update failed'
     );
     errorSpy.mockRestore();
   });
 
-  it('status 전이 update 성공 시에는 에러 로그를 남기지 않는다', async () => {
+  it('저장·전이가 성공하면 에러 로그를 남기지 않는다', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     setupDefaultMocks('INTERVIEWED');
 
     await generateRoadmap('project-1', 'user-1');
 
     expect(errorSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining('status 전이 실패'),
+      expect.stringContaining('로드맵 저장 실패'),
       expect.anything()
     );
     errorSpy.mockRestore();
@@ -445,12 +529,12 @@ describe('generateRoadmap — LLM 호출 및 스키마', () => {
     expect(result.course_specs).toHaveLength(ROADMAP_COURSE_SPEC_COUNT);
   });
 
-  it('로드맵 insert 실패 → throw', async () => {
+  it('로드맵 저장 실패 → 재생성 안내와 함께 throw', async () => {
     setupDefaultMocks('INTERVIEWED', {
       insertResult: { data: null, error: { message: 'insert failed' } },
     });
     await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow(
-      '로드맵 저장 실패: insert failed'
+      ROADMAP_PERSIST_FAILED_MESSAGE
     );
   });
 

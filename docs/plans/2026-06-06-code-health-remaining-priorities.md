@@ -382,7 +382,46 @@ LLM 호출 쿼터·사용량 추적이 경로별로 비일관적이다. 로드�
 
 ---
 
-### 6. 생성 성공 후 projects.status 전이 update 에러를 조용히 삼켜 상태 데시싱크 발생 (3곳)
+### 6. ✅ 생성 성공 후 projects.status 전이 update 에러를 조용히 삼켜 상태 데시싱크 발생 (3곳)
+
+> ✅ **2차(원자화) 완료 (2026-08-02)** — 1차(PR #138)의 error 로깅에서 더 나아가, 산출물 저장과
+> `projects.status` 전이를 **단일 트랜잭션 RPC**로 묶어 desync 자체를 구조적으로 제거했다.
+>
+> **범위(사용자 결정): AI 산출물 3경로만** — 로드맵 생성(`roadmap-generator.ts`)·PBL 생성
+> (`pbl-crud.createDraftVersion`)·매칭 추천(`matching-helpers.saveRecommendations`).
+> **의도적으로 제외한 3곳**(`.update({ status` 로 잔존): 진단 제출 2곳
+> (`assessment/actions.ts:151`·`ops/projects/actions/crud.ts:217`)은 `.eq('status','NEW')` SQL
+> 멱등 가드가 있고, 인터뷰 제출 1곳(`interview/actions.ts:714`)은 전이 실패 시 알림까지 억제하는
+> `statusTransitioned` 가드가 있어 운영자가 모순을 겪지 않는다. 셋 다 원자화 이득 대비 회귀
+> 위험(특히 인터뷰는 트랙별 동적 페이로드)이 커서 남겼다.
+>
+> **마이그 081** — RPC 3종 `save_roadmap_draft` · `save_pbl_draft` ·
+> `save_matching_recommendations`. 036 패턴 계승(SECURITY INVOKER + `search_path=''` +
+> `FOR UPDATE` + jsonb 판별 유니온 반환, GRANT 없음, RLS 변경 없음). **전이 규칙의 단일 출처는
+> TS의 `validateStatusTransition`** 에 그대로 두고, 호출부가 목표 상태를 `p_transition_to_status`
+> 로 넘긴다(NULL = 미전이). RPC 는 자기 목표 상태와 일치하는지만 방어 검증하므로 규칙이 SQL 로
+> 이중화되지 않는다.
+>
+> **동작 변화(의도)**: 전이가 실패하면 산출물도 함께 롤백되고 **응답이 실패**가 된다. 화면 문구는
+> 재생성 필요를 명시(`RoadmapPersistError`·`PBLPersistError`). 이전에는 "성공했다고 나오는데 목록
+> 상태만 이전 단계"였다. 새로 유실되는 경우는 "INSERT 는 됐는데 같은 트랜잭션의 UPDATE 만 실패"라는
+> 좁은 구간뿐이고, 장애 시엔 INSERT 도 함께 실패하므로 실질 증가분은 사실상 없다.
+> **부수 해소**: 매칭의 "기존 추천 DELETE 성공 → INSERT 실패 시 추천 통째 유실"과 PBL 의
+> "산출물·전이가 서로 다른 admin 인스턴스"(`pbl-crud.ts:60`)도 함께 사라졌다.
+>
+> **⚠️ 함정(실측·재발 방지)**: **DB 함수 이름에 `atomic` 을 넣으면 안 된다.** supabase CLI
+> (v2.67.1) 마이그레이션 파서가 이름 안의 `atomic` 을 PostgreSQL 14+ 의 `BEGIN ATOMIC` 함수
+> 본문으로 오인해 statement 분할에 실패하고, 파일 전체를 한 구문으로 보내
+> `cannot insert multiple commands into a prepared statement` 로 죽는다(파일명은 무해 —
+> 036·061 이 이미 "파일명에만 atomic" 컨벤션을 쓰고 있었고 그 근거가 이것이었다). 통제 실험으로
+> 확정: 같은 파일에서 이름만 바꾸면 통과, 되돌리면 재현(3회).
+>
+> **검증**: validate 395파일 **6747건**(기준선 6738 + 특성화·계약 9건) · build 0.
+> SQL 자동 테스트가 이 저장소에 없으므로(pgTAP·통합테스트 0건) 로컬 DB 실행으로 4케이스 실측 —
+> ① 정상(산출물+전이 동시 반영) ② `p_transition_to_status=NULL` 이면 산출물만 저장·상태 불변
+> ③ 허용 외 목표 상태 거부 ④ **전이 단계 강제 실패 시 산출물도 남지 않음**(임시 트리거로 예외 주입).
+> 기존 계약 테스트 3건("산출물은 커밋하고 상태 실패는 삼켜라")은 원자화와 정면 충돌하므로 의도적으로
+> 뒤집었다.
 
 - **분류:** 버그수정(동작 변경 의도) · **심각도:** 높음 · **노력:** 보통 · **ID:** `P6-status-desync`
 

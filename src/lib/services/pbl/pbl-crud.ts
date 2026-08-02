@@ -39,6 +39,26 @@ type FinalizePBLRpcResult =
   | { success: true; project_id: string; version_number: number }
   | { success: false; error: string };
 
+/** save_pbl_draft RPC 반환 타입 (판별 유니온) */
+type SavePBLDraftRpcResult =
+  | { success: true; report: PBLReportRow }
+  | { success: false; error: string };
+
+/**
+ * PBL DRAFT 저장 + 상태 전이(원자적 RPC)가 실패해 **아무것도 저장되지 않은** 경우 throw.
+ * 호출부(Server Action)가 재생성 안내를 그대로 사용자에게 전달한다.
+ */
+export class PBLPersistError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'PBLPersistError';
+  }
+}
+
+/** 저장 실패 시 사용자에게 노출하는 안내 (재생성 필요를 명시) */
+export const PBL_PERSIST_FAILED_MESSAGE =
+  'PBL 보고서 저장에 실패했습니다. 생성된 내용이 저장되지 않았으니 다시 생성해 주세요.';
+
 // ============================================================================
 // CRUD
 // ============================================================================
@@ -48,6 +68,9 @@ type FinalizePBLRpcResult =
  *  - `consultant_profile_snapshot`: 작성 시점에 `consultant_profiles`에서 조회해 JSONB로 스냅샷.
  *  - `diagnosis_summary`: 인자로 받은 요약 저장.
  *  - `version_number`: MAX(version_number) + 1.
+ *  - `transitionToStatus`: 전달하면 저장과 **같은 트랜잭션**에서 projects.status 를 전이한다
+ *    (마이그 081 `save_pbl_draft`). null/미전달이면 상태를 건드리지 않는다.
+ *    전이 가능 여부 판정은 호출부의 중앙 전이 규칙(validateStatusTransition)이 담당한다.
  */
 export async function createDraftVersion(
   projectId: string,
@@ -56,6 +79,7 @@ export async function createDraftVersion(
   diagnosisSummary: string,
   revisionPrompt: string | null,
   supabase?: SupabaseClient,
+  transitionToStatus?: string | null
 ): Promise<PBLReportRow> {
   const client = supabase ?? createAdminClient();
 
@@ -88,28 +112,28 @@ export async function createDraftVersion(
 
   const versionNumber = (latest?.version_number ?? 0) + 1;
 
-  const { data, error } = await client
-    .from('pbl_reports')
-    .insert({
-      project_id: projectId,
-      version_number: versionNumber,
-      status: 'DRAFT',
-      consultant_profile_snapshot: snapshot,
-      diagnosis_summary: diagnosisSummary,
-      pbl_content: content,
-      free_tool_validated: true,
-      time_limit_validated: true,
-      revision_prompt: revisionPrompt,
-      created_by: userId,
-    })
-    .select(PBL_REPORT_COLUMNS)
-    .single();
+  // 보고서 저장 + 상태 전이를 단일 트랜잭션으로 실행한다 (마이그 081).
+  // 예전에는 INSERT 와 status UPDATE 가 분리돼 있었고, 심지어 서로 다른 admin
+  // 클라이언트 인스턴스를 써서 "보고서는 저장됐는데 목록 상태는 그대로"인 desync 가 남았다.
+  const { data, error } = await client.rpc('save_pbl_draft', {
+    p_project_id: projectId,
+    p_version_number: versionNumber,
+    p_consultant_profile_snapshot: snapshot,
+    p_diagnosis_summary: diagnosisSummary,
+    p_pbl_content: content,
+    p_revision_prompt: revisionPrompt,
+    p_created_by: userId,
+    p_transition_to_status: transitionToStatus ?? null,
+  });
 
-  if (error || !data) {
-    throw new Error(`PBL DRAFT 저장 실패: ${error?.message ?? 'unknown'}`);
+  const result = (data ?? null) as SavePBLDraftRpcResult | null;
+  if (error || !result?.success) {
+    const detail = error?.message ?? (result && !result.success ? result.error : 'unknown');
+    console.error(`[createDraftVersion] PBL DRAFT 저장 실패 project=${projectId}:`, detail);
+    throw new PBLPersistError(PBL_PERSIST_FAILED_MESSAGE);
   }
 
-  return data as PBLReportRow;
+  return result.report;
 }
 
 /**
@@ -119,7 +143,7 @@ export async function createDraftVersion(
 export async function updateDraft(
   pblId: string,
   patch: { pbl_content?: PBLContent; diagnosis_summary?: string; revision_prompt?: string | null },
-  supabase?: SupabaseClient,
+  supabase?: SupabaseClient
 ): Promise<PBLReportRow> {
   const client = supabase ?? createAdminClient();
 
@@ -223,7 +247,7 @@ export async function finalizePBL(pblId: string, actorUserId: string): Promise<v
 /** 최신 FINAL 버전 조회 */
 export async function getLatestFinal(
   projectId: string,
-  supabase?: SupabaseClient,
+  supabase?: SupabaseClient
 ): Promise<PBLReportRow | null> {
   const client = supabase ?? createAdminClient();
   const { data } = await client
@@ -241,7 +265,7 @@ export async function getLatestFinal(
 /** 프로젝트의 모든 PBL 버전 이력 (DRAFT + FINAL + ARCHIVED) */
 export async function listVersions(
   projectId: string,
-  supabase?: SupabaseClient,
+  supabase?: SupabaseClient
 ): Promise<PBLReportRow[]> {
   const client = supabase ?? createAdminClient();
   const { data } = await client
@@ -256,7 +280,7 @@ export async function listVersions(
 /** 특정 버전 조회 */
 export async function getPBLReport(
   pblId: string,
-  supabase?: SupabaseClient,
+  supabase?: SupabaseClient
 ): Promise<PBLReportRow | null> {
   const client = supabase ?? createAdminClient();
   const { data } = await client
@@ -269,10 +293,7 @@ export async function getPBLReport(
 }
 
 /** DRAFT 삭제 (FINAL·ARCHIVED 는 금지) */
-export async function deleteDraft(
-  pblId: string,
-  supabase?: SupabaseClient,
-): Promise<void> {
+export async function deleteDraft(pblId: string, supabase?: SupabaseClient): Promise<void> {
   const client = supabase ?? createAdminClient();
   const { data: current } = await client
     .from('pbl_reports')
@@ -299,7 +320,7 @@ export async function deleteDraft(
 export async function sharePBL(
   pblId: string,
   isShared: boolean,
-  supabase?: SupabaseClient,
+  supabase?: SupabaseClient
 ): Promise<PBLReportRow> {
   const client = supabase ?? createAdminClient();
 
