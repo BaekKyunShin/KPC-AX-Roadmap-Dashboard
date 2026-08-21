@@ -18,3 +18,6 @@ test-results/
 # 참조 파일·워크트리 아티팩트
 _reference/
 .worktrees/
+
+# Supabase 메일 템플릿 정본 (대시보드 값과 바이트 단위로 일치해야 함)
+supabase/templates/*.html
