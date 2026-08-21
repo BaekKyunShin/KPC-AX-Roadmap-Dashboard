@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { AuditAction, UserRole } from '@/types/database';
 
@@ -15,13 +16,34 @@ interface AuditLogParams {
   errorMessage?: string;
 }
 
+const uuidSchema = z.string().uuid();
+
+/**
+ * uuid 컬럼(`actor_user_id`·`target_id`)에 들어갈 값 검증.
+ *
+ * Why: 비-UUID 를 넘기면 insert 가 `invalid input syntax for type uuid` 로 실패하는데,
+ *   감사로그 실패는 삼켜지고 호출부는 대부분 `after()` 안이라 콘솔조차 묻힌다.
+ *   실제로 /test-pbl · /test-roadmap 이 `targetId: 'test-mode'` 를 넘겨
+ *   감사 기록이 통째로 유실돼 왔다(2026-08-21 발견).
+ *
+ * @returns 문제가 있으면 사유 문자열, 없으면 null
+ */
+function findInvalidId(actorUserId: string | null, targetId: string): string | null {
+  const problems: string[] = [];
+  if (actorUserId !== null && !uuidSchema.safeParse(actorUserId).success) {
+    problems.push(`actorUserId=${JSON.stringify(actorUserId)}`);
+  }
+  if (!uuidSchema.safeParse(targetId).success) {
+    problems.push(`targetId=${JSON.stringify(targetId)}`);
+  }
+  return problems.length > 0 ? problems.join(', ') : null;
+}
+
 /** 요청 헤더에서 클라이언트 IP 추출 (Server Action/Route Handler에서만 작동) */
 async function getClientIp(): Promise<string | null> {
   try {
     const h = await headers();
-    return h.get('x-forwarded-for')?.split(',')[0].trim()
-      ?? h.get('x-real-ip')
-      ?? null;
+    return h.get('x-forwarded-for')?.split(',')[0].trim() ?? h.get('x-real-ip') ?? null;
   } catch {
     return null;
   }
@@ -40,6 +62,16 @@ export async function createAuditLog({
   success = true,
   errorMessage,
 }: AuditLogParams): Promise<void> {
+  // uuid 검증은 try 블록 **밖**에 둔다 — 안에 두면 아래 catch 가 throw 를 다시 삼킨다.
+  const invalidId = findInvalidId(actorUserId ?? null, targetId);
+  if (invalidId) {
+    const message = `[createAuditLog] uuid 컬럼에 잘못된 값이 전달되어 기록을 건너뜁니다: ${invalidId}`;
+    // 개발·테스트: 즉시 드러나게 throw / 운영: 본 작업을 깨뜨리지 않고 로깅만
+    if (process.env.NODE_ENV !== 'production') throw new Error(message);
+    console.error(message);
+    return;
+  }
+
   try {
     const supabase = createAdminClient();
     const ipAddress = await getClientIp();
@@ -85,7 +117,15 @@ export async function fetchAuditLogs(options: {
   currentUserRole?: UserRole;
 }) {
   const supabase = createAdminClient();
-  const { page = 1, limit = AUDIT_LOG_DEFAULT_PAGE_SIZE, action, targetType, actorUserId, startDate, endDate } = options;
+  const {
+    page = 1,
+    limit = AUDIT_LOG_DEFAULT_PAGE_SIZE,
+    action,
+    targetType,
+    actorUserId,
+    startDate,
+    endDate,
+  } = options;
 
   let query = supabase
     .from('audit_logs')

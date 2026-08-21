@@ -67,6 +67,11 @@ function createMockSupabase() {
   };
 }
 
+// audit_logs.actor_user_id / target_id 는 uuid 컬럼이므로 픽스처도 실제 UUID 를 쓴다.
+// (예전 픽스처는 'user-123' 같은 임의 문자열이라, uuid 위반 버그를 모킹이 가려 왔다)
+const ACTOR_UUID = '49808725-69f4-4971-9334-4707d34183e3';
+const TARGET_UUID = 'd3e47283-7452-4aa4-bb77-ff373f13f7bb';
+
 // ─── createAuditLog ─────────────────────────────────────────────────────────
 
 describe('createAuditLog', () => {
@@ -84,10 +89,10 @@ describe('createAuditLog', () => {
   });
 
   const baseParams = {
-    actorUserId: 'user-123',
+    actorUserId: ACTOR_UUID,
     action: 'PROJECT_CREATE' as const,
     targetType: 'project',
-    targetId: 'proj-456',
+    targetId: TARGET_UUID,
   };
 
   it('필수 파라미터로 감사로그를 기록한다', async () => {
@@ -98,13 +103,13 @@ describe('createAuditLog', () => {
     expect(mock.mockClient.from).toHaveBeenCalledWith('audit_logs');
     expect(mock.chainable.insert).toHaveBeenCalledWith(
       expect.objectContaining({
-        actor_user_id: 'user-123',
+        actor_user_id: ACTOR_UUID,
         action: 'PROJECT_CREATE',
         target_type: 'project',
-        target_id: 'proj-456',
+        target_id: TARGET_UUID,
         success: true,
         error_message: undefined,
-      }),
+      })
     );
   });
 
@@ -119,7 +124,7 @@ describe('createAuditLog', () => {
     expect(mock.chainable.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         meta: expect.objectContaining({ previous_status: 'NEW', new_status: 'DIAGNOSED' }),
-      }),
+      })
     );
   });
 
@@ -136,7 +141,7 @@ describe('createAuditLog', () => {
       expect.objectContaining({
         success: false,
         error_message: '권한 부족',
-      }),
+      })
     );
   });
 
@@ -159,10 +164,7 @@ describe('createAuditLog', () => {
 
     await createAuditLog(baseParams);
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      '[createAuditLog Error]',
-      expect.any(Error),
-    );
+    expect(consoleSpy).toHaveBeenCalledWith('[createAuditLog Error]', expect.any(Error));
     consoleSpy.mockRestore();
   });
 
@@ -170,7 +172,7 @@ describe('createAuditLog', () => {
 
   it('요청 헤더에서 IP 주소를 추출하여 meta에 포함한다', async () => {
     vi.mocked(headers).mockResolvedValue(
-      new Headers({ 'x-forwarded-for': '1.2.3.4, 10.0.0.1' }) as never,
+      new Headers({ 'x-forwarded-for': '1.2.3.4, 10.0.0.1' }) as never
     );
     mock.addResult({ data: null, error: null });
 
@@ -179,8 +181,56 @@ describe('createAuditLog', () => {
     expect(mock.chainable.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         meta: expect.objectContaining({ ip_address: '1.2.3.4' }),
-      }),
+      })
     );
+  });
+
+  // ─── uuid 입력 검증 ─────────────────────────────────────────────────────
+  //
+  // audit_logs.actor_user_id / target_id 는 uuid 컬럼이다. 비-UUID 를 넘기면 insert 가
+  // `invalid input syntax for type uuid` 로 실패하는데, 감사로그 실패는 삼켜지고
+  // 호출부는 대부분 `after()` 안이라 콘솔조차 묻힌다. 실제로 /test-pbl · /test-roadmap 이
+  // `targetId: 'test-mode'` 를 넘겨 감사 기록이 통째로 유실돼 왔다.
+  // → 개발·테스트에서는 즉시 throw 해서 드러나게 하고, 운영에서는 본 작업을 깨지 않는다.
+
+  it('targetId 가 UUID 가 아니면 테스트 환경에서 throw 한다', async () => {
+    await expect(createAuditLog({ ...baseParams, targetId: 'test-mode' })).rejects.toThrow(
+      /targetId/
+    );
+  });
+
+  it('targetId 가 UUID 가 아니면 insert 를 시도하지 않는다', async () => {
+    await createAuditLog({ ...baseParams, targetId: 'test-mode' }).catch(() => {});
+
+    expect(mock.chainable.insert).not.toHaveBeenCalled();
+  });
+
+  it('actorUserId 가 UUID 가 아니면 테스트 환경에서 throw 한다', async () => {
+    await expect(createAuditLog({ ...baseParams, actorUserId: 'user-123' })).rejects.toThrow(
+      /actorUserId/
+    );
+  });
+
+  it('actorUserId 가 null 이면 검증을 통과한다 (시스템 액션)', async () => {
+    mock.addResult({ data: null, error: null });
+
+    await createAuditLog({ ...baseParams, actorUserId: null });
+
+    expect(mock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ actor_user_id: null })
+    );
+  });
+
+  it('운영 환경에서는 throw 하지 않고 기록만 건너뛴다', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await createAuditLog({ ...baseParams, targetId: 'test-mode' }); // 예외 없이 완료
+
+    expect(mock.chainable.insert).not.toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+    vi.unstubAllEnvs();
   });
 
   it('headers() 실패 시 IP 없이 정상 기록된다', async () => {
@@ -192,7 +242,7 @@ describe('createAuditLog', () => {
     expect(mock.chainable.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         meta: {},
-      }),
+      })
     );
   });
 });
@@ -220,7 +270,7 @@ describe('fetchAuditLogs', () => {
     expect(mock.mockClient.from).toHaveBeenCalledWith('audit_logs');
     expect(mock.chainable.select).toHaveBeenCalledWith(
       '*, actor:users!actor_user_id(id, name, email)',
-      { count: 'exact' },
+      { count: 'exact' }
     );
     expect(mock.chainable.order).toHaveBeenCalledWith('created_at', { ascending: false });
     expect(mock.chainable.range).toHaveBeenCalledWith(0, 49); // page 1, limit 50
@@ -285,10 +335,7 @@ describe('fetchAuditLogs', () => {
 
     await fetchAuditLogs({ currentUserRole: 'SYSTEM_ADMIN' });
 
-    expect(mock.chainable.in).not.toHaveBeenCalledWith(
-      'actor_user_id',
-      expect.anything(),
-    );
+    expect(mock.chainable.in).not.toHaveBeenCalledWith('actor_user_id', expect.anything());
   });
 
   // #001 회귀 방지 — 기존에는 OPS_ADMIN 가시 범위를 컨설턴트 actor 로그로만 좁혔으나,
@@ -307,10 +354,7 @@ describe('fetchAuditLogs', () => {
     expect(mock.mockClient.from).toHaveBeenCalledTimes(1);
     expect(mock.mockClient.from).toHaveBeenCalledWith('audit_logs');
     // actor_user_id 에 화이트리스트 필터가 들어가지 않음
-    expect(mock.chainable.in).not.toHaveBeenCalledWith(
-      'actor_user_id',
-      expect.anything(),
-    );
+    expect(mock.chainable.in).not.toHaveBeenCalledWith('actor_user_id', expect.anything());
     // 본인 actor 로그가 결과에 포함됨
     expect(result.total).toBe(2);
     expect(result.logs).toEqual(logs);
@@ -361,13 +405,13 @@ describe('createAuditLog 에지 케이스', () => {
       actorUserId: null,
       action: 'PROJECT_CREATE' as const,
       targetType: 'project',
-      targetId: 'proj-123',
+      targetId: TARGET_UUID,
     });
 
     expect(mock.chainable.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         actor_user_id: null,
-      }),
+      })
     );
   });
 
@@ -382,10 +426,10 @@ describe('createAuditLog 에지 케이스', () => {
     };
 
     await createAuditLog({
-      actorUserId: 'user-123',
+      actorUserId: ACTOR_UUID,
       action: 'PROJECT_CREATE' as const,
       targetType: 'project',
-      targetId: 'proj-456',
+      targetId: TARGET_UUID,
       meta: complexMeta,
     });
 
@@ -397,7 +441,7 @@ describe('createAuditLog 에지 케이스', () => {
           nested: { key: 'value' },
           flag: true,
         }),
-      }),
+      })
     );
   });
 
@@ -405,79 +449,73 @@ describe('createAuditLog 에지 케이스', () => {
     mock.addResult({ data: null, error: null });
 
     await createAuditLog({
-      actorUserId: 'user-123',
+      actorUserId: ACTOR_UUID,
       action: 'PROJECT_CREATE' as const,
       targetType: 'project',
-      targetId: 'proj-456',
+      targetId: TARGET_UUID,
       meta: {},
     });
 
     expect(mock.chainable.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         meta: {},
-      }),
+      })
     );
   });
 
   it('x-real-ip 헤더로 IP 주소를 추출한다 (x-forwarded-for 없을 때)', async () => {
-    vi.mocked(headers).mockResolvedValue(
-      new Headers({ 'x-real-ip': '192.168.1.1' }) as never,
-    );
+    vi.mocked(headers).mockResolvedValue(new Headers({ 'x-real-ip': '192.168.1.1' }) as never);
     mock.addResult({ data: null, error: null });
 
     await createAuditLog({
-      actorUserId: 'user-123',
+      actorUserId: ACTOR_UUID,
       action: 'PROJECT_CREATE' as const,
       targetType: 'project',
-      targetId: 'proj-456',
+      targetId: TARGET_UUID,
     });
 
     expect(mock.chainable.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         meta: expect.objectContaining({ ip_address: '192.168.1.1' }),
-      }),
+      })
     );
   });
 
   it('IP 헤더가 모두 없으면 meta에 ip_address가 포함되지 않는다', async () => {
-    vi.mocked(headers).mockResolvedValue(
-      new Headers({}) as never,
-    );
+    vi.mocked(headers).mockResolvedValue(new Headers({}) as never);
     mock.addResult({ data: null, error: null });
 
     await createAuditLog({
-      actorUserId: 'user-123',
+      actorUserId: ACTOR_UUID,
       action: 'PROJECT_CREATE' as const,
       targetType: 'project',
-      targetId: 'proj-456',
+      targetId: TARGET_UUID,
       meta: { custom: 'data' },
     });
 
     expect(mock.chainable.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         meta: { custom: 'data' },
-      }),
+      })
     );
   });
 
   it('meta와 IP 주소가 병합된다', async () => {
-    vi.mocked(headers).mockResolvedValue(
-      new Headers({ 'x-forwarded-for': '10.0.0.1' }) as never,
-    );
+    vi.mocked(headers).mockResolvedValue(new Headers({ 'x-forwarded-for': '10.0.0.1' }) as never);
     mock.addResult({ data: null, error: null });
 
     await createAuditLog({
-      actorUserId: 'user-123',
+      actorUserId: ACTOR_UUID,
       action: 'PROJECT_CREATE' as const,
       targetType: 'project',
-      targetId: 'proj-456',
+      targetId: TARGET_UUID,
       meta: { reason: '테스트' },
     });
 
     expect(mock.chainable.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         meta: { reason: '테스트', ip_address: '10.0.0.1' },
-      }),
+      })
     );
   });
 });
