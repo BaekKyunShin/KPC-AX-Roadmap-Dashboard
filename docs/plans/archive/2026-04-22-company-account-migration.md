@@ -398,9 +398,9 @@ Supabase project ref·키가 그대로 유지됐으므로 GitHub Secrets는 **�
 
 `https://kpc-ax-roadmap-dashboard.vercel.app` 프로덕션에서 실제 시나리오 실행:
 
-- [ ] 컨설턴트 로그인(`kpc@test.com` / `aaaa0000`) → `/consultant/home` 정상
+- [ ] 컨설턴트 로그인(`kpc@test.com` / `<비공개>`) → `/consultant/home` 정상
 - [ ] `/gallery` 카드 노출, 트랙 탭 동작
-- [ ] OPS 로그인(`son@test.com` / `aaaa00000`) → `/ops/projects` 정상
+- [ ] OPS 로그인(`son@test.com` / `<비공개>`) → `/ops/projects` 정상
 - [ ] 로드맵 프로젝트 1건 → `/roadmap` → **HWPX 다운로드 성공** (Python Function 정상)
 - [ ] PBL 프로젝트 1건 → `/pbl` → **HWPX 다운로드 성공**
 - [ ] 브라우저 콘솔 `console.error` 0건

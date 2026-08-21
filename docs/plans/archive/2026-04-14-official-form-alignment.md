@@ -4526,8 +4526,8 @@ ALTER TABLE roadmap_versions DROP COLUMN IF EXISTS pbl_course;
 - `docs/prompts/archive/session-10-step11-gallery.md`
 
 **테스트 계정:**
-- **컨설턴트**: `kpc@test.com` / `aaaa0000`
-- **운영관리자**: `son@test.com` / `aaaa00000`
+- **컨설턴트**: `kpc@test.com` / `<비공개>`
+- **운영관리자**: `son@test.com` / `<비공개>`
 
 **감사 범위:**
 - **인증·RBAC** (Session 01~02): 로그인·회원가입·역할 승인·미승인 접근 거부

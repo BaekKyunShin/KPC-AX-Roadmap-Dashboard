@@ -248,7 +248,7 @@ Main PR 머지 직후 배포 검증 + Auth 설정 + 스모크 테스트. 계획�
 
 **3. 스모크 테스트 자동 실행**
 - Puppeteer MCP 또는 Playwright MCP 사용
-- 계정: 컨설턴트 `kpc@test.com`/`aaaa0000`, OPS `son@test.com`/`aaaa00000`
+- 계정: 컨설턴트 `kpc@test.com`/`<비공개>`, OPS `son@test.com`/`<비공개>`
 - 시나리오 (프로덕션 URL 기준):
   a. 컨설턴트 로그인 → /consultant/home 도달
   b. /gallery · /notices 도달 + 콘솔 에러 없음

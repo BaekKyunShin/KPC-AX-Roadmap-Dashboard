@@ -8,8 +8,12 @@
 
 | 역할 | 이메일 | 비밀번호 |
 |------|--------|----------|
-| OPS_ADMIN (관리자) | werooring@gmail.com | $$kpc10044 |
-| CONSULTANT_APPROVED (컨설턴트) | kpc@test.com | aaaa0000 |
+| OPS_ADMIN (관리자) | werooring@gmail.com | <비공개> |
+| CONSULTANT_APPROVED (컨설턴트) | kpc@test.com | <비공개> |
+
+> **비밀번호는 문서에 기록하지 않는다.** 로컬 계정은 `supabase/seed.sql` 시드값을 쓰고,
+> 운영 계정 비밀번호가 필요하면 담당자에게 별도 경로로 요청할 것.
+> (2026-08-21: 문서에 평문으로 남아 있던 운영 비밀번호 42곳을 제거했다.)
 
 ## 테스트 방법론
 
@@ -106,7 +110,7 @@
 
 ## Phase 2: 관리자(OPS_ADMIN) 계정 테스트
 
-> 로그인: werooring@gmail.com / $$kpc10044
+> 로그인: werooring@gmail.com / <비공개>
 
 ### 2.0 로그인
 
@@ -549,7 +553,7 @@
 
 ## Phase 3: 컨설턴트(CONSULTANT_APPROVED) 계정 테스트
 
-> 로그인: kpc@test.com / aaaa0000
+> 로그인: kpc@test.com / <비공개>
 
 ### 3.0 로그인
 
