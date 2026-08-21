@@ -197,7 +197,8 @@ export async function createTestRoadmap(
         actorUserId: auth.user.id,
         action: 'TEST_ROADMAP_CREATE',
         targetType: 'roadmap',
-        targetId: 'test-mode',
+        // 테스트 모드는 대상 레코드가 없다. target_id 는 uuid 컬럼이므로 실행자 id 를 쓴다.
+        targetId: auth.user.id,
         meta: {
           company_name: input.companyName,
           industry: input.industry,
@@ -265,7 +266,8 @@ export async function reviseTestRoadmap(
         actorUserId: auth.user.id,
         action: 'TEST_ROADMAP_REVISE',
         targetType: 'roadmap',
-        targetId: 'test-mode',
+        // 테스트 모드는 대상 레코드가 없다. target_id 는 uuid 컬럼이므로 실행자 id 를 쓴다.
+        targetId: auth.user.id,
         meta: {
           company_name: input.companyName,
           industry: input.industry,

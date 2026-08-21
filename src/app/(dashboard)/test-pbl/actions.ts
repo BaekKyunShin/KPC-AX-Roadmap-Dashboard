@@ -134,7 +134,9 @@ export async function generateTestPBL(
         actorUserId: user.id,
         action: 'TEST_PROJECT_CREATE',
         targetType: 'pbl',
-        targetId: 'test-mode',
+        // 테스트 모드는 대상 레코드가 없다(DB 저장 없음). target_id 는 uuid 컬럼이라
+        // 'test-mode' 같은 sentinel 을 넣으면 insert 가 실패해 기록이 유실된다 → 실행자 id 를 쓴다.
+        targetId: user.id,
         meta: {
           company_name: input.companyName,
           industry: input.industry,
