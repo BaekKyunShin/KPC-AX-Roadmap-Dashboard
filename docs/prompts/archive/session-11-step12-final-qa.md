@@ -160,8 +160,8 @@
      - `docs/prompts/archive/session-05b-step6.5-form-compliance.md`
      - `docs/prompts/archive/session-10-step11-gallery.md`
    - 테스트 계정:
-     - **컨설턴트**: `kpc@test.com` / `aaaa0000`
-     - **운영관리자**: `son@test.com` / `aaaa00000`
+     - **컨설턴트**: `kpc@test.com` / `<비공개>`
+     - **운영관리자**: `son@test.com` / `<비공개>`
    - 감사 절차 (엄수):
      1. **시나리오 추출**: 위 13 문서 읽고 각 Step 의 핵심 사용자 시나리오 목록화(예: 로그인, 프로젝트 생성, 컨설턴트 배정, 로드맵 인터뷰 6단계, 로드맵 생성·편집·확정, PDF/XLSX/HWPX 다운로드, PBL 인터뷰 9단계, PBL 보고서 생성·편집·확정, 갤러리 트랙 필터·좋아요·공유, 공지사항 작성·첨부, /test-roadmap·/test-pbl, OPS 프로젝트 관리·감사로그·쿼터 등).
      2. **환경 준비**: 사전 검증에서 안내한 HWPX 브리지 워크플로우(`npm run dev:hwpx:setup` 최초 1회 → `npm run dev:hwpx` + `npm run dev:with-hwpx` 병렬 실행) 활성화. Playwright MCP(`mcp__plugin_playwright_playwright__*`) 로 두 계정 각각 로그인. 쿠키·세션 유지.

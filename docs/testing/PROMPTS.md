@@ -81,7 +81,7 @@ docs/testing/TEST_PLAN.md를 먼저 읽고, "Phase 2: 관리자(OPS_ADMIN) 계�
 7. 스크린샷(`puppeteer_screenshot`)은 찍지 말 것 — 파일 저장이 안 되고 컨텍스트만 소모함
 
 ## 로그인 정보
-- 관리자: werooring@gmail.com / $$kpc10044
+- 관리자: werooring@gmail.com / <비공개>
 
 ## 테스트 대상
 - localhost:3000
@@ -135,7 +135,7 @@ docs/testing/TEST_PLAN.md를 먼저 읽고, "Phase 3: 컨설턴트(CONSULTANT_AP
 7. 스크린샷(`puppeteer_screenshot`)은 찍지 말 것 — 파일 저장이 안 되고 컨텍스트만 소모함
 
 ## 로그인 정보
-- 컨설턴트: kpc@test.com / aaaa0000
+- 컨설턴트: kpc@test.com / <비공개>
 
 ## 테스트 대상
 - localhost:3000
@@ -189,8 +189,8 @@ docs/testing/TEST_PLAN.md를 먼저 읽고, "Phase 4: 크로스 기능 및 엣�
 7. 스크린샷(`puppeteer_screenshot`)은 찍지 말 것 — 파일 저장이 안 되고 컨텍스트만 소모함
 
 ## 로그인 정보
-- 관리자: werooring@gmail.com / $$kpc10044
-- 컨설턴트: kpc@test.com / aaaa0000
+- 관리자: werooring@gmail.com / <비공개>
+- 컨설턴트: kpc@test.com / <비공개>
 
 ## 테스트 대상
 - localhost:3000
@@ -246,8 +246,8 @@ docs/testing/TEST_PLAN.md에서 아직 `[ ]`로 남아있는 항목을 모두 �
 - 스크린샷(`puppeteer_screenshot`)은 찍지 말 것 — 파일 저장이 안 되고 컨텍스트만 소모함
 
 ## 로그인 정보
-- 관리자: werooring@gmail.com / $$kpc10044
-- 컨설턴트: kpc@test.com / aaaa0000
+- 관리자: werooring@gmail.com / <비공개>
+- 컨설턴트: kpc@test.com / <비공개>
 
 ## 테스트 대상
 - localhost:3000

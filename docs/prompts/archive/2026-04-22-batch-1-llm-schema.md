@@ -5,8 +5,8 @@
 **처리 대상**: ISSUE-04, 06, 07, 19 (Critical 3건 + High 1건)
 **브랜치**: `fix/batch-1-llm-and-schema`
 **공통 테스트 계정**:
-- 운영관리자: `son@test.com` / `aaaa00000`
-- 컨설턴트: `kpc@test.com` / `aaaa0000`
+- 운영관리자: `son@test.com` / `<비공개>`
+- 컨설턴트: `kpc@test.com` / `<비공개>`
 
 ---
 
@@ -54,8 +54,8 @@ docs/reports/2026-04-21-post-merge-qa-issues.md 를 정독해. 아래 4건만 �
 - mcp__supabase__list_migrations → 적용 검증
 - mcp__supabase__get_advisors → 스키마 변경 후 보안/성능 점검
 - mcp__plugin_playwright_playwright__* → 매 Step 탐색적 회귀 + 신규 기능 즉흥 확인
-  • 운영관리자: son@test.com / aaaa00000
-  • 컨설턴트: kpc@test.com / aaaa0000
+  • 운영관리자: son@test.com / <비공개>
+  • 컨설턴트: kpc@test.com / <비공개>
 - mcp__plugin_serena_serena__* → 기존 코드 심볼 탐색/편집
 - mcp__plugin_context7_context7__query-docs → 새 라이브러리 사용 시 최신 문서 조회
 
@@ -113,8 +113,8 @@ docs/reports/2026-04-21-post-merge-qa-issues.md 를 정독해. 아래 4건만 �
       - npm run test:e2e 전체 실행 → 통과
       - 신규 시나리오(Ⅲ-1 역량 모델링·LLM 호출 복구) spec 추가되어 있을 것
    c. Playwright MCP 탐색적 회귀 (E2E spec 이 커버 못 하는 영역):
-      - 컨설턴트(kpc@test.com/aaaa0000) 로그인 → 프로젝트 상세 → 인터뷰 7스텝 (Ⅲ-1 포함) → 로드맵 생성 성공 확인
-      - 운영관리자(son@test.com/aaaa00000) 로그인 → 프로젝트 → 자동 매칭 성공 확인
+      - 컨설턴트(kpc@test.com/<비공개>) 로그인 → 프로젝트 상세 → 인터뷰 7스텝 (Ⅲ-1 포함) → 로드맵 생성 성공 확인
+      - 운영관리자(son@test.com/<비공개>) 로그인 → 프로젝트 → 자동 매칭 성공 확인
       - 컨설턴트 → 사전 분석 성공 확인
       - 콘솔 에러 0건 확인
 4. 셋 다 통과하면 PR 생성 제안 (제목·본문·테스트 계획 초안 포함)
