@@ -1,0 +1,14 @@
+{
+  "_출처": "구 프로젝트 axflsiffdbkitptgpavv (뭄바이) 대시보드 설정 회수본 — 2026-08-21",
+  "_주의": "이메일 템플릿·SMTP·Redirect URL 은 DB 덤프에 포함되지 않는다. 프로젝트 이전 시 반드시 수동 이관할 것",
+  "mailer_subjects_recovery": "[KPC AI 로드맵] 비밀번호 재설정 안내",
+  "mailer_templates_recovery_content": "supabase/templates/recovery.ko.html 참조",
+  "uri_allow_list": "https://kpc-ax-roadmap-dashboard.vercel.app/reset-password,https://kpc-ax-roadmap-dashboard.vercel.app/**,http://localhost:3000/**",
+  "rate_limit_email_sent": 10,
+  "smtp_host": "smtp.gmail.com",
+  "smtp_port": "465",
+  "smtp_user": "kpc.ax.roadmap@gmail.com",
+  "smtp_admin_email": "kpc.ax.roadmap@gmail.com",
+  "smtp_sender_name": "KPC 알림",
+  "smtp_pass": "<비밀 — 리포에 저장하지 않음. Vercel SMTP_PASS 와 동일 계정>"
+}
